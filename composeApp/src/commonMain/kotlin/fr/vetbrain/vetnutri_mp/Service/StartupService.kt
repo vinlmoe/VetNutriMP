@@ -1,77 +1,71 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
 
 /**
- * Service de démarrage de l'application
- * Gère l'initialisation des services et la sauvegarde automatique
+ * Service de démarrage de l'application Gère l'initialisation des services et la sauvegarde
+ * automatique
  */
 class StartupService(
-    private val exportImportRepository: ExportImportRepository,
-    private val fileService: FileService
+        private val exportImportRepository: ExportImportRepository,
+        private val fileService: FileService
 ) {
-    
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var backupService: BackupService? = null
-    
-    /**
-     * Initialiser les services au démarrage de l'application
-     */
+
+    private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
+    private val backupService: BackupService = BackupService(exportImportRepository, fileService)
+
+    /** Initialiser les services au démarrage de l'application */
     suspend fun initialize() {
         try {
-            println("DEBUG: StartupService.initialize() - début")
-            
+
             // Créer le répertoire de sauvegarde
             val backupDirectory = fileService.getBackupDirectory()
-            println("DEBUG: Répertoire de sauvegarde: ${backupDirectory.absolutePath}")
             fileService.createDirectoryIfNotExists(backupDirectory)
-            
-            // Initialiser le service de sauvegarde
-            backupService = BackupService(exportImportRepository, backupDirectory)
-            println("DEBUG: BackupService créé: ${backupService != null}")
-            
+
             // Démarrer la sauvegarde automatique
-            backupService?.startAutomaticBackup()
-            println("DEBUG: Sauvegarde automatique démarrée")
-            
-            println("Services de démarrage initialisés avec succès")
+            backupService.startAutomaticBackup()
+
+            // Mots-clés de consultation livrés en double jusqu'aux données 3.3.18
+            exportImportRepository.mergeDuplicateKeywords()
         } catch (e: Exception) {
-            println("Erreur lors de l'initialisation des services: ${e.message}")
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("StartupService", e.message ?: "Erreur", e)
         }
     }
-    
-    /**
-     * Obtenir le service de sauvegarde
-     */
+
+    /** Obtenir le service de sauvegarde */
     fun getBackupService(): BackupService? {
         return backupService
     }
-    
-    /**
-     * Arrêter les services
-     */
+
+    /** Arrêter les services */
     fun shutdown() {
-        backupService?.cleanup()
+        backupService.cleanup()
         scope.cancel()
     }
-    
-    /**
-     * Créer une sauvegarde manuelle
-     */
+
+    /** Créer une sauvegarde manuelle */
     suspend fun createManualBackup(): Result<BackupService.BackupMetadata> {
-        return backupService?.createBackup() ?: Result.failure(Exception("Service de sauvegarde non initialisé"))
+        return backupService.createBackup()
     }
-    
-    /**
-     * Obtenir la liste des sauvegardes disponibles
-     */
-    fun getAvailableBackups(): List<BackupService.BackupMetadata> {
-        return backupService?.getAvailableBackups() ?: emptyList()
+
+    /** Obtenir la liste des sauvegardes disponibles */
+    suspend fun getAvailableBackups(): List<BackupService.BackupMetadata> {
+        return backupService.getAvailableBackups()
     }
+
+    /** Sauvegarde JSON à proposer quand la base démarre sans animaux (null si aucune) */
+    suspend fun findRecoveryBackup(): BackupService.BackupMetadata? =
+            backupService.findLatestBackupWithAnimals()
+
+    /** Régénère la base depuis une sauvegarde JSON */
+    suspend fun restoreBackup(
+            metadata: BackupService.BackupMetadata
+    ): Result<ExportImportRepository.ImportCounts> = backupService.restoreBackup(metadata)
 }

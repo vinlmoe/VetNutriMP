@@ -4,12 +4,13 @@ import android.content.Context
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
+fun getDatabasePath(ctx: Context): String =
+    ctx.applicationContext.getDatabasePath(AppDatabase.DATABASE_NAME).absolutePath
+
 fun getDatabaseBuilder(ctx: Context): RoomDatabase.Builder<AppDatabase> {
-    val appContext = ctx.applicationContext
-    val dbFile = appContext.getDatabasePath("vetnutri.db")
     return Room.databaseBuilder(
-        appContext,
+        ctx.applicationContext,
         AppDatabase::class.java,
-        dbFile.absolutePath
+        getDatabasePath(ctx)
     )
 }

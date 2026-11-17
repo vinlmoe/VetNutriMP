@@ -1,37 +1,58 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.orUserError
+
+import androidx.lifecycle.ViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import fr.vetbrain.vetnutri_mp.Data.CalculMetabolique
 import fr.vetbrain.vetnutri_mp.Data.*
-import fr.vetbrain.vetnutri_mp.Data.AnalyseResultat
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
 import fr.vetbrain.vetnutri_mp.Data.ComparaisonNutriment
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Data.RationAnalyzer
+import fr.vetbrain.vetnutri_mp.Data.RationAggregator
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
 import fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin
-import fr.vetbrain.vetnutri_mp.Repository.AlimentRepository
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
+import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -47,21 +68,122 @@ enum class AnimalDetailSection {
     EXPORT
 }
 
+/**
+ * Détails animal (consultations, rations, analyses).
+ * - Charge/observe animal, consultations, rations, préférences espèce et références.
+ * - Fournit analyses nutritionnelles (cache court terme) et calculs métaboliques.
+ * - Gère états d'édition (consultation/ration/animal), imports/export et navigation de section.
+ * - Multiplateforme : scope coroutines interne (pas de ViewModel Android).
+ */
 class AnimalDetailViewModel(
         private val consultationRepository: ConsultationRepository,
         private val animalRepository: AnimalRepository,
         private val databaseReferenceEvRepository: DatabaseReferenceEvRepository,
-        private val preferencesRepository: PreferencesRepository
-) {
-    private val viewModelScope = CoroutineScope(AppDispatchers.Main)
+        private val preferencesRepository: PreferencesRepository,
+        val foodRepository: FoodRepository,
+        private val equationRepository: EquationRepository? = null,
+        private val recipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository? = null,
+        private val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
+) : ViewModel() {
+    private val job = SupervisorJob()
+    private val viewModelScope = CoroutineScope(AppDispatchers.Main + job)
     private val _animal = MutableStateFlow<AnimalEv?>(null)
     val animal: StateFlow<AnimalEv?> = _animal.asStateFlow()
+
+    /**
+     * Préférences de l'application (praticien, nutriments affichés), partagées avec l'écran
+     * Paramètres : une modification y est visible ici sans recharger. null avant la première lecture.
+     */
+    val preferences: StateFlow<PreferencesApplication?> = preferencesRepository.preferencesFlow
+
+    /** Préférences courantes, lues sur le stockage si ce n'est pas encore fait */
+    suspend fun getLoadedPreferences(): PreferencesApplication =
+            preferencesRepository.getLoadedPreferences()
+
+    /** Enregistre les aliments de [ration] comme nouvelle recette nommée [nom]. */
+    suspend fun saveRationAsRecipe(ration: Ration, nom: String) {
+        val depot = recipeRepository ?: error("dépôt des recettes non fourni")
+        val recette = depot.createRecipe(name = nom, espece = ration.espece, description = null)
+        depot.replaceAliments(recette.uuid, ration.alimentMutableList)
+    }
+
+    /** Recettes de l'utilisateur, pour le dialogue de recettes de l'onglet Rations. */
+    val recipeLibrary: RecipeLibrary =
+            object : RecipeLibrary {
+                private val depot get() = recipeRepository ?: error("dépôt des recettes non fourni")
+
+                override suspend fun loadRecipes(): List<Ration> =
+                        depot.getAllRecipes().map { recette ->
+                            val aliments =
+                                    recette.alimentMutableList.map { aliment ->
+                                        aliment.copy(aliment = aliment.refAlimUnif?.let { foodRepository.getFoodById(it) })
+                                    }
+                            recette.copy(alimentMutableList = aliments.toMutableList())
+                        }
+
+                override suspend fun cloneRecipe(recipeId: String) {
+                    depot.cloneRecipe(recipeId)
+                }
+
+                override suspend fun deleteRecipe(recipeId: String) = depot.deleteRecipe(recipeId)
+
+                override suspend fun createRecipe(name: String) {
+                    depot.createRecipe(name, null, null)
+                }
+            }
+
+    /** Conseils actifs proposés pour l'ordonnance (liste vide sans dépôt de conseils). */
+    suspend fun getActiveAdvices(): Result<List<fr.vetbrain.vetnutri_mp.Export.HtmlSection>> =
+            conseilRepository?.getConseilsActifs() ?: Result.success(emptyList())
 
     private val _selectedConsultation = MutableStateFlow<ConsultationEv?>(null)
     val selectedConsultation: StateFlow<ConsultationEv?> = _selectedConsultation.asStateFlow()
 
     private val _selectedRation = MutableStateFlow<Ration?>(null)
     val selectedRation: StateFlow<Ration?> = _selectedRation.asStateFlow()
+
+    // Périmètre d'analyse : ration unique (défaut) ou agrégat de toutes les rations actuelles /
+    // proposées de la consultation, en moyenne pondérée par le coefficient de chaque ration.
+    private val _rationAnalysisScope = MutableStateFlow(RationAnalysisScope.RATION_UNIQUE)
+    val rationAnalysisScope: StateFlow<RationAnalysisScope> = _rationAnalysisScope.asStateFlow()
+
+    // Ration individuelle à restaurer quand on quitte un périmètre groupé
+    private var rationAvantGroupe: Ration? = null
+
+    // --- Troupeau ---------------------------------------------------------------------------
+    // Pour un troupeau, les rations sont saisies en quantités pour tout le groupe. Choisir un type
+    // d'animaux fait analyser la ration d'un animal de ce type (quantités × Bᵢ / Σ nⱼ·Bⱼ) avec son
+    // poids, son référentiel et son K : toute l'analyse de ration existante est ainsi réutilisée.
+    // Cette ration par animal est virtuelle (jamais enregistrée) et en lecture seule.
+
+    private val _typeTroupeauAnalyse = MutableStateFlow<String?>(null)
+    /** Type d'animaux analysé (null = ration du groupe). */
+    val typeTroupeauAnalyse: StateFlow<String?> = _typeTroupeauAnalyse.asStateFlow()
+
+    private val troupeau =
+            AnalyseTroupeauConsultation(
+                    databaseReferenceEvRepository, equationRepository,
+                    { references.availableReferences.value }, viewModelScope
+            )
+    /** Répartition de la ration du groupe et synthèse des apports de chaque type. */
+    val analyseTroupeau: StateFlow<AnalyseTroupeau?> = troupeau.analyse
+
+    /** Apports au troupeau entier comparés aux besoins sommés (calculés une fois par analyse). */
+    val apportsTroupeauEntier: StateFlow<List<LigneApportTroupeau>> = troupeau.apportsTroupeauEntier
+
+    /**
+     * Consultation utilisée par l'analyse : la consultation sélectionnée, ou pour un troupeau
+     * dont un type est analysé, cette consultation vue depuis un animal du type (poids,
+     * référentiel, K et variables du type).
+     */
+    val consultationAnalysee: StateFlow<ConsultationEv?> =
+            combine(_selectedConsultation, _typeTroupeauAnalyse, _animal) { c, typeId, a ->
+                        consultationPourAnalyse(c, typeId, a)
+                    }
+                    .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Dernière ration par animal publiée (pour la distinguer d'une ration réelle). */
+    private var rationProjeteeTroupeau: Ration? = null
 
     // Section actuellement sélectionnée dans la vue détaillée
     private val _currentSection = MutableStateFlow(AnimalDetailSection.IDENTIFICATION)
@@ -88,64 +210,103 @@ class AnimalDetailViewModel(
     private val _isLoadingFoods = MutableStateFlow(false)
     val isLoadingFoods: StateFlow<Boolean> = _isLoadingFoods.asStateFlow()
 
-    // Requête de recherche d'aliment
-    private val _alimentSearchQuery = mutableStateOf("")
-    val alimentSearchQuery: String
-        get() = _alimentSearchQuery.value
-
-    // Nouvelle instance de l'analyseur de rations
-    private val rationAnalyzer = RationAnalyzer()
-
-    // StateFlow pour stocker les résultats d'analyse de la ration sélectionnée
-    private val _rationAnalyseResultat = MutableStateFlow<AnalyseResultat?>(null)
-    val rationAnalyseResultat: StateFlow<AnalyseResultat?> = _rationAnalyseResultat.asStateFlow()
-
+    // Sérialise les enregistrements de consultation : sans cela, deux sauvegardes lancées coup sur
+    // coup (ex. éditions rapides d'un plan évolutif) peuvent se terminer dans le désordre et la
+    // plus ancienne écraser la plus récente.
+    private val consultationSaveMutex = Mutex()
+    // Consultation sélectionnée avant la création d'un brouillon : on y revient en cas d'annulation
+    private var consultationAvantBrouillon: String? = null
     // StateFlow pour stocker les préférences de l'espèce de l'animal
     private val _speciesPreferences = MutableStateFlow<PreferencesEspece?>(null)
     val speciesPreferences: StateFlow<PreferencesEspece?> = _speciesPreferences.asStateFlow()
 
-    // StateFlow pour stocker le type d'expression des besoins
-    private val _typeExpressionBesoin = MutableStateFlow<TypeExpressionBesoin?>(null)
-    val typeExpressionBesoin: StateFlow<TypeExpressionBesoin?> = _typeExpressionBesoin.asStateFlow()
+    // Dérivé de speciesPreferences — recalculé automatiquement à chaque changement d'espèce
+    val typeExpressionBesoin: StateFlow<TypeExpressionBesoin?> = _speciesPreferences
+            .map { it?.getTypeExpressionBesoinEnum() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    // Override en mémoire (non sauvegardé) pour l'expression des besoins
+    private val _typeExpressionBesoinOverride = MutableStateFlow<TypeExpressionBesoin?>(null)
+    val typeExpressionBesoinOverride: StateFlow<TypeExpressionBesoin?> =
+            _typeExpressionBesoinOverride.asStateFlow()
 
-    // StateFlow pour stocker la comparaison entre deux rations
-    private val _rationsComparaison =
-            MutableStateFlow<Map<String, ComparaisonNutriment>>(emptyMap())
-    val rationsComparaison: StateFlow<Map<String, ComparaisonNutriment>> =
-            _rationsComparaison.asStateFlow()
+    // États en mémoire pour les recherches d'aliments (réinitialisés au changement d'animal)
+    private val _addAlimentFilters = MutableStateFlow(FoodSearchFilters())
+    val addAlimentFilters: StateFlow<FoodSearchFilters> = _addAlimentFilters.asStateFlow()
+    private val _addAlimentSelectedFoodId = MutableStateFlow<String?>(null)
+    val addAlimentSelectedFoodId: StateFlow<String?> = _addAlimentSelectedFoodId.asStateFlow()
 
-    // StateFlow pour indiquer si une analyse est en cours
-    private val _isAnalyzing = MutableStateFlow(false)
-    val isAnalyzing: StateFlow<Boolean> = _isAnalyzing.asStateFlow()
+    private val _analyseSelectionFilters = MutableStateFlow(FoodSearchFilters())
+    val analyseSelectionFilters: StateFlow<FoodSearchFilters> =
+            _analyseSelectionFilters.asStateFlow()
 
-    // Nouveaux StateFlow pour les références nutritionnelles
-    private val _availableReferences = MutableStateFlow<List<ReferenceEv>>(emptyList())
-    val availableReferences: StateFlow<List<ReferenceEv>> = _availableReferences.asStateFlow()
-
-    private val _isLoadingReferences = MutableStateFlow(false)
-    val isLoadingReferences: StateFlow<Boolean> = _isLoadingReferences.asStateFlow()
+    // Référentiels et mots-clés proposés dans les consultations
+    private val references =
+            ReferencesConsultation(databaseReferenceEvRepository, consultationRepository, viewModelScope)
+    val availableReferences: StateFlow<List<ReferenceEv>> = references.availableReferences
+    val isLoadingReferences: StateFlow<Boolean> = references.isLoadingReferences
+    val availableKeywords: StateFlow<List<ConsultationKeyword>> = references.availableKeywords
 
     // StateFlow pour gérer l'affichage de la vue plein écran de consultation
     private val _showFullScreenEdit = MutableStateFlow(false)
     val showFullScreenEdit: StateFlow<Boolean> = _showFullScreenEdit.asStateFlow()
 
-    // StateFlow pour les calculs métaboliques
-    private val _poidsMetabolique = MutableStateFlow<Double?>(null)
-    val poidsMetabolique: StateFlow<Double?> = _poidsMetabolique.asStateFlow()
+    // Groupe des calculs métaboliques — mis à jour atomiquement pour éviter les états partiels
+    private data class ValeursMetaboliques(
+            val referenceUtilisee: ReferenceEv? = null,
+            // Poids (kg) réellement utilisé : poids de l'étape pour un plan évolutif
+            val poidsCorps: Double? = null,
+            val poidsMetabolique: Double? = null,
+            val besoinEnergetiqueStandard: Double? = null,
+            val besoinEnergetiqueTotal: Double? = null
+    )
+    private val _valeursMetaboliques = MutableStateFlow(ValeursMetaboliques())
 
-    private val _besoinEnergetiqueStandard = MutableStateFlow<Double?>(null)
-    val besoinEnergetiqueStandard: StateFlow<Double?> = _besoinEnergetiqueStandard.asStateFlow()
+    // API publique inchangée — chaque flow est dérivé du groupe
+    val referenceUtilisee: StateFlow<ReferenceEv?> = _valeursMetaboliques
+            .map { it.referenceUtilisee }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val poidsMetabolique: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.poidsMetabolique }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val besoinEnergetiqueStandard: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.besoinEnergetiqueStandard }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val besoinEnergetiqueTotal: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.besoinEnergetiqueTotal }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    /**
+     * Poids (kg) utilisé pour les besoins de la ration sélectionnée : poids propre de l'étape pour
+     * un plan évolutif, sinon poids effectif de la consultation.
+     */
+    val poidsEffectif: StateFlow<Double?> = _valeursMetaboliques
+            .map { it.poidsCorps }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private val _besoinEnergetiqueTotal = MutableStateFlow<Double?>(null)
-    val besoinEnergetiqueTotal: StateFlow<Double?> = _besoinEnergetiqueTotal.asStateFlow()
-
-    // StateFlow pour la référence utilisée dans les calculs
-    private val _referenceUtilisee = MutableStateFlow<ReferenceEv?>(null)
-    val referenceUtilisee: StateFlow<ReferenceEv?> = _referenceUtilisee.asStateFlow()
+    // Énergie additionnelle issue des références maladies (calculée via EquationEvaluator)
+    private val _energieAdditionnelle = MutableStateFlow(0.0)
+    val energieAdditionnelle: StateFlow<Double> = _energieAdditionnelle.asStateFlow()
 
     // ✨ États pour l'analyse graphique des aliments
     private val _alimentsSelectionnes = MutableStateFlow<List<AlimentEv>>(emptyList())
     val alimentsSelectionnes: StateFlow<List<AlimentEv>> = _alimentsSelectionnes.asStateFlow()
+
+    /** Groupe B (facultatif) comparé aux aliments sélectionnés par des boîtes à moustaches. */
+    private val _alimentsGroupeB = MutableStateFlow<List<AlimentEv>>(emptyList())
+    val alimentsGroupeB: StateFlow<List<AlimentEv>> = _alimentsGroupeB.asStateFlow()
+
+    /** Comparaison A/B activée par l'utilisateur (désactivée par défaut, pour alléger la vue). */
+    private val _comparaisonActive = MutableStateFlow(false)
+    val comparaisonActive: StateFlow<Boolean> = _comparaisonActive.asStateFlow()
+
+    fun setComparaisonActive(active: Boolean) {
+        _comparaisonActive.value = active
+    }
+
+    /** Noms donnés aux groupes A et B (vide = « Groupe A », « Groupe B »). */
+    private val _nomGroupeA = MutableStateFlow("")
+    val nomGroupeA: StateFlow<String> = _nomGroupeA.asStateFlow()
+    private val _nomGroupeB = MutableStateFlow("")
+    val nomGroupeB: StateFlow<String> = _nomGroupeB.asStateFlow()
 
     private val _showAnalyseGraphique = MutableStateFlow(false)
     val showAnalyseGraphique: StateFlow<Boolean> = _showAnalyseGraphique.asStateFlow()
@@ -153,6 +314,7 @@ class AnimalDetailViewModel(
     init {
         // Démarrer automatiquement l'observation des aliments
         loadAvailableFoods()
+        viewModelScope.launch { getLoadedPreferences() }
     }
 
     /**
@@ -164,13 +326,14 @@ class AnimalDetailViewModel(
 
         // S'abonner au Flow réactif des aliments pour des mises à jour automatiques
         // Utiliser onEach + launchIn pour lancer l'observation en arrière-plan
-        AlimentRepository.observeAllAliments()
-                .onEach { aliments ->
+        foodRepository
+                .observeAllFoods()
+                .onEach { aliments: List<AlimentEv> ->
 
                     // Convertir en version légère pour l'affichage (sans valMap pour les
                     // performances)
                     _availableFoods.value =
-                            aliments.map { aliment ->
+                            aliments.map { aliment: AlimentEv ->
                                 aliment.copy(
                                         valMap = mutableMapOf()
                                 ) // Vider valMap pour les performances
@@ -181,34 +344,32 @@ class AnimalDetailViewModel(
                     }
                 }
                 .catch { e ->
-                    e.printStackTrace()
+                    AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                     _availableFoods.value = emptyList()
                     _isLoadingFoods.value = false
                 }
                 .launchIn(viewModelScope)
     }
 
-    /** Définit la requête de recherche pour les aliments */
-    fun setAlimentSearchQuery(query: String) {
-        _alimentSearchQuery.value = query
-    }
-
-    /** Retourne la liste des aliments filtrée par la requête de recherche */
-    fun getFilteredFoods(query: String): List<AlimentEv> {
-        val currentFoods = _availableFoods.value
-        if (query.isBlank()) return currentFoods
-
-        return currentFoods.filter { aliment ->
-            aliment.nom?.contains(query, ignoreCase = true) == true ||
-                    aliment.brand?.contains(query, ignoreCase = true) == true ||
-                    aliment.group?.label?.contains(query, ignoreCase = true) == true ||
-                    aliment.typeAliment?.label?.contains(query, ignoreCase = true) == true
+    /** Charge un aliment complet avec toutes ses données nutritionnelles */
+    fun loadCompleteFood(uuid: String, onComplete: (AlimentEv?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val alimentComplet = foodRepository.getFoodById(uuid)
+                onComplete(alimentComplet)
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
+                onComplete(null)
+            }
         }
     }
 
     /** Ajoute un aliment à une ration */
     @OptIn(ExperimentalUuidApi::class)
     fun addAlimentToRation(ration: Ration, aliment: AlimentEv, quantite: Double) {
+        // Refus sur la ration virtuelle du mode groupé : elle n'existe pas en base
+        if (RationAggregator.estRationGroupee(ration.uuid)) return
 
         viewModelScope.launch {
             try {
@@ -218,44 +379,106 @@ class AnimalDetailViewModel(
                         if (aliment.valMap.isEmpty()) {
                             // Utiliser la méthode statique du companion object pour éviter le
                             // problème de null
-                            val alimentCompletFromRepo =
-                                    AlimentRepository.getAlimentByUUID(aliment.uuid)
+                            val alimentCompletFromRepo = foodRepository.getFoodById(aliment.uuid)
                             alimentCompletFromRepo ?: aliment
                         } else {
                             aliment
                         }
+
+                // Récupérer la version courante de la ration par son UUID (source de vérité)
+                val consultationCourante: ConsultationEv? = _selectedConsultation.value
+                val rationCourante: Ration =
+                        consultationCourante?.rations?.firstOrNull { it.uuid == ration.uuid }
+                                ?: ration
 
                 val alimentRation =
                         AlimentRation(
                                 uuid = Uuid.random().toString(),
                                 aliment = alimentComplet,
                                 quantite = quantite,
-                                refRation = ration.uuid,
+                                refRation = rationCourante.uuid,
                                 refAlimUnif = alimentComplet.uuid
                         )
 
-                // Créer une copie de la ration avec le nouvel aliment
-                val updatedRation = ration.copy()
-                updatedRation.alimentMutableList.add(alimentRation)
+                // Copie de la ration avec l'aliment ; déjà présent, sa quantité est cumulée (la base
+                // n'accepte qu'une ligne par aliment et par ration : une seconde ligne serait perdue)
+                val updatedRation =
+                        rationCourante.copy(
+                                alimentMutableList =
+                                        ajouterOuCumulerAliment(rationCourante.alimentMutableList, alimentRation)
+                                                .toMutableList()
+                        )
 
                 // Mettre à jour la ration dans la consultation
                 updateRationInConsultation(updatedRation)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
 
-    fun setAnimal(animal: AnimalEv) {
+    /**
+     * @param consultationASelectionner consultation à ouvrir (ex. ration issue de l'exploration
+     * multiration) ; par défaut, la plus récente
+     */
+    /** Ouvre une copie d'examen en lecture seule, sur sa consultation notée. */
+    fun openAnimalReadOnly(animalId: String, consultationId: String?, onPret: () -> Unit) {
+        // Lecture seule tout de suite : aucune écriture possible pendant le chargement
+        _lectureSeule.value = true
+        viewModelScope.launch {
+            val animal = animalRepository.getAnimalById(animalId)
+                    .orUserError(fr.vetbrain.vetnutri_mp.Localization.translate("lectureSeule.animalIntrouvable")) ?: return@launch
+            setAnimal(animal, consultationASelectionner = consultationId, lectureSeule = true)
+            onPret()
+        }
+    }
+
+    private val _lectureSeule = kotlinx.coroutines.flow.MutableStateFlow(false)
+    /** Fiche ouverte en lecture seule (copie d'examen consultée depuis la notation). */
+    val lectureSeule: kotlinx.coroutines.flow.StateFlow<Boolean> = _lectureSeule
+
+    /**
+     * Garde de toutes les écritures en base. En lecture seule, l'écriture est ignorée sans
+     * message : la fiche enregistre d'elle-même en quittant une édition, et un bandeau permanent
+     * indique déjà que rien n'est enregistré.
+     */
+    private fun ecritureAutorisee(): Boolean {
+        if (!_lectureSeule.value) return true
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.d("AnimalDetailViewModel", "Écriture ignorée : fiche en lecture seule")
+        return false
+    }
+
+    /**
+     * @param lectureSeule true / false : mode imposé ; null (rechargement interne, ex. après un
+     * partage) : le mode courant est gardé pour le même animal.
+     */
+    fun setAnimal(animal: AnimalEv, consultationASelectionner: String? = null, lectureSeule: Boolean? = null) {
+        _lectureSeule.value = lectureSeule ?: (_animal.value?.uuid == animal.uuid && _lectureSeule.value)
+        // Rechargement du même animal (ex. après un partage) : garder la consultation et la ration
+        // choisies au lieu de revenir à la consultation la plus récente
+        val memeAnimal = _animal.value?.uuid == animal.uuid
+        val consultationPrecedente = _selectedConsultation.value?.uuid?.takeIf { memeAnimal }
+        val rationPrecedente = _selectedRation.value?.uuid?.takeIf { memeAnimal }
+
         viewModelScope.launch {
 
             // Réinitialiser les états immédiatement pour éviter toute rémanence
             _selectedRation.value = null
             _selectedConsultation.value = null
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            rationAvantGroupe = null
+            if (!memeAnimal) _typeTroupeauAnalyse.value = null
+            rationProjeteeTroupeau = null
+            troupeau.effacer()
             isEditingConsultation = false
             isEditingRation = false
             isEditingAnimal = false
             _showFullScreenEdit.value = false
+            _typeExpressionBesoinOverride.value = null
+            _addAlimentFilters.value = FoodSearchFilters()
+            _addAlimentSelectedFoodId.value = null
+            _analyseSelectionFilters.value = FoodSearchFilters()
 
             // DEBUG: Vérifier l'historique des poids de l'animal reçu
 
@@ -272,15 +495,17 @@ class AnimalDetailViewModel(
             _animal.value = originalAnimal
 
             // Charger les préférences de l'espèce de l'animal
+            // typeExpressionBesoin est dérivé automatiquement de _speciesPreferences
             try {
                 preferencesRepository.loadPreferences()
                 val preferences = preferencesRepository.getPreferencesForSpecies(animal.getEspece())
                 _speciesPreferences.value = preferences
-                _typeExpressionBesoin.value = preferences.getTypeExpressionBesoinEnum()
+                // Charger aussi les références disponibles pour que les références complémentaires
+                // soient prêtes lors de la sélection automatique de consultation
+                chargerReferencesDisponibles()
             } catch (e: Exception) {
-
+                e.rethrowIfCancellation()
                 _speciesPreferences.value = null
-                _typeExpressionBesoin.value = null
             }
 
             // Charger les consultations depuis la base de données
@@ -300,46 +525,96 @@ class AnimalDetailViewModel(
                         currentAnimal?.copy(consultations = consultations.toMutableList())
                     }
 
-                    // Sélectionner automatiquement la consultation la plus récente
-                    val mostRecentConsultation =
-                            consultations.filter { it.date != null }.maxByOrNull { it.date!! }
-                    if (mostRecentConsultation != null) {
-                        selectConsultation(mostRecentConsultation)
-                    } else if (consultations.isNotEmpty()) {
-                        // Si aucune consultation n'a de date, prendre la première
-                        selectConsultation(consultations.first())
+                    // Sélectionner la consultation demandée, la précédente (même animal),
+                    // sinon la plus récente
+                    val consultationDemandee =
+                        consultationASelectionner?.let { uuid ->
+                            consultations.firstOrNull { it.uuid == uuid }
+                        }
+                    val consultationPrecedenteSelectionnee =
+                        consultations.firstOrNull { it.uuid == consultationPrecedente }
+                    val consultationParDefaut =
+                        consultationDemandee
+                            ?: consultationPrecedenteSelectionnee
+                            ?: consultations.filter { it.date != null }.maxByOrNull { it.date!! }
+                            ?: consultations.firstOrNull()
+
+                    if (consultationDemandee != null) {
+                        selectConsultation(consultationDemandee)
+                    } else if (consultationPrecedenteSelectionnee != null) {
+                        selectConsultation(consultationPrecedenteSelectionnee, rationPrecedente)
+                    } else if (consultationParDefaut != null) {
+                        selectConsultation(consultationParDefaut)
                     }
+
                 } else {
                     // Si aucune consultation n'est chargée, conservons celles qui étaient déjà dans
                     // l'animal
-
-                    // Si l'animal a des consultations existantes, sélectionner la plus récente
-                    if (animal.consultations.isNotEmpty()) {
-                        val mostRecentConsultation =
-                                animal.consultations.filter { it.date != null }.maxByOrNull {
-                                    it.date!!
-                                }
-                        if (mostRecentConsultation != null) {
-                            selectConsultation(mostRecentConsultation)
-                        } else {
-                            // Si aucune consultation n'a de date, prendre la première
-                            selectConsultation(animal.consultations.first())
-                        }
-                    }
+                    val aSelectionner =
+                            animal.consultations.firstOrNull { it.uuid == consultationPrecedente }
+                                    ?: consultationParDefaut(animal.consultations)
+                    aSelectionner?.let { selectConsultation(it, rationPrecedente) }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 // Gérer les erreurs potentielles lors du chargement des consultations
-                e.printStackTrace()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
+    }
+
+    fun setTypeExpressionBesoinOverride(typeExpression: TypeExpressionBesoin?) {
+        _typeExpressionBesoinOverride.value = typeExpression
+    }
+
+    fun setAddAlimentFilters(filters: FoodSearchFilters) {
+        _addAlimentFilters.value = filters
+    }
+
+    fun setAddAlimentSelectedFoodId(foodId: String?) {
+        _addAlimentSelectedFoodId.value = foodId
+    }
+
+    fun setAnalyseSelectionFilters(filters: FoodSearchFilters) {
+        _analyseSelectionFilters.value = filters
     }
 
     fun navigateTo(section: AnimalDetailSection) {
         _currentSection.value = section
     }
 
-    fun selectConsultation(consultation: ConsultationEv) {
+    /** Consultation sélectionnée par défaut : la plus récente datée, sinon la première. */
+    private fun consultationParDefaut(consultations: List<ConsultationEv>): ConsultationEv? =
+            consultations.filter { it.date != null }.maxByOrNull { it.date!! }
+                    ?: consultations.firstOrNull()
+
+    /**
+     * Invariant : dès que l'animal a des consultations, l'une d'elles est sélectionnée. Corrige
+     * une sélection vide ou pointant vers une consultation absente (brouillon annulé, suppression).
+     */
+    private fun assurerConsultationSelectionnee() {
+        val consultations = _animal.value?.consultations.orEmpty()
+        val selection = _selectedConsultation.value
+        if (selection != null && consultations.any { it.uuid == selection.uuid }) return
+        val parDefaut =
+                consultations.firstOrNull { it.uuid == consultationAvantBrouillon }
+                        ?: consultationParDefaut(consultations)
+        if (parDefaut != null) {
+            selectConsultation(parDefaut)
+        } else {
+            _selectedConsultation.value = null
+            _selectedRation.value = null
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            rationAvantGroupe = null
+        }
+    }
+
+    fun selectConsultation(consultation: ConsultationEv, rationPreferee: String? = null) {
         viewModelScope.launch {
+            // Assurer que les références sont disponibles avant d'effectuer des calculs dépendants
+            if (references.availableReferences.value.isEmpty()) {
+                chargerReferencesDisponibles()
+            }
             val fullConsultation = consultationRepository.getConsultationById(consultation.uuid)
             _selectedConsultation.value = fullConsultation
 
@@ -348,14 +623,43 @@ class AnimalDetailViewModel(
                 ration.alimentMutableList.forEachIndexed { alimentIndex, aliment -> }
             }
 
-            // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
-            // sélectionner une
-            if (_selectedRation.value == null && !fullConsultation?.rations.isNullOrEmpty()) {
-                selectRation(fullConsultation!!.rations.first())
+            if (_rationAnalysisScope.value.estGroupe) {
+                // En mode groupé, la ration analysée est recalculée à partir des rations de la
+                // consultation fraîchement chargée
+                rafraichirRationGroupee()
+            } else {
+                // Réinitialiser la ration sélectionnée si elle n'appartient pas à la nouvelle consultation
+                val currentRation = _selectedRation.value
+                val rationBelongsToConsultation = currentRation?.let { ration ->
+                    fullConsultation?.rations?.any { it.uuid == ration.uuid } == true
+                } ?: false
+
+                // Si la consultation n'a pas de rations, réinitialiser la ration sélectionnée
+                if (fullConsultation?.rations.isNullOrEmpty()) {
+                    _selectedRation.value = null
+                } else if (currentRation != null && !rationBelongsToConsultation) {
+                    // Si la ration sélectionnée n'appartient pas à la nouvelle consultation, la réinitialiser
+                    _selectedRation.value = null
+                }
+
+                // Ration demandée (rechargement de l'animal) si elle appartient à la consultation
+                fullConsultation?.rations?.firstOrNull { it.uuid == rationPreferee }?.let {
+                    if (_selectedRation.value?.uuid != it.uuid) selectRation(it)
+                }
+
+                // Si aucune ration n'est sélectionnée mais qu'il y en a dans la consultation, en
+                // sélectionner une
+                if (_selectedRation.value == null) {
+                    fullConsultation?.rations?.firstOrNull()?.let { selectRation(it) }
+                }
             }
 
             // Calculer automatiquement les valeurs métaboliques pour la consultation sélectionnée
             fullConsultation?.let { consultation -> calculerValeursMetaboliques(consultation) }
+            // Plan évolutif : bilan énergétique de chaque étape
+            recalculerBilansEtapes()
+            // Troupeau : ration par animal recalculée avec les paramètres de cette consultation
+            rafraichirTroupeau()
         }
     }
 
@@ -368,92 +672,123 @@ class AnimalDetailViewModel(
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
-        // Créer une copie profonde de la ration, y compris sa liste d'aliments
-        val rationCopy =
-                ration.copy(
-                        alimentMutableList =
-                                ration.alimentMutableList.map { it.copy() }.toMutableList()
-                )
+        // Sélectionner une ration individuelle fait sortir d'un éventuel périmètre groupé
+        _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+        rationAvantGroupe = null
 
-        rationCopy.alimentMutableList.forEachIndexed { k, a -> }
+        _selectedRation.value = copieProfonde(ration)
 
-        _selectedRation.value = rationCopy
+        // Plan évolutif : chaque étape a son propre poids et ses variables → besoins à recalculer
+        _selectedConsultation.value?.takeIf { it.etapesEvolutives.isNotEmpty() }?.let {
+            calculerValeursMetaboliques(it)
+        }
 
         // Lancer l'analyse de la ration automatiquement
         analyserRationSelectionnee()
     }
 
     /**
-     * Analyse la ration actuellement sélectionnée L'analyse est lancée automatiquement lors de la
-     * sélection d'une ration, mais cette méthode peut être appelée explicitement après des
-     * modifications.
+     * Change le périmètre d'analyse des rations.
+     *
+     * En mode groupé, la ration analysée n'est plus une ration de la consultation mais une ration
+     * virtuelle : la moyenne pondérée de toutes les rations actuelles (ou de toutes les proposées),
+     * chacune pesant son coefficient. Cette ration virtuelle n'est jamais persistée et sa
+     * composition est en lecture seule.
+     *
+     * @param scope Le périmètre demandé
      */
-    fun analyserRationSelectionnee() {
-        val rationActuelle = _selectedRation.value ?: return
-        val consultationActuelle = _selectedConsultation.value
+    fun setRationAnalysisScope(scope: RationAnalysisScope) {
+        if (_rationAnalysisScope.value == scope) return
 
-        viewModelScope.launch {
-            try {
-                _isAnalyzing.value = true
+        if (!scope.estGroupe) {
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            restaurerRationIndividuelle()
+            return
+        }
 
-                // Vérifier que la ration contient des aliments
-                if (rationActuelle.alimentMutableList.isEmpty()) {
-                    _rationAnalyseResultat.value =
-                            AnalyseResultat(
-                                    rationId = rationActuelle.uuid,
-                                    rationName = rationActuelle.name,
-                                    alertes = listOf("Cette ration ne contient aucun aliment")
-                            )
-                    return@launch
-                }
+        val agregat = RationAggregator.agreger(_selectedConsultation.value, scope)
+        if (agregat == null) {
+            // Aucune ration dans ce groupe : on reste sur le mode ration unique
+            return
+        }
 
-                // Effectuer l'analyse en passant la consultation pour les variables supplémentaires
-                val resultat = rationAnalyzer.analyserRation(rationActuelle, consultationActuelle)
-                _rationAnalyseResultat.value = resultat
-            } catch (e: Exception) {
-                e.printStackTrace()
+        if (!_rationAnalysisScope.value.estGroupe) {
+            rationAvantGroupe = _selectedRation.value
+        }
+        _rationAnalysisScope.value = scope
+        _selectedRation.value = agregat
+        analyserRationSelectionnee()
+    }
 
-                // Créer un résultat avec une erreur
-                _rationAnalyseResultat.value =
-                        AnalyseResultat(
-                                rationId = rationActuelle.uuid,
-                                rationName = rationActuelle.name,
-                                alertes = listOf("Erreur lors de l'analyse: ${e.message}")
-                        )
-            } finally {
-                _isAnalyzing.value = false
-            }
+    /**
+     * Recalcule la ration virtuelle du périmètre groupé courant.
+     *
+     * À appeler après tout changement de la consultation sélectionnée ou de ses rations. Si le
+     * groupe est devenu vide, on retombe sur le mode ration unique.
+     */
+    private fun rafraichirRationGroupee() {
+        val scope = _rationAnalysisScope.value
+        if (!scope.estGroupe) return
+
+        val agregat = RationAggregator.agreger(_selectedConsultation.value, scope)
+        if (agregat == null) {
+            _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+            restaurerRationIndividuelle()
+            return
+        }
+
+        _selectedRation.value = agregat
+        analyserRationSelectionnee()
+    }
+
+    /** Restaure la ration individuelle sélectionnée avant le passage en mode groupé. */
+    private fun restaurerRationIndividuelle() {
+        val rations = _selectedConsultation.value?.rations.orEmpty()
+        val precedente = rationAvantGroupe
+        rationAvantGroupe = null
+
+        val cible =
+                rations.firstOrNull { it.uuid == precedente?.uuid }
+                        ?: rations.firstOrNull()
+        _selectedRation.value = cible?.let { copieProfonde(it) }
+        if (cible != null) {
+            analyserRationSelectionnee()
         }
     }
 
     /**
-     * Compare la ration sélectionnée avec une autre ration
-     *
-     * @param autreRation La ration à comparer avec la ration sélectionnée
+     * Indique si la ration analysée est une ration virtuelle issue d'une agrégation : dans ce cas
+     * toute modification de composition doit être refusée (la ration n'existe pas en base).
      */
-    fun comparerAvecAutreRation(autreRation: Ration) {
-        val rationActuelle = _selectedRation.value ?: return
+    private fun estAnalyseGroupee(): Boolean =
+            _rationAnalysisScope.value.estGroupe ||
+                    _typeTroupeauAnalyse.value != null ||
+                    RationAggregator.estRationGroupee(_selectedRation.value?.uuid)
 
-        viewModelScope.launch {
-            try {
-                _isAnalyzing.value = true
+    /** Copie profonde d'une ration (ration + liste d'aliments). */
+    private fun copieProfonde(ration: Ration): Ration =
+            ration.copy(
+                    alimentMutableList =
+                            ration.alimentMutableList.map { it.copy() }.toMutableList(),
+                    suppVarp = ration.suppVarp.toMutableList()
+            )
 
-                // Effectuer la comparaison
-                val resultat = rationAnalyzer.comparerRations(rationActuelle, autreRation)
-                _rationsComparaison.value = resultat
-            } catch (e: Exception) {
-                e.printStackTrace()
-
-                // Réinitialiser la comparaison en cas d'erreur
-                _rationsComparaison.value = emptyMap()
-            } finally {
-                _isAnalyzing.value = false
-            }
+    /**
+     * À appeler après tout changement de ration ou de consultation : en mode troupeau, remplace
+     * la ration réelle par celle d'un animal du type analysé et recalcule l'analyse du troupeau.
+     * (L'analyse nutritionnelle affichée est calculée par les cartes d'analyse elles-mêmes.)
+     */
+    fun analyserRationSelectionnee() {
+        if (_typeTroupeauAnalyse.value != null && _selectedRation.value !== rationProjeteeTroupeau) {
+            projeterRationTroupeau()
         }
+        recalculerAnalyseTroupeau()
     }
 
     /** Applique une recette (liste d'aliments) à la ration sélectionnée et recharge l'état */
     fun applyRecipeToRation(recipe: Ration) {
+        if (!ecritureAutorisee()) return
+        if (estAnalyseGroupee()) return
 
         val rationActuelle = _selectedRation.value
         if (rationActuelle == null) {
@@ -490,124 +825,40 @@ class AnimalDetailViewModel(
                     } else {}
                 } else {}
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
-                e.printStackTrace()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
-    }
-
-    /**
-     * Génère un rapport d'analyse nutritionnelle détaillé de la ration sélectionnée
-     *
-     * @return Une chaîne formatée contenant le rapport d'analyse
-     */
-    fun genererRapportAnalyse(): String {
-        val analyse = _rationAnalyseResultat.value ?: return "Aucune analyse disponible"
-        val ration = _selectedRation.value ?: return "Aucune ration sélectionnée"
-
-        val rapport = StringBuilder()
-
-        // En-tête
-        rapport.append("RAPPORT D'ANALYSE NUTRITIONNELLE\n")
-        rapport.append("===============================\n\n")
-
-        // Informations générales
-        rapport.append("Ration: ${analyse.rationName}\n")
-        rapport.append("Quantité totale: ${analyse.quantiteTotale}g\n")
-        rapport.append("Densité énergétique: ${analyse.densiteEnergetique} kcal/g\n\n")
-
-        // Scores
-        rapport.append("Score de complétude: ${analyse.completude.toInt()}%\n")
-        rapport.append("Score d'équilibre: ${analyse.equilibre.toInt()}%\n\n")
-
-        // Macronutriments
-        rapport.append("MACRONUTRIMENTS\n")
-        rapport.append("--------------\n")
-        analyse.macronutriments.forEach { (nutriment, valeur) ->
-            rapport.append("$nutriment: $valeur g\n")
-        }
-        rapport.append("\n")
-
-        // Minéraux
-        rapport.append("MINÉRAUX\n")
-        rapport.append("--------\n")
-        analyse.mineraux.forEach { (nutriment, valeur) ->
-            rapport.append("$nutriment: $valeur g\n")
-        }
-        rapport.append("\n")
-
-        // Vitamines
-        rapport.append("VITAMINES\n")
-        rapport.append("---------\n")
-        analyse.vitamines.forEach { (nutriment, valeur) ->
-            rapport.append("$nutriment: $valeur UI/mg\n")
-        }
-        rapport.append("\n")
-
-        // Lipides
-        rapport.append("LIPIDES\n")
-        rapport.append("-------\n")
-        analyse.lipides.forEach { (nutriment, valeur) -> rapport.append("$nutriment: $valeur g\n") }
-        rapport.append("\n")
-
-        // Ratios
-        rapport.append("RATIOS NUTRITIONNELS\n")
-        rapport.append("-------------------\n")
-        analyse.ratios.forEach { (ratio, valeur) -> rapport.append("$ratio: $valeur\n") }
-        rapport.append("\n")
-
-        // Alertes
-        if (analyse.alertes.isNotEmpty()) {
-            rapport.append("ALERTES\n")
-            rapport.append("-------\n")
-            analyse.alertes.forEach { alerte -> rapport.append("- $alerte\n") }
-            rapport.append("\n")
-        }
-
-        // Aliments de la ration
-        rapport.append("COMPOSITION DE LA RATION\n")
-        rapport.append("----------------------\n")
-        ration.alimentMutableList.forEach { aliment ->
-            rapport.append(
-                    "- ${aliment.aliment?.nom ?: "Aliment sans nom"}: ${aliment.quantite}g\n"
-            )
-        }
-
-        return rapport.toString()
-    }
-
-    /** Réinitialise la ration sélectionnée en mettant selectedRation à null */
-    fun resetSelectedRation() {
-        _selectedRation.value = null
     }
 
     fun startEditingConsultation() {
         isEditingConsultation = true
     }
 
+    /**
+     * Fin d'édition après enregistrement. La sélection n'est pas vidée : addConsultation /
+     * updateConsultation la mettent à jour avec la consultation enregistrée.
+     */
     fun stopEditingConsultation() {
         isEditingConsultation = false
-        _selectedConsultation.value = null
     }
 
-    fun startEditingRation() {
-        isEditingRation = true
-    }
-
-    fun stopEditingRation() {
-        isEditingRation = false
-        _selectedRation.value = null
-    }
-
-    fun startEditingAnimal() {
-        isEditingAnimal = true
-    }
-
-    fun stopEditingAnimal() {
-        isEditingAnimal = false
+    /**
+     * Annulation de l'édition : un brouillon jamais enregistré est abandonné et la sélection revient
+     * sur une consultation existante de l'animal.
+     */
+    fun cancelConsultationEditing() {
+        isEditingConsultation = false
+        assurerConsultationSelectionnee()
     }
 
     fun addConsultation(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
+        // Troupeau : une nouvelle consultation reprend les référentiels et K de la précédente
+        if (consultation.parametresTroupeau.isEmpty()) {
+            consultation.parametresTroupeau = _animal.value?.parametresTroupeauNouvelleConsultation() ?: mutableListOf()
+        }
         viewModelScope.launch {
             try {
                 // Assigner l'ID de l'animal à la consultation
@@ -638,18 +889,25 @@ class AnimalDetailViewModel(
                 val savedConsultation =
                         consultationRepository.getConsultationById(consultationToSave.uuid)
                 if (savedConsultation != null) {
-                    _selectedConsultation.value = savedConsultation
-                } else {}
+                    selectConsultation(savedConsultation)
+                } else {
+                    assurerConsultationSelectionnee()
+                }
 
                 // Arrêter le mode édition
                 isEditingConsultation = false
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
 
     fun updateConsultation(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
+        // Sélection au moment de la demande : si elle change pendant l'enregistrement (nouvelle
+        // modification ou autre consultation), elle ne doit pas être écrasée par cet instantané.
+        val selectionAuLancement = _selectedConsultation.value
         viewModelScope.launch {
             try {
                 // Vérifier que l'animal existe dans la base de données
@@ -660,23 +918,49 @@ class AnimalDetailViewModel(
                     return@launch
                 }
 
-                // Sauvegarder la consultation
-                consultationRepository.saveConsultation(consultation)
+                consultationSaveMutex.withLock {
+                    // Sauvegarder la consultation
+                    consultationRepository.saveConsultation(consultation)
 
-                // Rafraîchir les consultations depuis la base de données au lieu de mettre à jour
-                // manuellement
-                val updatedConsultations =
-                        consultationRepository.getConsultationsForAnimal(consultation.idAnim)
-                _animal.update { currentAnimal ->
-                    currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                    // Rafraîchir les consultations depuis la base de données au lieu de mettre à
+                    // jour manuellement
+                    val updatedConsultations =
+                            consultationRepository.getConsultationsForAnimal(consultation.idAnim)
+                    _animal.update { currentAnimal ->
+                        currentAnimal?.copy(consultations = updatedConsultations.toMutableList())
+                    }
                 }
 
-                // Mettre à jour la consultation sélectionnée
-                _selectedConsultation.value = consultation
+                // Mettre à jour la consultation sélectionnée (sauf modification plus récente)
+                if (_selectedConsultation.value === selectionAuLancement ||
+                                _selectedConsultation.value == null
+                ) {
+                    _selectedConsultation.value = consultation
+                }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
+    }
+
+    /** Reprend exclusivement une ration d'une autre consultation de l'animal courant. */
+    fun copyRationFromConsultation(sourceConsultationId: String, rationId: String): Boolean {
+        val currentAnimal = _animal.value ?: return false
+        val destination = _selectedConsultation.value ?: return false
+        if (destination.idAnim != currentAnimal.uuid) return false
+        val source = currentAnimal.consultations.firstOrNull {
+            it.uuid == sourceConsultationId && it.uuid != destination.uuid &&
+                it.idAnim == currentAnimal.uuid
+        } ?: return false
+        val ration = source.rations.firstOrNull { it.uuid == rationId } ?: return false
+        val copied = ration.copyToConsultation(
+            destination.uuid,
+            (destination.rations.maxOfOrNull { it.number } ?: 0) + 1
+        )
+        addRationToConsultation(copied)
+        selectRation(copied)
+        return true
     }
 
     fun addRationToConsultation(ration: Ration) {
@@ -687,10 +971,16 @@ class AnimalDetailViewModel(
         _selectedConsultation.value = updatedConsultation
         updateConsultation(updatedConsultation)
 
-        // Log pour déboguer
+        // La nouvelle ration entre dans l'un des deux groupes : recalculer l'agrégat si besoin
+        rafraichirRationGroupee()
     }
 
     fun updateRationInConsultation(ration: Ration) {
+        // Une ration virtuelle (agrégat du mode groupé, ration par animal d'un troupeau) ne doit
+        // jamais être persistée
+        if (RationAggregator.estRationGroupee(ration.uuid) ||
+                        (_typeTroupeauAnalyse.value != null && ration.uuid == rationProjeteeTroupeau?.uuid)
+        ) return
 
         ration.alimentMutableList.forEachIndexed { k, a -> }
 
@@ -706,13 +996,22 @@ class AnimalDetailViewModel(
             _selectedConsultation.value = updatedConsultation
 
             updateConsultation(updatedConsultation)
+
+            // Plan évolutif : le poids, les variables ou les aliments de l'étape ont pu changer
+            if (updatedConsultation.etapesEvolutives.isNotEmpty()) {
+                if (_selectedRation.value?.uuid == ration.uuid) {
+                    calculerValeursMetaboliques(updatedConsultation)
+                }
+                recalculerBilansEtapes()
+            }
         } else {}
     }
 
     fun removeRationFromConsultation(ration: Ration) {
         val consultation = _selectedConsultation.value?.copy() ?: return
         val updatedRations = consultation.rations.toMutableList()
-        updatedRations.removeAll { it.uuid == ration.uuid }
+        // Supprimer une ration supprime aussi le plan évolutif rangé dessous
+        updatedRations.removeAll { it.uuid == ration.uuid || it.refRationParente == ration.uuid }
         val updatedConsultation = consultation.copy(rations = updatedRations)
 
         // Forcer la mise à jour du StateFlow pour notifier l'interface
@@ -720,9 +1019,13 @@ class AnimalDetailViewModel(
 
         // Mettre à jour dans la base de données
         updateConsultation(updatedConsultation)
+        recalculerBilansEtapes()
 
-        // Si la ration supprimée était sélectionnée, sélectionner une autre ration si disponible
-        if (_selectedRation.value?.uuid == ration.uuid) {
+        if (_rationAnalysisScope.value.estGroupe) {
+            // En mode groupé, l'agrégat doit être recalculé sans la ration supprimée
+            rafraichirRationGroupee()
+        } else if (_selectedRation.value?.uuid == ration.uuid) {
+            // Si la ration supprimée était sélectionnée, sélectionner une autre ration si disponible
             updatedRations.firstOrNull()?.let { selectRation(it) }
                     ?: run { _selectedRation.value = null }
         }
@@ -731,6 +1034,7 @@ class AnimalDetailViewModel(
     }
 
     fun deleteConsultation(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             consultationRepository.deleteConsultation(consultation)
 
@@ -743,23 +1047,70 @@ class AnimalDetailViewModel(
 
             // Désélectionner la consultation supprimée
             if (_selectedConsultation.value?.uuid == consultation.uuid) {
-                _selectedConsultation.value = null
+                // Sélectionner une autre consultation si disponible
+                updatedConsultations.maxByOrNull { it.date ?: kotlinx.datetime.LocalDate(2000, 1, 1) }?.let {
+                    selectConsultation(it)
+                } ?: run {
+                    _selectedConsultation.value = null
+                    _selectedRation.value = null
+                    _rationAnalysisScope.value = RationAnalysisScope.RATION_UNIQUE
+                    rationAvantGroupe = null
+                }
+            }
+        }
+    }
+
+    fun duplicateConsultation(consultation: ConsultationEv) {
+        viewModelScope.launch {
+            try {
+                // Date d'aujourd'hui
+                val today = kotlinx.datetime.Clock.System.now().toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+                
+                // Nouvel UUID pour la consultation
+                val newConsultationUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
+
+                // Copie profonde de la consultation avec la date d'aujourd'hui
+                val duplicatedConsultation = consultation.copy(
+                    uuid = newConsultationUuid,
+                    date = today,
+                    rations = consultation.rations.map { ration ->
+                        val newRationUuid = fr.vetbrain.vetnutri_mp.Utils.genUUID()
+                        ration.copy(
+                            uuid = newRationUuid,
+                            idConsult = newConsultationUuid,
+                            alimentMutableList = ration.alimentMutableList.map { aliment ->
+                                aliment.copy(
+                                    uuid = fr.vetbrain.vetnutri_mp.Utils.genUUID(),
+                                    refRation = newRationUuid
+                                )
+                            }.toMutableList()
+                        )
+                    }.toMutableList()
+                )
+
+                // Ajouter la consultation dupliquée
+                addConsultation(duplicatedConsultation)
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
 
     fun updateAnimal(updatedAnimal: AnimalEv) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
 
-            // Conserver l'UUID et les consultations de l'animal original
+            // Conserver l'UUID et les consultations de l'animal original, mais préserver le jsonbinId de updatedAnimal
             val animalToUpdate =
                     _animal.value?.let { originalAnimal ->
                         updatedAnimal.copy(
                                 uuid = originalAnimal.uuid,
-                                consultations = originalAnimal.consultations
+                                consultations = originalAnimal.consultations,
+                                jsonbinId = updatedAnimal.jsonbinId // IMPORTANT: Préserver le jsonbinId de l'animal mis à jour
                         )
                     }
-                            ?: return@launch
+                            ?: updatedAnimal // Si pas d'animal original, utiliser directement updatedAnimal
 
             animalRepository.updateAnimal(animalToUpdate)
 
@@ -768,18 +1119,32 @@ class AnimalDetailViewModel(
 
             // Arrêter le mode édition
             isEditingAnimal = false
+            // Troupeau : types modifiés (ou passage individu ↔ troupeau)
+            rafraichirTroupeau()
         }
     }
 
     @OptIn(ExperimentalUuidApi::class)
     fun prepareNewConsultation(date: LocalDate) {
+        consultationAvantBrouillon = _selectedConsultation.value?.uuid
         val newConsultation =
                 ConsultationEv(
                         uuid = Uuid.random().toString(),
                         date = date,
-                        idAnim = _animal.value?.uuid ?: ""
+                        idAnim = _animal.value?.uuid ?: "",
+                        parametresTroupeau = _animal.value?.parametresTroupeauNouvelleConsultation() ?: mutableListOf()
                 )
+        val currentRation =
+                Ration(
+                        idConsult = newConsultation.uuid,
+                        name = translate(RationKeys.CURRENT_NAME),
+                        actual = true,
+                        number = 1,
+                        alimentMutableList = mutableListOf()
+                )
+        newConsultation.rations.add(currentRation)
         _selectedConsultation.value = newConsultation
+        selectRation(currentRation)
     }
 
     /**
@@ -788,6 +1153,7 @@ class AnimalDetailViewModel(
      * @return true si la suppression a réussi, false sinon
      */
     fun deleteAnimal(): Boolean {
+        if (!ecritureAutorisee()) return false
         val animalToDelete = _animal.value ?: return false
 
         viewModelScope.launch {
@@ -804,7 +1170,8 @@ class AnimalDetailViewModel(
                 isEditingAnimal = false
                 _showFullScreenEdit.value = false
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                 return@launch
             }
         }
@@ -819,6 +1186,8 @@ class AnimalDetailViewModel(
      * @param newQuantity Nouvelle quantité de l'aliment
      */
     fun updateAlimentQuantity(alimentUuid: String, newQuantity: Double) {
+        // La ration virtuelle du mode groupé n'existe pas en base : aucune modification possible
+        if (estAnalyseGroupee()) return
         val currentRation = _selectedRation.value?.copy() ?: return
 
         // Créer une nouvelle liste d'aliments avec la quantité mise à jour
@@ -849,46 +1218,12 @@ class AnimalDetailViewModel(
     }
 
     /**
-     * Crée une ration par défaut pour une consultation
-     *
-     * @param consultation La consultation pour laquelle créer une ration
-     */
-    fun createDefaultRation(consultation: ConsultationEv) {
-        viewModelScope.launch {
-            // Créer une nouvelle ration avec un nom par défaut
-            val newRation =
-                    Ration(
-                            name = "Ration proposée",
-                            actual = false,
-                            alimentMutableList = mutableListOf()
-                    )
-
-            // Créer une copie de la liste des rations et y ajouter la nouvelle ration
-            val updatedRations = consultation.rations.toMutableList()
-            updatedRations.add(newRation)
-
-            // Créer une copie de la consultation avec la liste mise à jour
-            val updatedConsultation = consultation.copy(rations = updatedRations)
-
-            // Mettre à jour le StateFlow avec la nouvelle consultation
-            _selectedConsultation.value = updatedConsultation
-
-            // Sauvegarder la consultation mise à jour
-            consultationRepository.saveConsultation(updatedConsultation)
-
-            // Sélectionner la nouvelle ration
-            selectRation(newRation)
-
-            // Log pour débogage
-        }
-    }
-
-    /**
      * Supprime un aliment d'une ration
      *
      * @param alimentUuid UUID de l'aliment à supprimer
      */
     fun removeAlimentFromRation(alimentUuid: String) {
+        if (estAnalyseGroupee()) return
         val currentRation = _selectedRation.value?.copy() ?: return
 
         // Créer une nouvelle liste d'aliments sans l'aliment à supprimer
@@ -924,6 +1259,8 @@ class AnimalDetailViewModel(
      * @param ration Ration à mettre à jour
      */
     fun updateRation(ration: Ration) {
+        if (RationAggregator.estRationGroupee(ration.uuid) || _typeTroupeauAnalyse.value != null) return
+
         // Mettre à jour la ration sélectionnée
         _selectedRation.value = ration
 
@@ -941,6 +1278,7 @@ class AnimalDetailViewModel(
      */
     @OptIn(ExperimentalUuidApi::class)
     fun duplicateRation(ration: Ration) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             // Obtenir la consultation courante
             val currentConsultation = _selectedConsultation.value ?: return@launch
@@ -950,10 +1288,20 @@ class AnimalDetailViewModel(
             val duplicatedRation =
                     ration.copy(
                             uuid = Uuid.random().toString(),
-                            name = "${ration.name} (copie)",
+                            // Étape de plan : nom fixe déduit de ses variables
+                            name =
+                                    if (ration.refRationParente != null)
+                                            PlanEvolutif.nomAutomatique(
+                                                    ration.poids,
+                                                    ration.suppVarp,
+                                                    ration.nomLibre
+                                            )
+                                    else translate(RationKeys.DUPLICATED_NAME_FORMAT, ration.name),
                             alimentMutableList =
-                                    mutableListOf() // Liste vide temporaire, nous allons la remplir
+                                    mutableListOf(), // Liste vide temporaire, nous allons la remplir
                             // juste après
+                            // Poids et variables d'étape recopiés (liste indépendante)
+                            suppVarp = ration.suppVarp.toMutableList()
                             )
 
             // Duplicater chaque aliment avec un nouveau UUID
@@ -995,113 +1343,31 @@ class AnimalDetailViewModel(
      * @param aliments Nouvelle liste d'aliments
      */
     fun updateRationAliments(ration: Ration, aliments: List<AlimentRation>) {
+        if (RationAggregator.estRationGroupee(ration.uuid) || estAnalyseGroupee()) return
+        // Créer une nouvelle liste avec de nouveaux objets pour forcer la recomposition
+        val newAliments = aliments.map { it.copy() }.toMutableList()
+        
         // Créer une copie de la ration avec la liste d'aliments mise à jour
-        val updatedRation = ration.copy(alimentMutableList = aliments.toMutableList())
+        val updatedRation = ration.copy(alimentMutableList = newAliments)
 
         // Mettre à jour la ration sélectionnée pour rafraîchir l'UI
         _selectedRation.value = updatedRation
 
         // Mettre à jour la ration dans la consultation
         updateRationInConsultation(updatedRation)
-    }
 
-    /**
-     * Renvoie la liste des aliments disponibles
-     *
-     * @return Liste des aliments disponibles
-     */
-    fun getAliments(): List<AlimentEv> {
-        return _availableFoods.value
-    }
-
-    /**
-     * Analyse une ration et met à jour le StateFlow des résultats
-     *
-     * @param ration La ration à analyser
-     * @param consultation La consultation associée (optionnelle)
-     */
-    fun analyserRation(ration: Ration, consultation: ConsultationEv? = null) {
-        viewModelScope.launch {
-            try {
-                _isAnalyzing.value = true
-                val resultat = rationAnalyzer.analyserRation(ration, consultation)
-                _rationAnalyseResultat.value = resultat
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isAnalyzing.value = false
-            }
-        }
-    }
-
-    /**
-     * Compare deux rations et met à jour le StateFlow des comparaisons
-     *
-     * @param ration1 Première ration à comparer
-     * @param ration2 Seconde ration à comparer
-     */
-    fun comparerRations(ration1: Ration, ration2: Ration) {
-        viewModelScope.launch {
-            try {
-                _isAnalyzing.value = true
-                val comparaison = rationAnalyzer.comparerRations(ration1, ration2)
-                _rationsComparaison.value = comparaison
-            } catch (e: Exception) {
-                e.printStackTrace()
-            } finally {
-                _isAnalyzing.value = false
-            }
-        }
+        // Relancer l'analyse pour garantir la recomposition complète des sections dépendantes
+        analyserRationSelectionnee()
     }
 
     // === MÉTHODES POUR LES RÉFÉRENCES NUTRITIONNELLES ===
 
-    /** Charge toutes les références nutritionnelles disponibles pour l'espèce de l'animal */
-    fun chargerReferencesDisponibles() {
-        viewModelScope.launch {
-            try {
-                _isLoadingReferences.value = true
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    val espece = Espece.getByLabel(animalActuel.specieId ?: "") ?: Espece.CHIEN
+    fun chargerReferencesDisponibles() = references.chargerReferencesDisponibles()
 
-                    // Charger toutes les références depuis la base de données
-                    val references = databaseReferenceEvRepository.getAllReferenceEv()
+    fun chargerMotsClesConsultation() = references.chargerMotsClesConsultation()
 
-                    // Pour l'instant on prend toutes les références, mais on pourrait filtrer par
-                    // espèce
-                    _availableReferences.value = references
-
-                    references.forEach { ref -> }
-                }
-            } catch (e: Exception) {
-                _availableReferences.value = emptyList()
-            } finally {
-                _isLoadingReferences.value = false
-            }
-        }
-    }
-
-    /**
-     * Définit la référence générale pour une consultation
-     *
-     * @param consultationId L'ID de la consultation
-     * @param referenceId L'ID de la référence à définir
-     */
-    fun definirReferenceGenerale(consultationId: String, referenceId: String?) {
-        viewModelScope.launch {
-            try {
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
-                    if (consultation != null) {
-                        consultation.referenceGeneraleId = referenceId
-                        updateConsultation(consultation)
-                    }
-                }
-            } catch (e: Exception) {}
-        }
-    }
+    fun ajouterMotCleConsultation(keyword: ConsultationKeyword) =
+            references.ajouterMotCleConsultation(keyword)
 
     /**
      * Ajoute une référence de maladie à une consultation
@@ -1120,7 +1386,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1141,77 +1407,7 @@ class AnimalDetailViewModel(
                         updateConsultation(consultation)
                     }
                 }
-            } catch (e: Exception) {}
-        }
-    }
-
-    /**
-     * Obtient toutes les références (générale + maladies) pour une consultation
-     *
-     * @param consultationId L'ID de la consultation
-     * @return Liste des IDs des références associées
-     */
-    fun obtenirReferencesConsultation(consultationId: String): List<String> {
-        val animalActuel = _animal.value
-        if (animalActuel != null) {
-            val consultation = animalActuel.consultations.find { it.uuid == consultationId }
-            return consultation?.obtenirToutesReferences() ?: emptyList()
-        }
-        return emptyList()
-    }
-
-    /**
-     * Filtre les références disponibles selon des critères
-     *
-     * @param pourMaladie true pour les références de maladie, false pour les références générales
-     * @return Liste des références filtrées
-     */
-    fun filtrerReferences(pourMaladie: Boolean): List<ReferenceEv> {
-        return _availableReferences.value.filter { reference -> reference.maladie == pourMaladie }
-    }
-
-    /** Met à jour la référence générale d'une consultation */
-    fun updateConsultationReferenceGenerale(consultationId: String, referenceId: String?) {
-        viewModelScope.launch {
-            try {
-                val consultation = _animal.value?.consultations?.find { it.uuid == consultationId }
-                consultation?.let {
-                    val updatedConsultation = it.copy(referenceGeneraleId = referenceId)
-                    updateConsultation(updatedConsultation)
-                }
-            } catch (e: Exception) {}
-        }
-    }
-
-    /** Ajoute une référence de maladie à une consultation */
-    fun addConsultationReferenceMaladie(consultationId: String, referenceId: String) {
-        viewModelScope.launch {
-            try {
-                val consultation = _animal.value?.consultations?.find { it.uuid == consultationId }
-                consultation?.let {
-                    val newReferences = it.referencesMaladies.toMutableList()
-                    if (!newReferences.contains(referenceId)) {
-                        newReferences.add(referenceId)
-                        val updatedConsultation = it.copy(referencesMaladies = newReferences)
-                        updateConsultation(updatedConsultation)
-                    }
-                }
-            } catch (e: Exception) {}
-        }
-    }
-
-    /** Supprime une référence de maladie d'une consultation */
-    fun removeConsultationReferenceMaladie(consultationId: String, referenceId: String) {
-        viewModelScope.launch {
-            try {
-                val consultation = _animal.value?.consultations?.find { it.uuid == consultationId }
-                consultation?.let {
-                    val newReferences = it.referencesMaladies.toMutableList()
-                    newReferences.remove(referenceId)
-                    val updatedConsultation = it.copy(referencesMaladies = newReferences)
-                    updateConsultation(updatedConsultation)
-                }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1244,6 +1440,7 @@ class AnimalDetailViewModel(
 
     /** Sauvegarde depuis la vue plein écran et ferme */
     fun saveFromFullScreen(consultation: ConsultationEv) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             try {
                 // S'assurer que l'UUID est valide et unique
@@ -1271,8 +1468,131 @@ class AnimalDetailViewModel(
                 // Recalculer les valeurs métaboliques après la sauvegarde
                 calculerValeursMetaboliques(consultationToSave)
             } catch (e: Exception) {
-                println("Erreur lors de la sauvegarde depuis la vue plein écran: ${e.message}")
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
+            }
+        }
+    }
+
+    // ===== PLAN ÉVOLUTIF (une ration par étape) =====
+
+    private val _bilansEtapes = MutableStateFlow<Map<String, BilanEtape>>(emptyMap())
+    /** Bilans par UUID d'étape, pour la synthèse du plan évolutif. */
+    val bilansEtapes: StateFlow<Map<String, BilanEtape>> = _bilansEtapes.asStateFlow()
+
+    /**
+     * Ajoute une étape au plan évolutif rangé sous [parent] (le plan est créé à la première
+     * étape) : copie des aliments de la ration parente, poids et variables propres, nom fixe.
+     *
+     * @param poids poids de l'étape ; null = poids réel de la consultation
+     * @param libelle nom libre de l'étape (ex. « Croissance ») ; null ou vide = aucun
+     */
+    fun ajouterEtape(
+            parent: Ration,
+            poids: Double?,
+            suppVarp: List<SupplementalvariableP>,
+            libelle: String? = null
+    ) {
+        val consultation = _selectedConsultation.value ?: return
+        val racine = PlanEvolutif.parentDe(consultation, parent)
+        val etape = PlanEvolutif.nouvelleEtape(racine, poids, suppVarp, libelle)
+        enregistrerRationsPlan(consultation, consultation.rations + etape, selection = etape)
+    }
+
+    /**
+     * Modifie le poids, les variables propres et le nom libre d'une étape, puis recalcule ses
+     * besoins.
+     *
+     * @param poidsReel nouveau poids réel de la consultation, enregistré dans la même opération
+     * @param libelle nom libre de l'étape ; par défaut celui de [etape] (inchangé)
+     */
+    fun mettreAJourEtape(
+            etape: Ration,
+            poids: Double?,
+            suppVarp: List<SupplementalvariableP>,
+            poidsReel: Double? = null,
+            libelle: String? = etape.nomLibre
+    ) {
+        val courante =
+                _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
+        val majEtape =
+                courante.copy(
+                        poids = poids,
+                        suppVarp = suppVarp.toMutableList(),
+                        nomLibre = PlanEvolutif.libelleNormalise(libelle),
+                        // Nom fixe, déduit du nom libre, du poids et des variables de l'étape
+                        name = PlanEvolutif.nomAutomatique(poids, suppVarp, libelle)
+                )
+        if (_selectedRation.value?.uuid == etape.uuid) {
+            _selectedRation.value = copieProfonde(majEtape)
+        }
+        // Poids réel modifié en même temps : un seul enregistrement de la consultation
+        val consultation = _selectedConsultation.value
+        if (poidsReel != null && consultation != null && poidsReel != consultation.weight) {
+            _selectedConsultation.value = consultation.copy(weight = poidsReel)
+        }
+        updateRationInConsultation(majEtape)
+        if (_selectedRation.value?.uuid == etape.uuid) analyserRationSelectionnee()
+    }
+
+    /** Modifie la masse d'un ingrédient dans une étape (tableau de synthèse). */
+    fun mettreAJourQuantiteEtape(etape: Ration, refAlimUnif: String, quantite: Double) {
+        val courante =
+                _selectedConsultation.value?.rations?.firstOrNull { it.uuid == etape.uuid } ?: etape
+        val majEtape = PlanEvolutif.avecQuantite(courante, refAlimUnif, quantite)
+        if (_selectedRation.value?.uuid == etape.uuid) {
+            _selectedRation.value = copieProfonde(majEtape)
+        }
+        updateRationInConsultation(majEtape)
+        if (_selectedRation.value?.uuid == etape.uuid) analyserRationSelectionnee()
+    }
+
+    /**
+     * Ajoute aux autres étapes (à 0 g) les aliments de [source] qui leur manquent.
+     *
+     * @return le nombre d'aliments ajoutés
+     */
+    fun propagerAlimentsEtape(source: Ration): Int {
+        val consultation = _selectedConsultation.value ?: return 0
+        val courante = consultation.rations.firstOrNull { it.uuid == source.uuid } ?: source
+        val (rations, ajouts) = PlanEvolutif.propagerAliments(consultation, courante)
+        if (ajouts > 0) enregistrerRationsPlan(consultation, rations, selection = null)
+        return ajouts
+    }
+
+    private fun enregistrerRationsPlan(
+            consultation: ConsultationEv,
+            rations: List<Ration>,
+            selection: Ration?
+    ) {
+        val majConsultation = consultation.copy(rations = rations.toMutableList())
+        _selectedConsultation.value = majConsultation
+        updateConsultation(majConsultation)
+        selection?.let { selectRation(it) }
+        recalculerBilansEtapes()
+    }
+
+    /** Recalcule le bilan énergétique de chaque étape du plan de la consultation sélectionnée. */
+    fun recalculerBilansEtapes() {
+        val consultation = _selectedConsultation.value
+        if (consultation == null || consultation.etapesEvolutives.isEmpty()) {
+            _bilansEtapes.value = emptyMap()
+            return
+        }
+        val maladies =
+                consultation.referencesMaladies.mapNotNull { id ->
+                    references.availableReferences.value.firstOrNull { it.uuid == id }
+                }
+        viewModelScope.launch {
+            try {
+                val reference = obtenirReferenceActiveConsultation(consultation)
+                // Analyse de tous les nutriments de chaque étape : hors du thread UI
+                _bilansEtapes.value = withContext(AppDispatchers.Default) {
+                    BilanPlanEvolutif.calculer(consultation, reference, maladies, equationRepository)
+                }
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
             }
         }
     }
@@ -1280,42 +1600,83 @@ class AnimalDetailViewModel(
     // ===== MÉTHODES DE CALCUL MÉTABOLIQUE =====
 
     /**
-     * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée
+     * Calcule l'énergie additionnelle issue des références maladies et met à jour le StateFlow.
+     * Doit être appelée depuis la View quand les dépendances changent.
+     */
+    fun updateEnergieAdditionnelle(
+            referencesMaladies: List<ReferenceEv>,
+            consultation: ConsultationEv,
+            ration: Ration,
+            referenceEv: ReferenceEv? = null
+    ) {
+        viewModelScope.launch(AppDispatchers.IO) {
+            val bee = _valeursMetaboliques.value.besoinEnergetiqueStandard ?: return@launch
+            val mw = _valeursMetaboliques.value.poidsMetabolique ?: return@launch
+            val beK = _valeursMetaboliques.value.besoinEnergetiqueTotal ?: return@launch
+            // Plan évolutif : poids et variables de l'étape
+            val consultationEtape = VariablesEtape.consultationPourEtape(consultation, ration)
+            val add = EquationEvaluator.calculerEnergieAdditionnelle(
+                    referencesMaladies = referencesMaladies,
+                    poidsCorps = consultationEtape.effectiveWeight?.toDouble()
+                            ?: consultationEtape.weight?.toDouble() ?: 0.0,
+                    besoinEnergetiqueApresK = beK,
+                    besoinEnergetiqueStandard = bee,
+                    poidsMetabolique = mw,
+                    variablesSupp = consultationEtape.suppVarp,
+                    ration = ration,
+                    referenceEv = referenceEv,
+                    equationRepository = equationRepository
+            )
+            _energieAdditionnelle.value = add
+        }
+    }
+
+    /**
+     * Calcule les valeurs métaboliques (poids métabolique, BEE) pour une consultation donnée.
+     *
+     * Plan évolutif : si la ration sélectionnée est une étape du plan, les calculs utilisent le
+     * poids et les variables propres à cette étape (voir [VariablesEtape]).
      *
      * @param consultation La consultation pour laquelle calculer les valeurs
      */
     fun calculerValeursMetaboliques(consultation: ConsultationEv) {
+        // Relire l'étape depuis la consultation pour disposer de son poids/variables à jour
+        val rationSelectionnee =
+                _selectedRation.value?.uuid?.let { uuid ->
+                    consultation.rations.firstOrNull { it.uuid == uuid }
+                }
+        val consultationEtape =
+                projeterPourTypeTroupeau(VariablesEtape.consultationPourEtape(consultation, rationSelectionnee))
+        // Troupeau : la synthèse dépend aussi des K1…K5 et des paramètres de la consultation
+        recalculerAnalyseTroupeau(consultation)
 
         viewModelScope.launch {
             try {
 
                 // 1. Charger la référence appropriée
-                val reference = obtenirReferenceActiveConsultation(consultation)
-                _referenceUtilisee.value = reference
+                val reference = obtenirReferenceActiveConsultation(consultationEtape)
 
                 if (reference == null) {
                     resetCalculsMetaboliques()
                     return@launch
                 }
 
-                // 2. Calculer le poids métabolique
-                val poidsMetabolique = calculerPoidsMetabolique(consultation, reference)
-                _poidsMetabolique.value = poidsMetabolique
+                // 2-4. Calculer toutes les valeurs puis mettre à jour atomiquement (évite
+                // les recompositions intermédiaires avec état partiel)
+                val poidsMetabolique = calculerPoidsMetabolique(consultationEtape, reference)
+                val bee = calculerBesoinEnergetiqueStandard(consultationEtape, reference)
+                val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultationEtape, it) }
 
-                // 3. Calculer le BEE (Besoin Énergétique Standard)
-                val bee = calculerBesoinEnergetiqueStandard(consultation, reference)
-                _besoinEnergetiqueStandard.value = bee
-
-                if (bee == null) {}
-
-                // 4. Calculer le besoin énergétique total en multipliant le BEE avec tous les
-                // coefficients
-                val besoinTotal = bee?.let { calculerBesoinEnergetiqueTotal(consultation, it) }
-                _besoinEnergetiqueTotal.value = besoinTotal
-
-                // Vérifier les valeurs dans les StateFlow
+                _valeursMetaboliques.value = ValeursMetaboliques(
+                        referenceUtilisee = reference,
+                        poidsCorps = consultationEtape.effectiveWeight,
+                        poidsMetabolique = poidsMetabolique,
+                        besoinEnergetiqueStandard = bee,
+                        besoinEnergetiqueTotal = besoinTotal
+                )
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("AnimalDetailViewModel", e.message ?: "Erreur", e)
                 resetCalculsMetaboliques()
             }
         }
@@ -1326,39 +1687,8 @@ class AnimalDetailViewModel(
             consultation: ConsultationEv,
             reference: ReferenceEv
     ): Double? {
-        try {
-            val poids = consultation.effectiveWeight ?: return null
-            val equationBW = reference.equationBW
-
-            if (equationBW == null || equationBW.equationScript.isEmpty()) {
-                return null
-            }
-
-            // Créer la map des variables incluant BW et les variables supplémentaires
-            val variables = mutableMapOf<String, Double>()
-            variables["BW"] = poids.toDouble()
-
-            // Ajouter les variables supplémentaires de la consultation
-            consultation.suppVarp.forEach { suppVar ->
-                suppVar.variable?.let { varKind ->
-                    val valeur = suppVar.varue?.toDouble() ?: 0.0
-                    variables[varKind.variable] = valeur
-                }
-            }
-
-            // Mapper les variables avec leurs équivalents dans l'équation
-            mapperVariablesEquation(variables)
-
-            // Ajouter des valeurs par défaut pour les variables manquantes courantes
-            val variablesManquantes =
-                    ajouterVariablesParDefaut(variables, equationBW.equationScript)
-
-            val resultat = ExpressionEvaluator.evaluer(equationBW.equationScript, variables)
-
-            return resultat
-        } catch (e: Exception) {
-            return null
-        }
+        val poids = consultation.effectiveWeight ?: return null
+        return CalculMetabolique.poidsMetabolique(poids, reference, consultation.suppVarp)
     }
 
     /** Calcule le besoin énergétique standard en utilisant l'équation BEE de la référence */
@@ -1366,83 +1696,13 @@ class AnimalDetailViewModel(
             consultation: ConsultationEv,
             reference: ReferenceEv
     ): Double? {
-        try {
-            val poids = consultation.effectiveWeight ?: return null
-            val equationBEE = reference.equationBEE
-
-            if (equationBEE == null || equationBEE.equationScript.isEmpty()) {
-                return null
-            }
-
-            // Validation du type de poids et conversion sécurisée
-            val poidsDouble: Double =
-                    try {
-                        when (poids) {
-                            is Double -> poids
-                            is Float -> poids.toDouble()
-                            is Int -> poids.toDouble()
-                            is String -> poids.toDouble()
-                            else -> {
-                                return null
-                            }
-                        }
-                    } catch (e: NumberFormatException) {
-                        return null
-                    }
-
-            // Créer la map des variables incluant BW et les variables supplémentaires
-            val variables = mutableMapOf<String, Double>()
-            variables["BW"] = poidsDouble
-
-            // Ajouter les variables supplémentaires de la consultation
-            consultation.suppVarp.forEach { suppVar ->
-                suppVar.variable?.let { varKind ->
-                    val valeur = suppVar.varue?.toDouble() ?: 0.0
-                    variables[varKind.variable] = valeur
-                }
-            }
-
-            // Mappe les variables avec leurs équivalents dans les équations
-            mapperVariablesEquation(variables)
-
-            // Ajouter des valeurs par défaut pour les variables manquantes courantes
-            val variablesManquantes =
-                    ajouterVariablesParDefaut(variables, equationBEE.equationScript)
-            if (variablesManquantes.isNotEmpty()) {
-                // Ne pas arrêter l'exécution, mais logger pour le debugging
-            }
-
-            val resultat = ExpressionEvaluator.evaluer(equationBEE.equationScript, variables)
-
-            if (resultat == null) {
-                return null
-            }
-
-            return resultat
-        } catch (e: Exception) {
-            e.printStackTrace() // Ajout pour debugging
-            return null
-        }
+        val poids = consultation.effectiveWeight ?: return null
+        return CalculMetabolique.besoinEnergetiqueStandard(poids, reference, consultation.suppVarp)
     }
 
-    /**
-     * Calcule le besoin énergétique total en multipliant le BEE par tous les coefficients K et le
-     * coefficient d'ajustement
-     */
-    private fun calculerBesoinEnergetiqueTotal(consultation: ConsultationEv, bee: Double): Double {
-        // Récupération des coefficients K de la consultation
-        val k1 = consultation.k1Value?.toDouble() ?: 1.0
-        val k2 = consultation.k2Value?.toDouble() ?: 1.0
-        val k3 = consultation.k3Value?.toDouble() ?: 1.0
-        val k4 = consultation.k4Value?.toDouble() ?: 1.0
-        val k5 = consultation.k5Value?.toDouble() ?: 1.0
-        val coefficientAjustement = consultation.coefficientAjustement?.toDouble() ?: 1.0
-
-        // Calcul du besoin total
-        val besoinTotal = bee * k1 * k2 * k3 * k4 * k5 * coefficientAjustement
-
-        return besoinTotal
-    }
+    /** Besoin énergétique total : BEE × K1…K5 × coefficient d'ajustement */
+    private fun calculerBesoinEnergetiqueTotal(consultation: ConsultationEv, bee: Double): Double =
+            bee * RationAnalysisCalculations.calculerCoefficientGlobal(consultation)
 
     /**
      * Obtient la référence active pour une consultation (générale ou première référence de maladie)
@@ -1469,74 +1729,14 @@ class AnimalDetailViewModel(
 
             null
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }
 
-    /** Mappe les variables avec leurs équivalents dans les équations */
-    private fun mapperVariablesEquation(variables: MutableMap<String, Double>) {
-        // Mapping des variables courantes vers les noms utilisés dans les équations
-        val mappings =
-                mapOf(
-                        "adultWeight" to "AW", // Adult Weight
-                        "litterSize" to "L", // Litter size (taille de portée)
-                        "gestationWeek" to
-                                "wG", // Gestation week (peut être utilisé pour weight gain)
-                        "lactationWeek" to
-                                "wL", // Lactation week (peut être utilisé pour weight loss)
-                        "bodyConditionScore" to "BCS" // Body Condition Score
-                )
-
-        mappings.forEach { (originalName, mappedName) ->
-            variables[originalName]?.let { value -> variables[mappedName] = value }
-        }
-    }
-
-    /** Ajoute des valeurs par défaut pour les variables manquantes dans une équation */
-    private fun ajouterVariablesParDefaut(
-            variables: MutableMap<String, Double>,
-            equationScript: String
-    ): List<String> {
-        // Extraire toutes les variables utilisées dans l'équation
-        val variablesUtilisees = ExpressionEvaluator.extraireVariables(equationScript)
-
-        // Valeurs par défaut pour les variables courantes
-        val valeursParDefaut =
-                mapOf(
-                        "wG" to 0.0, // Weight gain (gain de poids)
-                        "AW" to 0.0, // Adult weight (poids adulte)
-                        "L" to 0.0, // Lactation
-                        "wL" to 0.0, // Weight loss (perte de poids)
-                        "BCS" to 5.0, // Body condition score
-                        "REI" to 1.0, // Reproductive efficiency index
-                        "AF" to 1.0, // Activity factor
-                        "TE" to 1.0, // Thermic effect
-                        "GE" to 1.0, // Growth efficiency
-                        "ME" to 1.0 // Metabolizable energy
-                )
-
-        val variablesManquantes = mutableListOf<String>()
-
-        // Ajouter les valeurs par défaut pour les variables manquantes
-        variablesUtilisees.forEach { variable ->
-            if (!variables.containsKey(variable)) {
-                if (valeursParDefaut.containsKey(variable)) {
-                    variables[variable] = valeursParDefaut[variable]!!
-                } else {
-                    variablesManquantes.add(variable)
-                }
-            } else {}
-        }
-
-        return variablesManquantes
-    }
-
     /** Remet à zéro tous les calculs métaboliques */
     private fun resetCalculsMetaboliques() {
-        _poidsMetabolique.value = null
-        _besoinEnergetiqueStandard.value = null
-        _besoinEnergetiqueTotal.value = null
-        _referenceUtilisee.value = null
+        _valeursMetaboliques.value = ValeursMetaboliques()
     }
 
     /** Recalcule les valeurs métaboliques quand une consultation est sélectionnée */
@@ -1548,6 +1748,11 @@ class AnimalDetailViewModel(
 
     /** Met à jour le coefficient d'ajustement et recalcule les valeurs métaboliques */
     fun updateCoefficientAjustement(consultationId: String, nouveauCoefficient: Double) {
+        // Troupeau : le K affiché est celui du type analysé
+        parametresTypeAnalyse()?.let { p ->
+            updateParametresTroupeau(p.copy(k = nouveauCoefficient))
+            return
+        }
         viewModelScope.launch {
             try {
                 val animalActuel = _animal.value
@@ -1562,7 +1767,37 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
+        }
+    }
+
+    /** Met à jour le poids actuel et le poids idéal d'une consultation puis recalcule. */
+    fun updateConsultationWeights(
+            consultationId: String,
+            currentWeight: Double,
+            idealWeight: Double
+    ) {
+        // Troupeau : le poids affiché est le poids moyen du type analysé
+        parametresTypeAnalyse()?.let { p ->
+            updateParametresTroupeau(p.copy(poids = currentWeight))
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val animalActuel = _animal.value
+                if (animalActuel != null) {
+                    val consultation = animalActuel.consultations.find { it.uuid == consultationId }
+                    if (consultation != null) {
+                        val consultationMiseAJour =
+                                consultation.copy(
+                                        weight = currentWeight,
+                                        idealWeight = idealWeight
+                                )
+                        updateConsultation(consultationMiseAJour)
+                        calculerValeursMetaboliques(consultationMiseAJour)
+                    }
+                }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1617,7 +1852,7 @@ class AnimalDetailViewModel(
                         calculerValeursMetaboliques(consultationMiseAJour)
                     }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1627,8 +1862,12 @@ class AnimalDetailViewModel(
      * @return AlimentEv complet ou null si non trouvé
      */
     suspend fun getAlimentComplet(uuid: String): AlimentEv? {
-        return AlimentRepository.getAlimentByUUID(uuid)
+        return foodRepository.getFoodById(uuid)
     }
+
+    /** Aliments complets (valeurs nutritionnelles comprises) en quelques requêtes groupées, par UUID. */
+    suspend fun getAlimentsComplets(uuids: List<String>): Map<String, AlimentEv> =
+        foodRepository.getFoodsByUuids(uuids)
 
     // MARK: - Gestion des poids supplémentaires
 
@@ -1648,42 +1887,8 @@ class AnimalDetailViewModel(
      * @param weight Le poids en kg
      */
     fun addWeight(date: LocalDate, weight: Double) {
-        viewModelScope.launch {
-            try {
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    // Créer un nouveau WeightDate
-                    val newWeight =
-                            WeightDate(refAnimal = animalActuel.uuid, date = date, value = weight)
-
-                    // Créer une nouvelle liste avec le nouveau poids
-                    val updatedWeightHistory = animalActuel.weightHistory.toMutableList()
-                    updatedWeightHistory.add(newWeight)
-
-                    // Créer un nouvel animal avec l'historique mis à jour
-                    val updatedAnimal = animalActuel.copy(weightHistory = updatedWeightHistory)
-
-                    // Sauvegarder l'animal mis à jour
-                    animalRepository.updateAnimal(updatedAnimal)
-
-                    // Mettre à jour l'animal dans le ViewModel
-                    _animal.update { updatedAnimal }
-
-                    // Mettre à jour la consultation sélectionnée si elle existe
-                    _selectedConsultation.value?.let { currentConsultation ->
-                        val updatedConsultation =
-                                updatedAnimal.consultations.find {
-                                    it.uuid == currentConsultation.uuid
-                                }
-                        if (updatedConsultation != null) {
-                            _selectedConsultation.value = updatedConsultation
-                        }
-                    }
-
-                    // Désactiver le mode d'ajout
-                    isAddingWeight = false
-                }
-            } catch (e: Exception) {}
+        modifierHistoriquePoids(quitterModeAjout = true) { animal, historique ->
+            historique + WeightDate(refAnimal = animal.uuid, date = date, value = weight)
         }
     }
 
@@ -1692,35 +1897,38 @@ class AnimalDetailViewModel(
      * @param weightUuid L'UUID du poids à supprimer
      */
     fun deleteWeight(weightUuid: String) {
+        modifierHistoriquePoids(quitterModeAjout = false) { _, historique ->
+            historique.filterNot { it.uuid == weightUuid }
+        }
+    }
+
+    /**
+     * Enregistre l'historique de poids transformé par [transformation], puis met à jour l'animal et
+     * la consultation sélectionnée.
+     */
+    private fun modifierHistoriquePoids(
+            quitterModeAjout: Boolean,
+            transformation: (AnimalEv, List<WeightDate>) -> List<WeightDate>
+    ) {
+        if (!ecritureAutorisee()) return
         viewModelScope.launch {
             try {
-                val animalActuel = _animal.value
-                if (animalActuel != null) {
-                    // Créer une nouvelle liste sans le poids à supprimer
-                    val updatedWeightHistory = animalActuel.weightHistory.toMutableList()
-                    updatedWeightHistory.removeAll { it.uuid == weightUuid }
-
-                    // Créer un nouvel animal avec l'historique mis à jour
-                    val updatedAnimal = animalActuel.copy(weightHistory = updatedWeightHistory)
-
-                    // Sauvegarder l'animal mis à jour
-                    animalRepository.updateAnimal(updatedAnimal)
-
-                    // Mettre à jour l'animal dans le ViewModel
-                    _animal.update { updatedAnimal }
-
-                    // Mettre à jour la consultation sélectionnée si elle existe
-                    _selectedConsultation.value?.let { currentConsultation ->
-                        val updatedConsultation =
-                                updatedAnimal.consultations.find {
-                                    it.uuid == currentConsultation.uuid
-                                }
-                        if (updatedConsultation != null) {
-                            _selectedConsultation.value = updatedConsultation
-                        }
+                val animalActuel = _animal.value ?: return@launch
+                val updatedAnimal =
+                        animalActuel.copy(
+                                weightHistory =
+                                        transformation(animalActuel, animalActuel.weightHistory)
+                                                .toMutableList()
+                        )
+                animalRepository.updateAnimal(updatedAnimal)
+                _animal.update { updatedAnimal }
+                _selectedConsultation.value?.let { courante ->
+                    updatedAnimal.consultations.find { it.uuid == courante.uuid }?.let {
+                        _selectedConsultation.value = it
                     }
                 }
-            } catch (e: Exception) {}
+                if (quitterModeAjout) isAddingWeight = false
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AnimalDetailViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -1731,25 +1939,14 @@ class AnimalDetailViewModel(
         _alimentsSelectionnes.value = aliments
     }
 
-    /** Ajoute un aliment à la liste des aliments sélectionnés */
-    fun ajouterAlimentSelectionne(aliment: AlimentEv) {
-        val current = _alimentsSelectionnes.value.toMutableList()
-        if (!current.any { it.uuid == aliment.uuid }) {
-            current.add(aliment)
-            _alimentsSelectionnes.value = current
-        }
+    /** Nomme le groupe A ou B ([groupeA] = false pour B) */
+    fun setNomGroupe(groupeA: Boolean, nom: String) {
+        if (groupeA) _nomGroupeA.value = nom else _nomGroupeB.value = nom
     }
 
-    /** Retire un aliment de la liste des aliments sélectionnés */
-    fun retirerAlimentSelectionne(aliment: AlimentEv) {
-        val current = _alimentsSelectionnes.value.toMutableList()
-        current.removeAll { it.uuid == aliment.uuid }
-        _alimentsSelectionnes.value = current
-    }
-
-    /** Vide la liste des aliments sélectionnés */
-    fun clearAlimentsSelectionnes() {
-        _alimentsSelectionnes.value = emptyList()
+    /** Définit le groupe B de la comparaison */
+    fun setAlimentsGroupeB(aliments: List<AlimentEv>) {
+        _alimentsGroupeB.value = aliments
     }
 
     /** Affiche l'analyse graphique avec les aliments sélectionnés */
@@ -1766,5 +1963,150 @@ class AnimalDetailViewModel(
     fun lancerAnalyseGraphique(aliments: List<AlimentEv>) {
         setAlimentsSelectionnes(aliments)
         showAnalyseGraphique()
+    }
+
+    /** Charge les nutriments spécifiés pour une liste d'aliments depuis la base de données */
+    suspend fun loadNutrientsForFoods(
+            foodUuids: List<String>,
+            nutrients: List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>
+    ): Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>> {
+            return if (foodRepository is fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository) {
+                    foodRepository.loadNutrientsForFoods(foodUuids, nutrients)
+            } else {
+                    emptyMap()
+            }
+    }
+
+    // --- Troupeau ---------------------------------------------------------------------------
+
+    private fun consultationPourAnalyse(c: ConsultationEv?, typeId: String?, a: AnimalEv?): ConsultationEv? {
+        if (c == null || typeId == null) return c
+        val type = a?.typesTroupeau?.firstOrNull { it.id == typeId } ?: return c
+        return c.pourTypeTroupeau(c.parametresType(type))
+    }
+
+    /** Consultation vue depuis un animal du type analysé (inchangée hors mode type). */
+    private fun projeterPourTypeTroupeau(consultation: ConsultationEv): ConsultationEv =
+            consultationPourAnalyse(consultation, _typeTroupeauAnalyse.value, _animal.value) ?: consultation
+
+    /** Paramètres du type analysé dans la consultation sélectionnée, null hors mode type. */
+    private fun parametresTypeAnalyse(): ParametresTypeTroupeau? {
+        val typeId = _typeTroupeauAnalyse.value ?: return null
+        val type = _animal.value?.typesTroupeau?.firstOrNull { it.id == typeId } ?: return null
+        return _selectedConsultation.value?.parametresType(type)
+    }
+
+    /** Ration réelle du groupe correspondant à la ration affichée (ou agrégat du mode groupé). */
+    private fun rationGroupeTroupeau(): Ration? {
+        val consultation = _selectedConsultation.value
+        val scope = _rationAnalysisScope.value
+        if (scope.estGroupe) return RationAggregator.agreger(consultation, scope)
+        val courante = _selectedRation.value ?: return null
+        if (courante !== rationProjeteeTroupeau) return courante
+        return consultation?.rations?.firstOrNull { it.uuid == courante.uuid }
+    }
+
+    /**
+     * Remplace la ration affichée par la ration d'un animal du type analysé. Si la répartition
+     * n'est pas calculable (référentiel ou poids manquant), revient à la ration du groupe.
+     */
+    private fun projeterRationTroupeau() {
+        val typeId = _typeTroupeauAnalyse.value ?: return
+        val source = rationGroupeTroupeau() ?: return
+        val types = _animal.value?.typesTroupeau
+        val consultation = _selectedConsultation.value
+        val facteur =
+                if (types != null && consultation != null)
+                        facteursRepartitionTroupeau(types, consultation, troupeau.referencesParId())?.get(typeId)
+                else null
+        val type = types?.firstOrNull { it.id == typeId }
+        if (facteur == null || type == null) {
+            quitterTypeTroupeau(source)
+            return
+        }
+        val projetee = rationParAnimalTroupeau(source, facteur, type.nom.ifBlank { "type" })
+        rationProjeteeTroupeau = projetee
+        _selectedRation.value = projetee
+    }
+
+    private fun quitterTypeTroupeau(source: Ration?) {
+        _typeTroupeauAnalyse.value = null
+        rationProjeteeTroupeau = null
+        _selectedRation.value =
+                if (source == null || _rationAnalysisScope.value.estGroupe) source else copieProfonde(source)
+    }
+
+    /**
+     * Choisit le type d'animaux analysé (null = ration du groupe). L'analyse de ration, les
+     * besoins et les graphiques sont alors ceux d'un animal de ce type.
+     */
+    fun selectTypeTroupeau(typeId: String?) {
+        if (_typeTroupeauAnalyse.value == typeId) return
+        val types = _animal.value?.typesTroupeau ?: return
+        if (typeId != null && types.none { it.id == typeId }) return
+        val source = rationGroupeTroupeau()
+        if (typeId == null) {
+            quitterTypeTroupeau(source)
+        } else {
+            _typeTroupeauAnalyse.value = typeId
+            rationProjeteeTroupeau = null
+            // La ration du groupe est projetée par analyserRationSelectionnee
+            _selectedRation.value = source
+        }
+        _selectedConsultation.value?.let { calculerValeursMetaboliques(it) }
+        if (_selectedRation.value != null) analyserRationSelectionnee() else recalculerAnalyseTroupeau()
+    }
+
+    /** Après un changement de consultation ou de paramètres : reprojeter et réanalyser. */
+    private fun rafraichirTroupeau() {
+        val typeId = _typeTroupeauAnalyse.value
+        if (_animal.value?.estTroupeau != true) {
+            if (typeId != null) quitterTypeTroupeau(rationGroupeTroupeau())
+            troupeau.effacer()
+            return
+        }
+        if (typeId != null) {
+            if (_animal.value?.typesTroupeau?.none { it.id == typeId } != false) {
+                selectTypeTroupeau(null)
+                return
+            }
+            projeterRationTroupeau()
+        }
+        _selectedConsultation.value?.let { calculerValeursMetaboliques(it) }
+        if (_selectedRation.value != null) analyserRationSelectionnee() else recalculerAnalyseTroupeau()
+    }
+
+    /** Recalcule la répartition et la synthèse par type de la ration du groupe affichée. */
+    private fun recalculerAnalyseTroupeau(consultation: ConsultationEv? = _selectedConsultation.value) =
+            troupeau.recalculer(_animal.value?.typesTroupeau, consultation, rationGroupeTroupeau())
+
+    /** Modifie l'effectif, le poids, le référentiel, K ou les variables d'un type pour la consultation. */
+    fun updateParametresTroupeau(parametres: ParametresTypeTroupeau) {
+        val consultation = _selectedConsultation.value ?: return
+        val miseAJour = consultation.avecParametresType(parametres)
+        _selectedConsultation.value = miseAJour
+        updateConsultation(miseAJour)
+        rafraichirTroupeau()
+    }
+
+    /**
+     * Multiplie toutes les quantités de la ration du groupe pour couvrir exactement le besoin
+     * énergétique du groupe (proportions entre aliments conservées).
+     */
+    fun ajusterRationTroupeauEnergie(): Boolean {
+        if (_typeTroupeauAnalyse.value != null || _rationAnalysisScope.value.estGroupe) return false
+        val analyse = troupeau.analyse.value ?: return false
+        val ration = _selectedRation.value ?: return false
+        // Analyse encore en cours pour une autre ration : son facteur ne s'applique pas à celle-ci
+        if (analyse.rationId != ration.uuid) return false
+        val facteur = analyse.facteurAjustementEnergie ?: return false
+        if (!facteur.isFinite() || facteur <= 0.0) return false
+        updateRation(rationAjusteeTroupeau(ration, facteur))
+        return true
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+    override fun onCleared() {
+        viewModelScope.cancel()
     }
 }

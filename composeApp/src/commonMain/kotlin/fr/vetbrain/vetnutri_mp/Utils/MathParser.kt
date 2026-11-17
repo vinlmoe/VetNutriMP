@@ -22,7 +22,10 @@ class MathParser {
      */
     fun evaluer(expr: String, vars: Map<String, Double> = emptyMap()): Double {
         this.expression = expr.replace(" ", "") // Supprimer les espaces
-        this.variables = vars
+        // Remplacer les valeurs null par 0 pour éviter les erreurs dans les calculs
+        this.variables = vars.mapValues { (_, value) -> 
+            if (value.isNaN() || value.isInfinite()) 0.0 else value 
+        }
         this.position = 0
 
         if (expression.isEmpty()) {
@@ -52,6 +55,7 @@ class MathParser {
             evaluer(expr, vars)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -256,8 +260,8 @@ class MathParser {
             return parseFunction(name)
         }
 
-        // C'est une variable
-        return variables[name] ?: throw MathParserException("Variable non définie: '$name'")
+        // C'est une variable - retourner 0.0 si la variable n'est pas définie (au lieu de lever une exception)
+        return variables[name] ?: 0.0
     }
 
     private fun parseFunction(functionName: String): Double {
@@ -463,43 +467,27 @@ class MathParser {
 /** Exception levée lors d'erreurs de parsing ou d'évaluation d'expressions mathématiques */
 class MathParserException(message: String) : Exception(message)
 
-/** Objet singleton pour faciliter l'utilisation du parser */
+/**
+ * Point d'entrée des évaluations. Un [MathParser] garde son état de lecture (expression, position,
+ * variables) : une instance partagée faisait échouer ou fausser les évaluations lancées en même
+ * temps sur plusieurs threads (analyse du troupeau et de la ration, par exemple). Une instance par
+ * appel, peu coûteuse, et aucun cache partagé.
+ */
 object ExpressionMathematique {
-    private val parser = MathParser()
-
-    /**
-     * Évalue une expression mathématique
-     *
-     * @param expression L'expression à évaluer
-     * @param variables Les variables disponibles
-     * @return Le résultat de l'évaluation ou null en cas d'erreur
-     */
     fun evaluer(expression: String, variables: Map<String, Double> = emptyMap()): Double? {
         return try {
-            parser.evaluer(expression, variables)
-        } catch (e: Exception) {
+            MathParser().evaluer(expression, variables)
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
             null
         }
     }
 
-    /**
-     * Vérifie si une expression est valide
-     *
-     * @param expression L'expression à vérifier
-     * @param variables Les variables disponibles
-     * @return true si l'expression est valide, false sinon
-     */
     fun estValide(expression: String, variables: Map<String, Double> = emptyMap()): Boolean {
-        return parser.estValide(expression, variables)
+        return MathParser().estValide(expression, variables)
     }
 
-    /**
-     * Extrait les variables d'une expression
-     *
-     * @param expression L'expression à analyser
-     * @return Liste des variables trouvées
-     */
     fun extraireVariables(expression: String): List<String> {
-        return parser.extraireVariables(expression)
+        return MathParser().extraireVariables(expression)
     }
 }

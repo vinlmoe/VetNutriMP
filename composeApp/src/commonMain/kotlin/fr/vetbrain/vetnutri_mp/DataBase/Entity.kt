@@ -50,7 +50,9 @@ data class FoodEntity(
         val especesJson: String? = null,
         val indicationsJson: String? = null,
         val name: String? = null,
-        val quantite: Double = 0.0
+        val quantite: Double = 0.0,
+        val lastUpdateDate: String? = null,
+        val imageRef: String? = null
 )
 
 @Serializable
@@ -82,7 +84,39 @@ data class AnimalEntity(
         val ownerName: String?,
         val birthdate: String?,
         val race: String?,
-        val summary: String?
+        val summary: String?,
+        val jsonbinId: String? = null, // ID du bin jsonbin.io pour le partage en ligne
+        val exam: Boolean = false, // Indique si l'animal est lié à un examen
+        val examStudentId: String? = null, // Identifiant de l'étudiant
+        val examStudentNumber: String? = null, // Numéro de l'étudiant
+        val examExerciseId: String? = null, // ID de l'exercice
+        // Troupeau (v41) : types d'animaux en JSON ; null = individu
+        val herdTypesJson: String? = null
+)
+
+@Serializable
+@Entity(tableName = "EXAM_GRADING_RULES", primaryKeys = ["examId", "exerciseId"])
+data class ExamGradingRuleEntity(
+        val examId: String,
+        val exerciseId: String,
+        val rulesJson: String,
+        val updatedAtEpochMs: Long
+)
+
+@Serializable
+@Entity(tableName = "EXAM_GRADES", primaryKeys = ["examId", "exerciseId", "studentId"])
+data class ExamGradeEntity(
+        val examId: String,
+        val exerciseId: String,
+        val studentId: String,
+        val animalId: String? = null,
+        val animalName: String = "",
+        val consultationId: String? = null,
+        val autoScore: Double = 0.0,
+        val manualScore: Double? = null,
+        val finalScore: Double = 0.0,
+        val detailsJson: String = "",
+        val updatedAtEpochMs: Long
 )
 
 @Serializable
@@ -128,8 +162,37 @@ data class ConsultationEntity(
         val MCS: Int = 0,
         val referenceGeneraleId: String? = null,
         val referencesMaladiesJson: String? = null,
-        val coefficientAjustement: Double = 1.0
+        val keywordsJson: String? = null,
+        val coefficientAjustement: Double = 1.0,
+        // Ordonnance: état sauvegardé par consultation
+        val prescriptionAnamnese: String? = null,
+        val prescriptionExamenClinique: String? = null,
+        val prescriptionFacteurNutritionnelClef: String? = null,
+        val prescriptionAdditionalText: String? = null,
+        val prescriptionSelectedConseilIdsJson: String? = null,
+        val prescriptionLocalHtmlSectionsJson: String? = null,
+        val prescriptionSelectedRationIdsJson: String? = null,
+        // Consultation évolutive (v37) : nom de TypeConsultation / ProfilEvolutif
+        val typeConsultation: String = "STANDARD",
+        val profilEvolutif: String? = null,
+        // Troupeau (v41) : paramètres de chaque type d'animaux (effectif, poids, référentiel, K)
+        val herdParamsJson: String? = null,
+        // Prévision du poids (v43) : rations retenues pour le modèle chien-v2 (null = choix par défaut)
+        val weightForecastJson: String? = null
 )
+
+@Serializable
+@Entity(
+        tableName = "CONSULTATION_KEYWORDS",
+        indices = [Index(value = ["label"], unique = true)]
+)
+data class ConsultationKeywordEntity(
+        @PrimaryKey val uuid: String,
+        val label: String
+)
+
+/** Mots-clés d'une consultation (identifiants séparés par des virgules), pour les fusionner. */
+data class ConsultationKeywordLink(val uuid: String, val keywordsJson: String)
 
 @Serializable
 @Entity(
@@ -173,7 +236,14 @@ data class RationEntity(
         val number: Int = 0,
         val espece: String?,
         val recette: Boolean = false,
-        val description: String?
+        val description: String?,
+        // Étape de plan évolutif (v37) ; poids null = poids réel de la consultation
+        val etapeEvolutive: Boolean = false,
+        val poids: Double? = null,
+        // Plan évolutif (v38) : ration parente de l'étape
+        val refRationParente: String? = null,
+        // Plan évolutif (v39) : nom libre de l'étape
+        val nomLibre: String? = null
 )
 
 @Serializable
@@ -299,6 +369,27 @@ data class IndicationAlimentEntity(val refAliment: String, val indication: Int)
 )
 data class SupplementalVariableEntity(
         val idConsult: String,
+        val variableKind: Int,
+        val value: Double = 0.0
+)
+
+/** Variables d'énergie propres à une étape de plan évolutif (prioritaires sur la consultation). */
+@Serializable
+@Entity(
+        tableName = "RATION_SUPPLEMENTAL_VARIABLES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = RationEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["idRation"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("idRation")],
+        primaryKeys = ["idRation", "variableKind"]
+)
+data class RationSupplementalVariableEntity(
+        val idRation: String,
         val variableKind: Int,
         val value: Double = 0.0
 )
@@ -474,7 +565,8 @@ data class AlimentReferenceEntity(
                         ForeignKey(
                                 entity = FoodEntity::class,
                                 parentColumns = ["uuid"],
-                                childColumns = ["refAliment"]
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
                         )],
         indices = [Index("refAliment")],
         primaryKeys = ["refAliment", "nutrientLabel"]
@@ -483,6 +575,38 @@ data class NutrientValueEntity(
         val refAliment: String,
         val nutrientLabel: String,
         val value: Double
+)
+
+/** Énergie (kcal/100g) définie par espèce pour un aliment donné */
+@Serializable
+@Entity(
+        tableName = "ENERGY_PER_SPECIES",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["refAliment"],
+                                onDelete = ForeignKey.CASCADE
+                        )],
+        indices = [Index("refAliment")],
+        primaryKeys = ["refAliment", "espece"]
+)
+data class EnergyPerSpeciesEntity(
+        val refAliment: String,
+        val espece: String,
+        val value: Double
+)
+
+/** Entité persistant les métadonnées des nutriments personnalisés créés par l'utilisateur */
+@Serializable
+@Entity(tableName = "CUSTOM_NUTRIENTS")
+data class CustomNutrientEntity(
+        @PrimaryKey val label: String,
+        val displayName: String,
+        val unite: String,
+        val ueCode: String,
+        val categoryCode: String
 )
 
 /** Entité pour la table des références bibliographiques */
@@ -496,6 +620,33 @@ data class BiblioRefEntity(
         val comments: String,
         val bibtex: String,
         val consistent: Int
+)
+
+/** Table de jonction aliment ↔ référence bibliographique (relation many-to-many) */
+@Serializable
+@Entity(
+        tableName = "ALIMENT_BIBLIO_REFS",
+        foreignKeys =
+                [
+                        ForeignKey(
+                                entity = FoodEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["alimentUuid"],
+                                onDelete = ForeignKey.CASCADE
+                        ),
+                        ForeignKey(
+                                entity = BiblioRefEntity::class,
+                                parentColumns = ["uuid"],
+                                childColumns = ["biblioRefUuid"],
+                                onDelete = ForeignKey.CASCADE
+                        )
+                ],
+        primaryKeys = ["alimentUuid", "biblioRefUuid"],
+        indices = [Index("alimentUuid"), Index("biblioRefUuid")]
+)
+data class AlimentBiblioRefEntity(
+        val alimentUuid: String,
+        val biblioRefUuid: String
 )
 
 @Serializable
@@ -657,5 +808,35 @@ data class HtmlSectionLibraryEntity(
         val description: String,
         val sectionIdsJson: String, // JSON array des IDs de sections
         val createdAt: Long,
+        val updatedAt: Long
+)
+
+/**
+ * Configuration nommée d'une exploration multiration (référentiels, grilles poids × K, listes
+ * d'ingrédients, cibles, options), sérialisée en JSON. Les résultats ne sont pas stockés : ils se
+ * recalculent à partir de la configuration.
+ */
+/**
+ * Journal des calculs de prévision du poids (modèle chien-v2) : entrées et résultats de chaque
+ * calcul, pour recaler le modèle et valider l'estimation du besoin. Reste dans la base locale.
+ */
+@Entity(tableName = "WEIGHT_FORECAST_LOGS")
+data class WeightForecastLogEntity(
+        @PrimaryKey val uuid: String,
+        val animalUuid: String,
+        val createdAt: Long,
+        val modelVersion: String,
+        /** État du module au moment du calcul (SILENCIEUX ou ACTIF). */
+        val moduleState: String,
+        val inputsJson: String,
+        val resultsJson: String
+)
+
+@Entity(tableName = "MULTI_RATION_EXPLORATIONS")
+data class MultiRationExplorationEntity(
+        @PrimaryKey val uuid: String,
+        val nom: String,
+        val espece: String,
+        val configurationJson: String,
         val updatedAt: Long
 )

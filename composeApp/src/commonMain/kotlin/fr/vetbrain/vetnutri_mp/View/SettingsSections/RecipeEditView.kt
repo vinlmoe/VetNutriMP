@@ -9,11 +9,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,6 +29,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Espece.Companion.valuesExcept
 import fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -39,7 +43,6 @@ import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 @Composable
 fun RecipeEditView(
     viewModel: RecipeEditViewModel,
-    foodRepository: FoodRepository,
     modifier: Modifier = Modifier
 ) {
     val isEditMode = viewModel.isEditMode.value
@@ -58,7 +61,7 @@ fun RecipeEditView(
     if (showAddAlimentView) {
         // Afficher la vue d'ajout d'aliment en pleine page
         RecipeAddAlimentView(
-            foodRepository = foodRepository,
+            recipeEditViewModel = viewModel,
             onNavigateBack = {
                 showAddAlimentView = false
             },
@@ -87,7 +90,7 @@ fun RecipeEditView(
                     ) {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "Sauvegarder",
+                            contentDescription = translate(LocalizationKeys.General.SAVE),
                             tint = Color.White
                         )
                     }
@@ -105,7 +108,7 @@ fun RecipeEditView(
                     ) {
                         Icon(
                             Icons.Default.Add,
-                            contentDescription = "Nouvelle recette",
+                            contentDescription = translate(LocalizationKeys.Recipe.NEW_RECIPE),
                             tint = Color.White
                         )
                     }
@@ -121,15 +124,15 @@ fun RecipeEditView(
                     TopAppBar(
                         title = { 
                             Text(
-                                text = editingRecipe?.name ?: "Nouvelle recette",
+                                text = editingRecipe?.name ?: translate(LocalizationKeys.Recipe.NEW_RECIPE),
                                 style = MaterialTheme.typography.h6
-                            ) 
+                            )
                         },
                         navigationIcon = {
                             IconButton(onClick = { viewModel.cancelEditing() }) {
                                 Icon(
-                                    Icons.Default.ArrowBack,
-                                    contentDescription = "Retour"
+                                    Icons.AutoMirrored.Default.ArrowBack,
+                                    contentDescription = translate(LocalizationKeys.AnimalDetail.BACK)
                                 )
                             }
                         },
@@ -218,16 +221,16 @@ private fun RecipeEditForm(
             BasicAppTextField(
                 value = viewModel.newRecipeName.value,
                 onValueChange = { viewModel.updateRecipeName(it) },
-                placeholder = "Nom de la recette",
+                placeholder = translate(LocalizationKeys.Recipe.NAME_LABEL),
                 modifier = Modifier.weight(1f)
             )
-            
+
             Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-            
+
             // Bouton d'ajout d'aliment (petit + comme dans AlimentsRationSection)
             Icon(
                 imageVector = Icons.Default.Add,
-                contentDescription = "Ajouter un aliment",
+                contentDescription = translate(LocalizationKeys.Recipe.ADD_ALIMENT_ACTION),
                 tint = VetNutriColors.Primary,
                 modifier = Modifier
                     .size(AppSizes.iconSizeXSmall)
@@ -246,7 +249,7 @@ private fun RecipeEditForm(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                items(selectedIngredients) { ingredient ->
+                items(selectedIngredients, key = { it.uuid }) { ingredient ->
                     RecipeIngredientItem(
                         ingredient = ingredient,
                         onRemove = { viewModel.removeAlimentFromRecipe(ingredient) },
@@ -263,7 +266,7 @@ private fun RecipeEditForm(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aucun aliment dans cette recette\nCliquez sur le + pour en ajouter",
+                    text = translate(LocalizationKeys.Recipe.EMPTY_INGREDIENTS_HINT),
                     style = MaterialTheme.typography.body1,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center
@@ -285,6 +288,20 @@ private fun RecipeIngredientItem(
     onUpdateQuantity: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var quantityText by remember(ingredient.uuid) {
+        mutableStateOf(ingredient.quantite.toString())
+    }
+    var isQuantityFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(ingredient.quantite, isQuantityFocused) {
+        if (!isQuantityFocused) {
+            val newText = ingredient.quantite.toString()
+            if (newText != quantityText) {
+                quantityText = newText
+            }
+        }
+    }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = AppSizes.elevationSmall
@@ -297,7 +314,7 @@ private fun RecipeIngredientItem(
             // Informations de l'aliment
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = ingredient.aliment?.nom ?: "Aliment inconnu",
+                    text = ingredient.aliment?.nom ?: translate(LocalizationKeys.Food.UNKNOWN_FOOD),
                     style = MaterialTheme.typography.subtitle2,
                     fontWeight = FontWeight.Medium
                 )
@@ -316,17 +333,23 @@ private fun RecipeIngredientItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Quantité (g):",
+                    text = translate("auto.view.settingssections.recipeeditview.quantite_g"),
                     style = MaterialTheme.typography.caption,
                     color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.width(70.dp)
                 )
                 
                 BasicAppTextField(
-                    value = ingredient.quantite.toString(),
-                    onValueChange = onUpdateQuantity,
+                    value = quantityText,
+                    onValueChange = { newValue ->
+                        val normalized = newValue.replace(',', '.')
+                        quantityText = normalized
+                        onUpdateQuantity(normalized)
+                    },
                     placeholder = "100",
-                    modifier = Modifier.width(80.dp)
+                    modifier = Modifier.width(80.dp).onFocusChanged { state ->
+                        isQuantityFocused = state.isFocused
+                    }
                 )
                 
                 IconButton(
@@ -335,7 +358,7 @@ private fun RecipeIngredientItem(
                 ) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Supprimer",
+                        contentDescription = translate("general.delete"),
                         tint = MaterialTheme.colors.error,
                         modifier = Modifier.size(16.dp)
                     )
@@ -367,7 +390,7 @@ private fun RecipeListSection(
         BasicAppTextField(
             value = searchQuery,
             onValueChange = { viewModel.updateSearchQuery(it) },
-            placeholder = "Rechercher une recette...",
+            placeholder = translate("auto.view.settingssections.recipeeditview.rechercher_une_recette"),
             leadingIcon = Icons.Default.Search,
             modifier = Modifier.fillMaxWidth()
         )
@@ -386,7 +409,7 @@ private fun RecipeListSection(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Aucune recette trouvée",
+                    text = translate("auto.view.settingssections.recipeeditview.aucune_recette_trouvee"),
                     style = MaterialTheme.typography.body1,
                     color = Color.Gray
                 )
@@ -438,42 +461,27 @@ private fun RecipeListItem(
                     fontWeight = FontWeight.Medium
                 )
                 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
-                ) {
-                    IconButton(
-                        onClick = onDuplicate,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ContentCopy,
-                            contentDescription = "Dupliquer",
-                            tint = VetNutriColors.Secondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    
-                    IconButton(
-                        onClick = onEdit,
-                        modifier = Modifier.size(32.dp)
-                    ) {
+                // Même ordre et même taille que les autres listes : modifier, dupliquer, supprimer
+                Row {
+                    IconButton(onClick = onEdit) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "Éditer",
-                            tint = VetNutriColors.Primary,
-                            modifier = Modifier.size(16.dp)
+                            contentDescription = translate("general.edit"),
+                            tint = VetNutriColors.Primary
                         )
                     }
-                    
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(32.dp)
-                    ) {
+                    IconButton(onClick = onDuplicate) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = translate("ration.duplicateAction"),
+                            tint = VetNutriColors.Primary
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Supprimer",
-                            tint = MaterialTheme.colors.error,
-                            modifier = Modifier.size(16.dp)
+                            contentDescription = translate("general.delete"),
+                            tint = VetNutriColors.Error
                         )
                     }
                 }
@@ -481,7 +489,7 @@ private fun RecipeListItem(
             
             // Informations de la recette
             Text(
-                text = "${recipe.alimentMutableList.size} aliments",
+                text = translate("recette.nbAliments", recipe.alimentMutableList.size.toString()),
                 style = MaterialTheme.typography.caption,
                 color = Color.Gray
             )
@@ -491,7 +499,7 @@ private fun RecipeListItem(
                 val alimentsText = recipe.alimentMutableList
                     .take(3)
                     .joinToString(", ") { 
-                        "${it.aliment?.nom ?: "Inconnu"} (${it.quantite}g)"
+                        "${it.aliment?.nom ?: "Inconnu"} (${it.quantite} g)"
                     }
                 Text(
                     text = alimentsText,
@@ -501,7 +509,7 @@ private fun RecipeListItem(
                 
                 if (recipe.alimentMutableList.size > 3) {
                     Text(
-                        text = "... et ${recipe.alimentMutableList.size - 3} autres",
+                        text = translate("recette.etAutres", (recipe.alimentMutableList.size - 3).toString()),
                         style = MaterialTheme.typography.caption,
                         color = Color.Gray
                     )
@@ -551,7 +559,7 @@ private fun MessageCard(
             IconButton(onClick = onDismiss) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Fermer",
+                    contentDescription = translate("settings.close"),
                     tint = Color.Gray
                 )
             }
@@ -570,9 +578,9 @@ private fun DeleteRecipeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Confirmer la suppression") },
+        title = { Text(translate("new_reference.confirm_delete_title")) },
         text = { 
-            Text("Êtes-vous sûr de vouloir supprimer la recette \"${recipe.name}\" ? Cette action est irréversible.")
+            Text(translate("auto.view.settingssections.recipeeditview.etes_vous_sur_de_vouloir_supprimer_la_recette_arg", (recipe.name).toString()))
         },
         confirmButton = {
             Button(
@@ -581,12 +589,12 @@ private fun DeleteRecipeDialog(
                     backgroundColor = MaterialTheme.colors.error
                 )
             ) {
-                Text("Supprimer")
+                Text(translate("general.delete"))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(translate("general.cancel"))
             }
         }
     )
@@ -602,9 +610,9 @@ private fun SaveRecipeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Confirmer la sauvegarde") },
+        title = { Text(translate("auto.view.settingssections.recipeeditview.confirmer_la_sauvegarde")) },
         text = { 
-            Text("Voulez-vous sauvegarder cette recette ?")
+            Text(translate("auto.view.settingssections.recipeeditview.voulez_vous_sauvegarder_cette_recette"))
         },
         confirmButton = {
             Button(
@@ -613,12 +621,12 @@ private fun SaveRecipeDialog(
                     backgroundColor = VetNutriColors.Primary
                 )
             ) {
-                Text("Sauvegarder")
+                Text(translate("general.save"))
             }
         },
         dismissButton = {
             OutlinedButton(onClick = onDismiss) {
-                Text("Annuler")
+                Text(translate("general.cancel"))
             }
         }
     )

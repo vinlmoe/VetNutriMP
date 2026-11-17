@@ -1,6 +1,7 @@
 *.iml
 .kotlin
 .gradle
+.gradle-local/
 **/build/
 xcuserdata
 !src/**/build/
@@ -16,3 +17,47 @@ captures
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+# Artefacts de release et binaires (éviter les fichiers lourds dans Git)
+composeApp/release/
+**/outputs/
+**/archives/
+**/dist/
+**/Products/
+*.apk
+*.aab
+*.ipa
+*.xcarchive
+*.keystore
+*.jks
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.jar
+*.aar
+.notarization_config
+.Rproj.user
+
+# Données personnelles, résultats d'examen et fichiers de travail locaux
+personal-data/
+private-data/
+Key/
+.Rhistory
+**/.Rhistory
+*.RData
+**/~$*.xlsx
+*réponses*.csv
+*reponses*.csv
+vetnutriExamR/cache_jsonbin/
+vetnutriExamR/conseils_classification.csv
+vetnutriExamR/conseils_non_classes.csv
+vetnutriExamR/conseils_par_copie.csv
+vetnutriExamR/notes_details_examen_S4.csv
+vetnutriExamR/notes_examen_S4.csv
+vetnutriExamR/tableau_recap_notes.Rmd
+vetnutriExamR/tableau_recap_notes.html
+vetnutriExamR/correction_examen_S4.html
+# Journaux et fichiers temporaires de build
+*.log
+build_log.txt

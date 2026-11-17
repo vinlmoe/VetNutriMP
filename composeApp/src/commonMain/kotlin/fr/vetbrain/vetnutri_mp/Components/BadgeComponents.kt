@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 
 /**
@@ -56,7 +57,7 @@ fun Badge(
                                 ) {
                                         if (id != null) {
                                                 Text(
-                                                        text = "ID: $id",
+                                                        text = "ID : $id",
                                                         style =
                                                                 MaterialTheme.typography.caption
                                                                         .copy(

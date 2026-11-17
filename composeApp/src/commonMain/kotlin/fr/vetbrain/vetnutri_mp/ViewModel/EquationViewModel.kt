@@ -1,14 +1,19 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry
 import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
@@ -30,7 +35,6 @@ import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.Utils.ResultatValidation
 import fr.vetbrain.vetnutri_mp.Utils.TypeEquationValidation
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -53,7 +57,7 @@ class EquationViewModel(
         private val biblioRepository: BiblioRefRepository,
         private val referenceRepository: DatabaseReferenceEvRepository
 ) : ViewModel() {
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val coroutineScope = viewModelScope
 
     // État d'édition
     private val _currentEquation = MutableStateFlow(Equation())
@@ -65,7 +69,6 @@ class EquationViewModel(
 
     // État de sélection d'une référence bibliographique
     private val _selectedBiblioRef = MutableStateFlow<BiblioRef?>(null)
-    val selectedBiblioRef: StateFlow<BiblioRef?> = _selectedBiblioRef.asStateFlow()
 
     // Messages d'opération
     private val _operationMessage = MutableStateFlow<String?>(null)
@@ -83,6 +86,15 @@ class EquationViewModel(
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
     val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
 
+    // Toutes les références disponibles (pour l'assignation multi-références)
+    private val _allReferences = MutableStateFlow<List<ReferenceEv>>(emptyList())
+    val allReferences: StateFlow<List<ReferenceEv>> = _allReferences.asStateFlow()
+
+    // Références à associer/dissocier lors de la prochaine sauvegarde (cas d'une équation
+    // pas encore enregistrée, où l'association ne peut pas encore être persistée)
+    private val _pendingReferenceUuids = MutableStateFlow<Set<String>>(emptySet())
+    val pendingReferenceUuids: StateFlow<Set<String>> = _pendingReferenceUuids.asStateFlow()
+
     // Équations spécifiques actuellement sélectionnées (pour les combobox)
     private val _equationBW = MutableStateFlow<Equation?>(null)
     val equationBW: StateFlow<Equation?> = _equationBW.asStateFlow()
@@ -98,10 +110,6 @@ class EquationViewModel(
 
     private val _equationDEraw = MutableStateFlow<Equation?>(null)
     val equationDEraw: StateFlow<Equation?> = _equationDEraw.asStateFlow()
-
-    // Script coloré
-    private val _coloredScript = MutableStateFlow<String>("")
-    val coloredScript: StateFlow<String> = _coloredScript.asStateFlow()
 
     // Variables d'état privées
     private val _unrecognizedVariables = MutableStateFlow<List<String>>(emptyList())
@@ -129,8 +137,9 @@ class EquationViewModel(
 
     /** Obtient le nom d'affichage d'une variable sous le format "label (displayName)" */
     private fun getVariableDisplayName(variable: String): String? {
-        // Vérifier si c'est une variable VariableKind
-        val variableKind = VariableKind.entries.find { it.label == variable }
+        // Vérifier si c'est une variable VariableKind (par label court ou identifiant long)
+        val variableKind =
+                VariableKind.entries.find { it.label == variable || it.variable == variable }
         if (variableKind != null) {
             return "${variableKind.translateEnum()} (${variableKind.dup})"
         }
@@ -161,6 +170,12 @@ class EquationViewModel(
             return "${variable} (${variable})"
         }
 
+        // Nutriments personnalisés
+        val customNutrient = CustomNutrientRegistry.getByLabel(variable)
+        if (customNutrient != null) {
+            return "${customNutrient.nameToString()} (${variable})"
+        }
+
         // Variables système avec leurs descriptions
         return when (variable) {
             else -> {
@@ -176,11 +191,11 @@ class EquationViewModel(
 
     // État pour la référence courante
     private val _currentReferenceId = MutableStateFlow<String?>(null)
-    val currentReferenceId: StateFlow<String?> = _currentReferenceId.asStateFlow()
 
     init {
         loadEquations()
         loadBiblioRefs()
+        loadAllReferences()
     }
 
     /** Charge la liste des équations disponibles */
@@ -223,11 +238,21 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("EquationViewModel", e.message ?: "Erreur", e)
             } finally {
                 _isLoading.value = false
             }
+        }
+    }
+
+    /** Charge toutes les références nutritionnelles pour l'assignation multi-références */
+    fun loadAllReferences() {
+        coroutineScope.launch(AppDispatchers.IO) {
+            try {
+                _allReferences.value = referenceRepository.getAll()
+            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("EquationViewModel", "Exception ignorée : ${ignored.message}") }
         }
     }
 
@@ -243,7 +268,7 @@ class EquationViewModel(
                     // Utiliser le repository si le DAO n'est pas disponible
                     biblioRepository.getAllBiblioRefs().collect { refs -> _biblioRefs.value = refs }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("EquationViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -252,28 +277,34 @@ class EquationViewModel(
         coroutineScope.launch(AppDispatchers.IO) {
             try {
                 // Créer une duplication complète de l'équation avec un nouvel UUID
-                val duplicated = source.copy(
-                    uuid = genUUID(),
-                    name = source.name + " (Copie)",
-                    // Conserver tous les autres champs :
-                    description = source.description,
-                    equationScript = source.equationScript,
-                    bib = source.bib, // Garder la même référence bibliographique
-                    specie = source.specie,
-                    kind = source.kind,
-                    nutrient = source.nutrient,
-                    consistent = source.consistent,
-                    variables = source.variables.toMutableList(), // Copier la liste des variables
-                    correctionFactor = source.correctionFactor,
-                    ratio = source.ratio,
-                    creationDate = source.creationDate, // Garder la date de création originale
-                    lastUpdate = source.lastUpdate // Garder la dernière mise à jour originale
-                )
+                val duplicated =
+                        source.copy(
+                                uuid = genUUID(),
+                                name = source.name + " (Copie)",
+                                // Conserver tous les autres champs :
+                                description = source.description,
+                                equationScript = source.equationScript,
+                                bib = source.bib, // Garder la même référence bibliographique
+                                specie = source.specie,
+                                kind = source.kind,
+                                nutrient = source.nutrient,
+                                consistent = source.consistent,
+                                variables =
+                                        source.variables
+                                                .toMutableList(), // Copier la liste des variables
+                                correctionFactor = source.correctionFactor,
+                                ratio = source.ratio,
+                                creationDate =
+                                        source.creationDate, // Garder la date de création originale
+                                lastUpdate = source.lastUpdate // Garder la dernière mise à jour
+                                // originale
+                                )
 
                 equationRepository.saveEquation(duplicated)
                 loadEquations()
                 _operationMessage.value = "Équation dupliquée avec succès"
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la duplication: ${e.message}"
             }
         }
@@ -282,6 +313,17 @@ class EquationViewModel(
     /** Crée une nouvelle équation */
     fun createNewEquation() {
         _currentEquation.value = Equation()
+        _pendingReferenceUuids.value = emptySet()
+    }
+
+    /**
+     * Associe/dissocie en attente une référence pour une équation pas encore enregistrée.
+     * L'association réelle sera persistée lors de l'appel à `saveCurrentEquation()`.
+     */
+    fun togglePendingReferenceAssociation(referenceUuid: String) {
+        val current = _pendingReferenceUuids.value
+        _pendingReferenceUuids.value =
+                if (referenceUuid in current) current - referenceUuid else current + referenceUuid
     }
 
     /** Charge une équation par son ID */
@@ -296,6 +338,7 @@ class EquationViewModel(
                     _operationMessage.value = "Erreur: Équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -378,6 +421,10 @@ class EquationViewModel(
         val nutrientsMin = NutrientMin.entries.map { it.label }
         val acideAmines = AAEnum.entries.map { it.label }
 
+        // Debug temporaire pour DM
+        if (variable == "DM") {
+        }
+
         return variable in
                 (nutrientsMain +
                         nutrientsLipides +
@@ -396,35 +443,6 @@ class EquationViewModel(
             EquationKind.ENERGYDENSITY -> TypeEquationValidation.DENSITE_ENERGETIQUE
             EquationKind.COMPLEMENTARY_NUTRIENT -> TypeEquationValidation.DENSITE_ENERGETIQUE
             else -> TypeEquationValidation.GENERALE
-        }
-    }
-
-    /** Valide l'expression mathématique de l'équation courante */
-    fun validerExpressionCourante(): ResultatValidation {
-        val equation = _currentEquation.value
-        val typeValidation = mapEquationKindToValidationType(equation.kind)
-        return EquationEvaluator.validerExpression(equation.equationScript, typeValidation)
-    }
-
-    /** Teste l'expression courante avec des valeurs d'exemple */
-    fun testerExpressionCourante(): Double? {
-        val equation = _currentEquation.value
-        val typeValidation = mapEquationKindToValidationType(equation.kind)
-        return EquationEvaluator.testerExpression(equation.equationScript, typeValidation)
-    }
-
-    /** Obtient la liste de toutes les variables disponibles selon le type d'équation */
-    fun getVariablesDisponibles(): Set<String> {
-        val equation = _currentEquation.value
-        val typeValidation = mapEquationKindToValidationType(equation.kind)
-
-        return when (typeValidation) {
-            TypeEquationValidation.BESOIN_ENERGETIQUE -> EquationEvaluator.toutesLesVariables
-            TypeEquationValidation.BESOIN_NUTRITIONNEL ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
-            TypeEquationValidation.DENSITE_ENERGETIQUE -> getNutrientsVariables()
-            TypeEquationValidation.GENERALE ->
-                    EquationEvaluator.toutesLesVariables + getNutrientsVariables()
         }
     }
 
@@ -451,19 +469,6 @@ class EquationViewModel(
         val currentValue = _currentEquation.value
         val updatedBib = currentValue.bib.copy(comments = note)
         _currentEquation.value = currentValue.copy(bib = updatedBib)
-    }
-
-    /** Met à jour la référence bibliographique */
-    fun updateBibRef(ref: String) {
-        val currentValue = _currentEquation.value
-        val updatedBib = currentValue.bib.copy(completeRef = ref)
-        _currentEquation.value = currentValue.copy(bib = updatedBib)
-    }
-
-    /** Met à jour le facteur de correction */
-    fun updateCorrectionFactor(factor: Double) {
-        val currentValue = _currentEquation.value
-        _currentEquation.value = currentValue.copy(correctionFactor = factor)
     }
 
     /** Met à jour l'espèce d'application de l'équation */
@@ -497,44 +502,51 @@ class EquationViewModel(
         val acideAmines = AAEnum.entries.toList()
         val nutrientAnalysis = NutrientAnalysis.entries.toList()
 
+        // Debug temporaire pour DM
+        val dmNutrient = nutrientsMain.find { it.label == "DM" }
+        if (dmNutrient != null) {
+        } else {
+        }
+
         return nutrientsMain +
                 nutrientsLipides +
                 nutrientsVitamines +
                 nutrientsMacro +
                 nutrientsMin +
                 nutrientAnalysis +
-                acideAmines
-    }
-
-    /** Ajoute une variable à l'équation */
-    fun addVariable(variableKind: VariableKind) {
-        val currentValue = _currentEquation.value
-        // Vérifier si la variable existe déjà
-        if (!currentValue.variables.contains(variableKind)) {
-            val updatedVariables = currentValue.variables.toMutableList()
-            updatedVariables.add(variableKind)
-            _currentEquation.value = currentValue.copy(variables = updatedVariables)
-        }
-    }
-
-    /** Supprime une variable de l'équation */
-    fun removeVariable(variableKind: VariableKind) {
-        val currentValue = _currentEquation.value
-        val updatedVariables = currentValue.variables.toMutableList()
-        updatedVariables.remove(variableKind)
-        _currentEquation.value = currentValue.copy(variables = updatedVariables)
-    }
-
-    /** Efface toutes les variables sélectionnées */
-    fun clearSelectedVariables() {
-        val currentValue = _currentEquation.value
-        _currentEquation.value = currentValue.copy(variables = mutableListOf())
+                acideAmines +
+                CustomNutrientRegistry.all()
     }
 
     /** Efface le message d'opération */
     fun clearOperationMessage() {
         _operationMessage.value = null
         _saveSuccessful.value = false
+    }
+
+    /**
+     * Associe ou dissocie une équation de la liste equationsNut d'une référence.
+     * Persiste le changement et rafraîchit allReferences.
+     */
+    fun toggleEquationForReference(equation: Equation, reference: ReferenceEv) {
+        coroutineScope.launch(AppDispatchers.IO) {
+            try {
+                val isAssociated = reference.equationsNut.any { it.uuid == equation.uuid }
+                val updated = reference.deepCopy()
+                if (isAssociated) {
+                    updated.equationsNut = ArrayList(updated.equationsNut.filter { it.uuid != equation.uuid })
+                } else {
+                    val list = ArrayList(updated.equationsNut)
+                    list.add(equation)
+                    updated.equationsNut = list
+                }
+                referenceRepository.update(updated)
+                loadAllReferences()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _operationMessage.value = "Erreur références: ${e.message}"
+            }
+        }
     }
 
     /** Sauvegarde l'équation courante, retourne true si succès, false sinon */
@@ -575,6 +587,18 @@ class EquationViewModel(
             _isLoading.value = true
             try {
                 equationRepository.saveEquation(equationToSave)
+
+                // Appliquer les associations de références en attente (cas d'une création)
+                val pendingUuids = _pendingReferenceUuids.value
+                if (pendingUuids.isNotEmpty()) {
+                    val referencesToAssociate =
+                            _allReferences.value.filter { it.uuid in pendingUuids }
+                    referencesToAssociate.forEach { reference ->
+                        toggleEquationForReference(equationToSave, reference)
+                    }
+                    _pendingReferenceUuids.value = emptySet()
+                }
+
                 _saveSuccessful.value = true
                 _operationMessage.value =
                         if (isConsistent) {
@@ -582,7 +606,11 @@ class EquationViewModel(
                         } else {
                             "Équation sauvegardée avec des variables non reconnues"
                         }
+                // Recharger immédiatement les listes utilisées par les écrans d'édition
+                loadEquations()
+                loadBiblioRefs()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
                 _saveSuccessful.value = false
             } finally {
@@ -639,8 +667,11 @@ class EquationViewModel(
             // Vérifier que toutes les variables sont reconnues
             val unrecognizedVariables =
                     variablesInExpression.filter { variable ->
-                        // Vérifier si la variable est reconnue dans VariableKind
-                        VariableKind.values().none { it.label == variable } &&
+                        // Vérifier si la variable est reconnue dans VariableKind (label court ou
+                        // identifiant long)
+                        VariableKind.values().none {
+                            it.label == variable || it.variable == variable
+                        } &&
                                 // Vérifier si c'est une variable de nutriment
                                 !isNutrientVariable(variable)
                     }
@@ -680,6 +711,7 @@ class EquationViewModel(
 
             return isEvaluable
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return false
         }
     }
@@ -699,6 +731,7 @@ class EquationViewModel(
                 _currentEquation.value = Equation()
                 loadEquations()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
                 _saveSuccessful.value = false
             } finally {
@@ -721,18 +754,13 @@ class EquationViewModel(
                 _saveSuccessful.value = true
                 loadEquations()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur lors de la suppression: ${e.message}"
                 _saveSuccessful.value = false
             } finally {
                 _isLoading.value = false
             }
         }
-    }
-
-    /** Réinitialise l'équation en cours d'édition */
-    fun clearCurrentEquation() {
-        _currentEquation.value = Equation()
-        _saveSuccessful.value = false
     }
 
     /** Sélectionne une référence bibliographique existante */
@@ -765,6 +793,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -809,6 +838,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -836,6 +866,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -881,6 +912,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -908,6 +940,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -953,6 +986,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -980,6 +1014,7 @@ class EquationViewModel(
                     _operationMessage.value = "Référence ou équation non trouvée"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1026,6 +1061,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {
@@ -1071,6 +1107,7 @@ class EquationViewModel(
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value =
                         "Erreur lors de la mise à jour de l'équation: ${e.message}"
             } finally {

@@ -1,293 +1,403 @@
 package fr.vetbrain.vetnutri_mp.Service
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
+import fr.vetbrain.vetnutri_mp.PlatformFile.PlatformFile
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.Clock
-import kotlinx.datetime.Instant
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.Serializable
-import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 /**
- * Service de sauvegarde automatique de la base de données
- * Gère la création, rotation et restauration des sauvegardes
+ * Service de sauvegarde automatique de la base de données Gère la création, rotation et
+ * restauration des sauvegardes
  */
 class BackupService(
-    private val exportImportRepository: ExportImportRepository,
-    private val backupDirectory: File
+        private val exportImportRepository: ExportImportRepository,
+        private val fileService: FileService
 ) {
-    
+
     companion object {
         private const val MAX_BACKUP_FILES = 10
         private const val BACKUP_PREFIX = "vetnutri_backup_"
+        /** Sauvegardes long terme : préfixe distinct, donc jamais touchées par la rotation */
+        private const val LONG_TERM_PREFIX = "vetnutri_longterm_"
+        /** Une sauvegarde long terme toutes les N sauvegardes automatiques réussies */
+        internal const val LONG_TERM_EVERY = 100
+        private const val AUTO_BACKUP_COUNTER_FILE = "vetnutri_auto_backup_counter.txt"
         private const val BACKUP_EXTENSION = ".json"
         private const val BACKUP_INTERVAL_MINUTES = 10L
     }
-    
-    private val json = Json { 
-        prettyPrint = true
+
+    private val json = Json {
+        prettyPrint = isDebugBuild()
         encodeDefaults = true
         ignoreUnknownKeys = true
         explicitNulls = false
     }
-    
+
+    private val operationMutex = Mutex()
     private var backupJob: Job? = null
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    
-    /**
-     * Métadonnées d'un fichier de sauvegarde
-     */
+    private val scope = CoroutineScope(AppDispatchers.IO + SupervisorJob())
+
+    /** Métadonnées d'un fichier de sauvegarde */
     @Serializable
     data class BackupMetadata(
-        val fileName: String,
-        val filePath: String,
-        val createdAt: Long, // Utiliser Long au lieu d'Instant
-        val fileSize: Long,
-        val animalCount: Int,
-        val foodCount: Int,
-        val equationCount: Int,
-        val conseilCount: Int,
-        val recipeCount: Int,
-        val rationCount: Int
+            val fileName: String,
+            val filePath: String,
+            val createdAt: Long, // Utiliser Long au lieu d'Instant
+            val fileSize: Long,
+            val animalCount: Int,
+            val foodCount: Int,
+            val equationCount: Int,
+            val conseilCount: Int,
+            val recipeCount: Int,
+            val rationCount: Int,
+            val isLongTerm: Boolean = false
     )
-    
-    /**
-     * Démarrer le service de sauvegarde automatique
-     */
+
+    /** Démarrer le service de sauvegarde automatique */
     fun startAutomaticBackup() {
         stopAutomaticBackup() // Arrêter toute sauvegarde existante
-        
-        // Créer le répertoire de sauvegarde s'il n'existe pas
-        if (!backupDirectory.exists()) {
-            backupDirectory.mkdirs()
-        }
-        
-        // Sauvegarde immédiate au démarrage
-        scope.launch {
-            try {
-                createBackup()
-            } catch (e: Exception) {
-                println("Erreur lors de la sauvegarde initiale: ${e.message}")
-            }
-        }
-        
-        // Planifier les sauvegardes périodiques
+
         backupJob = scope.launch {
+            createAutomaticBackup()
             while (isActive) {
-                delay(BACKUP_INTERVAL_MINUTES * 60 * 1000) // 10 minutes
-                try {
-                    createBackup()
-                } catch (e: Exception) {
-                    println("Erreur lors de la sauvegarde périodique: ${e.message}")
-                }
+                delay(BACKUP_INTERVAL_MINUTES * 60 * 1000)
+                createAutomaticBackup()
             }
         }
     }
-    
-    /**
-     * Arrêter le service de sauvegarde automatique
-     */
+
+    /** Arrêter le service de sauvegarde automatique */
     fun stopAutomaticBackup() {
         backupJob?.cancel()
         backupJob = null
     }
-    
+
+    private suspend fun buildBackupFilePath(fileName: String): String {
+        val backupDirectory = fileService.getBackupDirectory()
+        return "${backupDirectory.absolutePath}/$fileName"
+    }
+
+    /** Créer une sauvegarde manuelle */
+    suspend fun createBackup(): Result<BackupMetadata> = operationMutex.withLock {
+        createBackupLocked()
+    }
+
     /**
-     * Créer une sauvegarde manuelle
+     * Sauvegarde automatique. Une base sans animaux n'est pas sauvegardée tant qu'une sauvegarde
+     * plus ancienne en contient : après une perte de base, la rotation effacerait sinon les
+     * dernières sauvegardes utiles en moins de deux heures.
      */
-    suspend fun createBackup(): Result<BackupMetadata> {
+    internal suspend fun createAutomaticBackup(): Result<BackupMetadata> = operationMutex.withLock {
+        createBackupLocked(skipIfNoAnimals = true).onSuccess { metadata ->
+            val count = readAutomaticBackupCount() + 1
+            writeAutomaticBackupCount(count)
+            if (count % LONG_TERM_EVERY == 0) createLongTermCopy(metadata)
+        }
+    }
+
+    private suspend fun automaticBackupCounterFile(): PlatformFile =
+            PlatformFile.create("${fileService.getBackupDirectory().absolutePath}/$AUTO_BACKUP_COUNTER_FILE")
+
+    private suspend fun readAutomaticBackupCount(): Int =
+            fileService.readText(automaticBackupCounterFile()).getOrNull()?.trim()?.toIntOrNull() ?: 0
+
+    private suspend fun writeAutomaticBackupCount(count: Int) {
+        fileService.writeText(automaticBackupCounterFile(), count.toString())
+    }
+
+    /**
+     * Copie une sauvegarde automatique sous le préfixe long terme : la rotation ne la supprime
+     * jamais (seule une suppression manuelle depuis l'écran des sauvegardes le peut).
+     */
+    private suspend fun createLongTermCopy(source: BackupMetadata) {
+        try {
+            val fileName = source.fileName.replaceFirst(BACKUP_PREFIX, LONG_TERM_PREFIX)
+            val destination = PlatformFile.create(buildBackupFilePath(fileName))
+            val temporary = PlatformFile.create("${destination.absolutePath}.tmp")
+            try {
+                fileService.copyFile(PlatformFile.create(source.filePath), temporary).getOrThrow()
+                fileService.moveFile(temporary, destination).getOrThrow()
+            } finally {
+                if (temporary.exists()) fileService.deleteFile(temporary)
+            }
+            saveBackupMetadata(
+                    source.copy(fileName = fileName, filePath = destination.absolutePath, isLongTerm = true)
+            )
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
+        }
+    }
+
+    /** Sauvegarde la plus récente contenant des animaux, candidate à une restauration. */
+    suspend fun findLatestBackupWithAnimals(): BackupMetadata? =
+            getAvailableBackups().firstOrNull { it.animalCount > 0 }
+
+    private suspend fun createBackupLocked(
+            rotate: Boolean = true,
+            skipIfNoAnimals: Boolean = false
+    ): Result<BackupMetadata> {
         return try {
             // Exporter toutes les données
-            val jsonData = exportImportRepository.exportAll()
-            val envelope = json.decodeFromString<ApiEnvelope>(jsonData)
-            
+            val envelope = exportImportRepository.exportAllEnvelope()
+            if (skipIfNoAnimals && envelope.animals.isEmpty() && findLatestBackupWithAnimals() != null) {
+                return Result.failure(IllegalStateException("Base sans animaux : sauvegarde automatique ignorée"))
+            }
+
             // Créer le nom de fichier avec timestamp
-            val timestamp = Clock.System.now().toEpochMilliseconds()
+            var timestamp = Clock.System.now().toEpochMilliseconds()
+            val backupDirectory = fileService.getBackupDirectory()
+            while (PlatformFile.create("${backupDirectory.absolutePath}/${BACKUP_PREFIX}${timestamp}${BACKUP_EXTENSION}").exists()) timestamp++
             val fileName = "${BACKUP_PREFIX}${timestamp}${BACKUP_EXTENSION}"
-            val filePath = File(backupDirectory, fileName).absolutePath
-            
-            // Sauvegarder le fichier
-            File(filePath).writeText(jsonData)
-            
-            // Gérer la rotation des fichiers
-            manageBackupRotation()
-            
+            val file = PlatformFile.create("${backupDirectory.absolutePath}/$fileName")
+
+            // Sauvegarder le fichier (streaming si possible)
+            val temporary = PlatformFile.create("${file.absolutePath}.tmp")
+            try {
+                exportImportRepository.writeEnvelopeToFile(envelope, temporary).getOrThrow()
+                check(temporary.isFile() && temporary.length > 0) { "Sauvegarde vide ou absente" }
+                fileService.moveFile(temporary, file).getOrThrow()
+            } finally {
+                if (temporary.exists()) fileService.deleteFile(temporary)
+            }
+
             // Créer les métadonnées
-            val metadata = BackupMetadata(
-                fileName = fileName,
-                filePath = filePath,
-                createdAt = Clock.System.now().toEpochMilliseconds(),
-                fileSize = File(filePath).length(),
-                animalCount = envelope.animals.size,
-                foodCount = envelope.foods.size,
-                equationCount = envelope.equations.size,
-                conseilCount = envelope.conseils.size,
-                recipeCount = envelope.recipes.size,
-                rationCount = envelope.rations.size
-            )
-            
+            val metadata =
+                    BackupMetadata(
+                            fileName = fileName,
+                            filePath = file.absolutePath,
+                            createdAt = Clock.System.now().toEpochMilliseconds(),
+                            fileSize = file.length,
+                            animalCount = envelope.animals.size,
+                            foodCount = envelope.foods.size,
+                            equationCount = envelope.equations.size,
+                            conseilCount = envelope.conseils.size,
+                            recipeCount = envelope.recipes.size,
+                            rationCount = envelope.rations.size
+                    )
+
             // Sauvegarder les métadonnées
             saveBackupMetadata(metadata)
-            
+            if (rotate) manageBackupRotation()
             Result.success(metadata)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
-    
+
     /**
-     * Gérer la rotation des fichiers de sauvegarde
-     * Garde seulement les 10 fichiers les plus récents
+     * Gérer la rotation des fichiers de sauvegarde Garde seulement les 10 fichiers les plus récents
      */
-    private fun manageBackupRotation() {
+    private suspend fun manageBackupRotation() {
         try {
-            val backupFiles = backupDirectory.listFiles { file ->
-                file.isFile && 
-                file.name.startsWith(BACKUP_PREFIX) && 
-                file.name.endsWith(BACKUP_EXTENSION) &&
-                !file.name.contains("_metadata") // Exclure les fichiers de métadonnées
-            }?.toList() ?: emptyList()
-            
+            val backupDirectory = fileService.getBackupDirectory()
+            val backupFiles =
+                    fileService.listFiles(backupDirectory).filter { file ->
+                        file.isFile() &&
+                                file.name.startsWith(BACKUP_PREFIX) &&
+                                file.name.endsWith(BACKUP_EXTENSION) &&
+                                !file.name.contains(
+                                        "_metadata"
+                                ) // Exclure les fichiers de métadonnées
+                    }
+
             if (backupFiles.size > MAX_BACKUP_FILES) {
                 // Trier par date de modification (plus ancien en premier)
-                val sortedFiles = backupFiles.sortedBy { it.lastModified() }
-                
+                val sortedFiles = backupFiles.sortedBy { it.lastModified }
+
                 // Supprimer les fichiers les plus anciens
                 val filesToDelete = sortedFiles.take(backupFiles.size - MAX_BACKUP_FILES)
                 filesToDelete.forEach { file ->
                     try {
-                        file.delete()
+                        fileService.deleteFile(file).getOrThrow()
                         // Supprimer aussi le fichier de métadonnées associé
-                        val metadataFile = File(file.absolutePath.replace(BACKUP_EXTENSION, "_metadata.json"))
-                        if (metadataFile.exists()) {
-                            metadataFile.delete()
+                        val metadataFile =
+                                PlatformFile.create(
+                                        file.absolutePath.replace(
+                                                BACKUP_EXTENSION,
+                                                "_metadata.json"
+                                        )
+                                )
+                        if (fileService.fileExists(metadataFile)) {
+                            fileService.deleteFile(metadataFile).getOrThrow()
                         }
                     } catch (e: Exception) {
-                        println("Erreur lors de la suppression du fichier ${file.name}: ${e.message}")
+                        e.rethrowIfCancellation()
+                        if (e is CancellationException) throw e
                     }
                 }
             }
         } catch (e: Exception) {
-            println("Erreur lors de la rotation des sauvegardes: ${e.message}")
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
         }
     }
-    
-    /**
-     * Sauvegarder les métadonnées d'un backup
-     */
-    private fun saveBackupMetadata(metadata: BackupMetadata) {
+
+    /** Sauvegarder les métadonnées d'un backup */
+    private suspend fun saveBackupMetadata(metadata: BackupMetadata) {
         try {
-            val metadataFile = File(metadata.filePath.replace(BACKUP_EXTENSION, "_metadata.json"))
+            val metadataFile =
+                    PlatformFile.create(
+                            metadata.filePath.replace(BACKUP_EXTENSION, "_metadata.json")
+                    )
             val metadataJson = json.encodeToString(metadata)
-            metadataFile.writeText(metadataJson)
+            fileService.writeText(metadataFile, metadataJson)
         } catch (e: Exception) {
-            println("Erreur lors de la sauvegarde des métadonnées: ${e.message}")
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
         }
     }
-    
-    /**
-     * Récupérer la liste de tous les backups disponibles
-     */
-    fun getAvailableBackups(): List<BackupMetadata> {
+
+    /** Récupérer la liste de tous les backups disponibles */
+    suspend fun getAvailableBackups(): List<BackupMetadata> {
         return try {
-            val backupFiles = backupDirectory.listFiles { file ->
-                file.isFile && 
-                file.name.startsWith(BACKUP_PREFIX) && 
-                file.name.endsWith(BACKUP_EXTENSION) &&
-                !file.name.contains("_metadata") // Exclure les fichiers de métadonnées
-            }?.toList() ?: emptyList()
-            
-            backupFiles.mapNotNull { file ->
-                try {
-                    val metadataFile = File(file.absolutePath.replace(BACKUP_EXTENSION, "_metadata.json"))
-                    if (metadataFile.exists()) {
-                        val metadataJson = metadataFile.readText()
-                        json.decodeFromString<BackupMetadata>(metadataJson)
-                    } else {
-                        // Créer des métadonnées basiques si le fichier n'existe pas
-                        val metadata = BackupMetadata(
-                            fileName = file.name,
-                            filePath = file.absolutePath,
-                            createdAt = file.lastModified(),
-                            fileSize = file.length(),
-                            animalCount = 0,
-                            foodCount = 8846, // Valeur approximative basée sur les logs
-                            equationCount = 24,
-                            conseilCount = 1,
-                            recipeCount = 1,
-                            rationCount = 0
-                        )
-                        
-                        // Sauvegarder les métadonnées pour éviter de les recréer à chaque fois
-                        try {
-                            val metadataFile = File(file.absolutePath.replace(BACKUP_EXTENSION, "_metadata.json"))
-                            val metadataJson = json.encodeToString(metadata)
-                            metadataFile.writeText(metadataJson)
-                        } catch (e: Exception) {
-                            println("Erreur lors de la création des métadonnées pour ${file.name}: ${e.message}")
-                        }
-                        
-                        metadata
+            val backupDirectory = fileService.getBackupDirectory()
+            val backupFiles =
+                    fileService.listFiles(backupDirectory).filter { file ->
+                        file.isFile() &&
+                                (file.name.startsWith(BACKUP_PREFIX) ||
+                                        file.name.startsWith(LONG_TERM_PREFIX)) &&
+                                file.name.endsWith(BACKUP_EXTENSION) &&
+                                !file.name.contains(
+                                        "_metadata"
+                                ) // Exclure les fichiers de métadonnées
                     }
-                } catch (e: Exception) {
-                    println("Erreur lors de la lecture des métadonnées pour ${file.name}: ${e.message}")
-                    null
-                }
-            }.sortedByDescending { it.createdAt }
+
+            backupFiles
+                    .mapNotNull { file ->
+                        val isLongTerm = file.name.startsWith(LONG_TERM_PREFIX)
+                        try {
+                            val metadataFile =
+                                    PlatformFile.create(
+                                            file.absolutePath.replace(
+                                                    BACKUP_EXTENSION,
+                                                    "_metadata.json"
+                                            )
+                                    )
+                            if (fileService.fileExists(metadataFile)) {
+                                val metadataJson =
+                                        fileService.readText(metadataFile).getOrNull() ?: ""
+                                val loaded = json.decodeFromString<BackupMetadata>(metadataJson)
+                                loaded.copy(filePath = buildBackupFilePath(loaded.fileName), isLongTerm = isLongTerm)
+                            } else {
+                                val envelope = json.decodeFromString<ApiEnvelope>(fileService.readText(file).getOrThrow())
+                                val metadata = BackupMetadata(
+                                    fileName = file.name,
+                                    filePath = file.absolutePath,
+                                    createdAt = file.lastModified,
+                                    fileSize = file.length,
+                                    animalCount = envelope.animals.size,
+                                    foodCount = envelope.foods.size,
+                                    equationCount = envelope.equations.size,
+                                    conseilCount = envelope.conseils.size,
+                                    recipeCount = envelope.recipes.size,
+                                    rationCount = envelope.rations.size,
+                                    isLongTerm = isLongTerm
+                                )
+
+                                // Sauvegarder les métadonnées pour éviter de les recréer à chaque
+                                // fois
+                                try {
+                                    val createdMetadataFile =
+                                            PlatformFile.create(
+                                                    file.absolutePath.replace(
+                                                            BACKUP_EXTENSION,
+                                                            "_metadata.json"
+                                                    )
+                                            )
+                                    val metadataJson = json.encodeToString(metadata)
+                                    fileService.writeText(createdMetadataFile, metadataJson)
+                                } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
+                                    if (e is CancellationException) throw e
+                                }
+
+                                metadata
+                            }
+                        } catch (e: Exception) {
+                            e.rethrowIfCancellation()
+                            if (e is CancellationException) throw e
+                            null
+                        }
+                    }
+                    .sortedByDescending { it.createdAt }
         } catch (e: Exception) {
-            println("Erreur lors de la récupération des sauvegardes: ${e.message}")
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
             emptyList()
         }
     }
-    
-    /**
-     * Restaurer une sauvegarde
-     */
-    suspend fun restoreBackup(metadata: BackupMetadata): Result<fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportCounts> {
-        return try {
-            val file = File(metadata.filePath)
-            if (!file.exists()) {
-                return Result.failure(Exception("Fichier de sauvegarde introuvable: ${metadata.filePath}"))
+
+    /** Restaurer une sauvegarde */
+    suspend fun restoreBackup(
+            metadata: BackupMetadata
+    ): Result<fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportCounts> = operationMutex.withLock {
+        try {
+            val currentPath = buildBackupFilePath(metadata.fileName)
+            val file = PlatformFile.create(currentPath)
+            if (!fileService.fileExists(file)) {
+                error("Fichier de sauvegarde introuvable: ${file.absolutePath}")
             }
 
-            val jsonData = file.readText()
-            // importAll retourne ImportCounts
-            val importCounts = exportImportRepository.importAll(jsonData)
-            Result.success(importCounts)
+            // Parse before changing data or creating a recovery backup.
+            val envelope = json.decodeFromString<ApiEnvelope>(fileService.readText(file).getOrThrow())
+            val recovery = createBackupLocked(rotate = false).getOrThrow()
+            try {
+                val importCounts = exportImportRepository.importAll(envelope)
+                check(importCounts.errorCount == 0) { "${importCounts.errorCount} erreur(s) d'import" }
+                Result.success(importCounts)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                Result.failure(IllegalStateException(
+                    "Restauration incomplète : ${e.message}. Sauvegarde préalable conservée : ${recovery.fileName}", e
+                ))
+            }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
-    
-    /**
-     * Supprimer une sauvegarde
-     */
-    fun deleteBackup(metadata: BackupMetadata): Result<Unit> {
+
+    /** Supprimer une sauvegarde */
+    suspend fun deleteBackup(metadata: BackupMetadata): Result<Unit> {
         return try {
-            val file = File(metadata.filePath)
-            val metadataFile = File(metadata.filePath.replace(BACKUP_EXTENSION, "_metadata.json"))
-            
-            if (file.exists()) {
-                file.delete()
+            val currentBackupPath = buildBackupFilePath(metadata.fileName)
+            val file = PlatformFile.create(currentBackupPath)
+            val metadataFile =
+                    PlatformFile.create(
+                            currentBackupPath.replace(BACKUP_EXTENSION, "_metadata.json")
+                    )
+
+            if (fileService.fileExists(file)) {
+                fileService.deleteFile(file).getOrThrow()
             }
-            if (metadataFile.exists()) {
-                metadataFile.delete()
+            if (fileService.fileExists(metadataFile)) {
+                fileService.deleteFile(metadataFile).getOrThrow()
             }
-            
+
             Result.success(Unit)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            if (e is CancellationException) throw e
             Result.failure(e)
         }
     }
-    
-    /**
-     * Nettoyer le service
-     */
+
+    /** Nettoyer le service */
     fun cleanup() {
         stopAutomaticBackup()
         scope.cancel()

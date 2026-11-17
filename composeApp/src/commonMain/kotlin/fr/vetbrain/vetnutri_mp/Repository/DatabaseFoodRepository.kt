@@ -1,32 +1,53 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefDao
+import fr.vetbrain.vetnutri_mp.DataBase.AlimentBiblioRefEntity
+import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
+import fr.vetbrain.vetnutri_mp.DataBase.CustomNutrientDao
+import fr.vetbrain.vetnutri_mp.DataBase.CustomNutrientEntity
 import fr.vetbrain.vetnutri_mp.DataBase.FoodDao
 import fr.vetbrain.vetnutri_mp.DataBase.FoodEntity
+import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toDomain
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEv
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toAlimentEvLight
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toNutrientValueEntities
+import fr.vetbrain.vetnutri_mp.DataBase.EnergyPerSpeciesDao
+import fr.vetbrain.vetnutri_mp.DataBase.EnergyPerSpeciesEntity
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueDao
 import fr.vetbrain.vetnutri_mp.DataBase.NutrientValueEntity
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
+import fr.vetbrain.vetnutri_mp.Enumer.MainNutrientEnum
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
+import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.LruMap
 import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -36,34 +57,211 @@ import kotlinx.serialization.json.Json
  */
 class DatabaseFoodRepository(
         private val foodDao: FoodDao,
-        private val nutrientValueDao: NutrientValueDao?
+        private val nutrientValueDao: NutrientValueDao?,
+        private val customNutrientDao: CustomNutrientDao? = null,
+        private val alimentBiblioRefDao: AlimentBiblioRefDao? = null,
+        private val biblioRefDao: BiblioRefDao? = null,
+        private val energyPerSpeciesDao: EnergyPerSpeciesDao? = null
 ) : FoodRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
     // Flow réactif pour notifier les changements
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    // Portée de vie de l'application (singleton d'AppContainer) ; travail en IO,
+    // un échec isolé ne doit pas annuler les rafraîchissements suivants.
+    private val coroutineScope = CoroutineScope(SupervisorJob() + AppDispatchers.IO)
 
-    // Cache en mémoire pour les aliments
+    // Cache en mémoire pour les aliments avec métadonnées améliorées
     private var cachedFoods: List<AlimentEv>? = null
     private var lastCacheTime: Long = 0
     private val cacheValidityDuration = 5 * 60 * 1000L // 5 minutes
 
-    // Mode batch pour désactiver les refresh coûteux à chaque insert/update
-    // KMP: éviter @Volatile en commonMain
-    private var isBatchMode: Boolean = false
+    // Mutex pour protéger cachedFoods/lastCacheTime contre le thundering herd
+    private val cacheMutex = Mutex()
+
+    // Mode batch — compteur atomique KMP-safe (MutableStateFlow.update = CAS)
+    private val batchModeCounter = MutableStateFlow(0)
+
+    init {
+        coroutineScope.launch { loadCustomNutrientsFromDb() }
+    }
+
+
+    // Cache LRU pour les recherches (max 50 entrées, éviction par accès)
+    private val maxSearchCacheEntries = 50
+    private val searchCacheMutex = Mutex()
+    private val searchCache = LruMap<String, List<AlimentEv>>(maxSearchCacheEntries) { evictedKey ->
+        searchCacheTime.remove(evictedKey)
+    }
+    private val searchCacheTime = mutableMapOf<String, Long>()
     fun beginBatch() {
-        isBatchMode = true
+        batchModeCounter.update { it + 1 }
     }
     fun endBatch() {
-        isBatchMode = false
-        coroutineScope.launch { refreshFoodsFlow() }
+        batchModeCounter.update { it - 1 }
+        if (batchModeCounter.value == 0) coroutineScope.launch { refreshFoodsFlow() }
     }
 
     /** Vide le cache en mémoire pour forcer un rechargement des données */
-    fun clearCache() {
-        cachedFoods = null
-        lastCacheTime = 0
+    suspend fun clearCache() {
+        cacheMutex.withLock {
+            cachedFoods = null
+            lastCacheTime = 0
+        }
+        searchCacheMutex.withLock {
+            searchCache.clear()
+            searchCacheTime.clear()
+        }
+    }
+
+    private suspend fun loadCustomNutrientsFromDb() {
+        try {
+            customNutrientDao?.getAll()?.forEach { entity ->
+                val ue = try { UnitEnum.valueOf(entity.ueCode) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); UnitEnum.BUg }
+                val category = try { MainNutrientEnum.valueOf(entity.categoryCode) } catch (ignored: Exception) { ignored.rethrowIfCancellation(); MainNutrientEnum.OTHER }
+                val nutrient = CustomNutrient(
+                    displayName = entity.displayName,
+                    label = entity.label,
+                    unite = entity.unite,
+                    ue = ue,
+                    category = category
+                )
+                CustomNutrientRegistry.register(nutrient)
+            }
+        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+    }
+
+    private suspend fun saveCustomNutrientsFromFood(food: fr.vetbrain.vetnutri_mp.Data.AlimentEv) {
+        val dao = customNutrientDao ?: return
+        val entities = food.valMap.keys
+            .filterIsInstance<CustomNutrient>()
+            .map { n ->
+                CustomNutrientEntity(
+                    label = n.label,
+                    displayName = n.nameToString(),
+                    unite = n.unite,
+                    ueCode = n.ue.name,
+                    categoryCode = n.getMNE().name
+                )
+            }
+        if (entities.isNotEmpty()) dao.insertOrReplaceAll(entities)
+    }
+
+
+    private suspend fun pruneSearchCacheIfNeeded() {
+        // L'éviction par taille est gérée par LruMap ; on nettoie aussi les entrées expirées.
+        val now = Clock.System.now().toEpochMilliseconds()
+        searchCacheMutex.withLock {
+            val expired = searchCacheTime.entries
+                .filter { now - it.value > cacheValidityDuration }
+                .map { it.key }
+            expired.forEach { key ->
+                searchCache.remove(key)
+                searchCacheTime.remove(key)
+            }
+        }
+    }
+
+    private fun parseDateToInstantOrNull(rawDate: String?): Instant? {
+        val date = rawDate?.trim().orEmpty()
+        if (date.isEmpty()) return null
+        return try {
+            Instant.parse(date)
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
+            val datePart = if (date.length >= 10) date.substring(0, 10) else date
+            try {
+                Instant.parse("${LocalDate.parse(datePart)}T00:00:00Z")
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
+                null
+            }
+        }
+    }
+
+    private fun shouldUpdateFood(
+            existing: FoodEntity,
+            incomingDate: String?,
+            importOnlyIfNewer: Boolean
+    ): Boolean {
+        if (!importOnlyIfNewer) return true
+        val incomingInstant = parseDateToInstantOrNull(incomingDate)
+        val existingInstant = parseDateToInstantOrNull(existing.lastUpdateDate)
+        if (incomingInstant == null) return false
+        if (existingInstant == null) return true
+        return incomingInstant > existingInstant
+    }
+
+    /**
+     * Recherche d'aliments avec cache intelligent
+     */
+    suspend fun searchFoodsOptimized(
+        searchQuery: String = "",
+        espece: Espece? = null,
+        groupAlim: GroupAlim? = null,
+        forceRefresh: Boolean = false
+    ): List<AlimentEv> {
+        val cacheKey = "${searchQuery}:${espece}:${groupAlim}"
+
+        // Vérifier le cache si pas de refresh forcé
+        if (!forceRefresh) {
+            val cached = searchCacheMutex.withLock {
+                val cachedTime = searchCacheTime[cacheKey]
+                if (cachedTime != null) {
+                    val now = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+                    if (now - cachedTime < cacheValidityDuration) {
+                        searchCache[cacheKey]
+                    } else {
+                        searchCache.remove(cacheKey)
+                        searchCacheTime.remove(cacheKey)
+                        null
+                    }
+                } else null
+            }
+            if (cached != null) return cached
+        }
+
+        val normalizedQuery = searchQuery.trim()
+        val foodEntities =
+                if (normalizedQuery.isBlank() && groupAlim == null && espece == null) {
+                        foodDao.findAll()
+                } else {
+                        foodDao.searchFoodsFiltered(
+                                query = normalizedQuery,
+                                groupAlim = groupAlim?.ordinal,
+                                especeText = espece?.name
+                        )
+                }
+
+        val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
+            if (energyPerSpeciesDao != null && foodEntities.isNotEmpty()) {
+                try {
+                    val uuids = foodEntities.map { it.uuid }
+                    uuids.chunked(500)
+                        .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
+                        .groupBy { it.refAliment }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
+            } else emptyMap()
+
+        val filteredFoods =
+                foodEntities
+                        .map { it.toAlimentEv(energyPerSpecies = energyByFood[it.uuid] ?: emptyList()) }
+                        .filter { aliment ->
+                                // Garde-fou pour conserver le comportement métier
+                                val especeMatches =
+                                        espece == null || aliment.especes.contains(espece.name)
+                                val groupMatches = groupAlim == null || aliment.group == groupAlim
+                                especeMatches && groupMatches
+                        }
+
+        // Mettre en cache le résultat
+        searchCacheMutex.withLock {
+            searchCache[cacheKey] = filteredFoods
+            searchCacheTime[cacheKey] = kotlinx.datetime.Clock.System.now().toEpochMilliseconds()
+        }
+        pruneSearchCacheIfNeeded()
+
+        return filteredFoods
     }
 
     /**
@@ -71,7 +269,11 @@ class DatabaseFoodRepository(
      * par Set d'UUID, insert/update par lots, suppression groupée des nutriments puis insertion
      * groupée.
      */
-    suspend fun importFoodsDomain(aliments: List<AlimentEv>): FoodImportResult {
+    suspend fun importFoodsDomain(
+            aliments: List<AlimentEv>,
+            mergeNutrients: Boolean = false,
+            importOnlyIfNewer: Boolean = false
+    ): FoodImportResult {
         return withContext(AppDispatchers.IO) {
             var importCount: Int = 0
             var updateCount: Int = 0
@@ -79,107 +281,198 @@ class DatabaseFoodRepository(
             val nonResolvedNutrients: MutableMap<String, Int> = mutableMapOf()
             try {
                 beginBatch()
+                
                 val existingFoodUUIDs: Set<String> =
                         try {
                             foodDao.getAllFoodIds().toSet()
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             emptySet()
                         }
-                val newEntities: MutableList<FoodEntity> = mutableListOf()
-                val updateEntities: MutableList<FoodEntity> = mutableListOf()
-                val updateIds: MutableList<String> = mutableListOf()
-                val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+                val batchSize = 200
+                aliments.chunked(batchSize).forEach { batch ->
+                    val newEntities: MutableList<FoodEntity> = mutableListOf()
+                    val updateEntities: MutableList<FoodEntity> = mutableListOf()
+                    val updateIds: MutableList<String> = mutableListOf()
+                    val batchNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+                    val batchEnergyPerSpecies: MutableList<EnergyPerSpeciesEntity> = mutableListOf()
+                    val batchBiblioJunctions: MutableList<AlimentBiblioRefEntity> = mutableListOf()
 
-                // Pré-traiter insert vs update
-                aliments.forEach { aliment ->
-                    try {
-                        if (aliment.uuid.isBlank()) {
-                            errorCount++
-                            return@forEach
-                        }
-                        val belongs: Boolean = existingFoodUUIDs.contains(aliment.uuid)
-                        if (!belongs) {
-                            val entity: FoodEntity = aliment.toFoodEntity().copy(RefRation = null)
-                            newEntities.add(entity)
-                            // Générer les nutriments depuis la map domaine
-                            allNutrientValues.addAll(
-                                    aliment.valMap.toNutrientValueEntities(aliment.uuid)
-                            )
-                            importCount++
-                        } else {
-                            updateIds.add(aliment.uuid)
-                        }
-                    } catch (_: Exception) {
-                        errorCount++
-                    }
-                }
-
-                // Préparer les updates en se basant sur l'état existant
-                if (updateIds.isNotEmpty()) {
-                    val existants: Map<String, FoodEntity> =
-                            try {
-                                foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
-                            } catch (_: Exception) {
-                                emptyMap()
-                            }
-                    aliments.forEach { aliment ->
-                        val id: String = aliment.uuid
-                        if (existants.containsKey(id)) {
-                            try {
-                                val existing: FoodEntity = existants[id]!!
-                                val updated: FoodEntity =
-                                        aliment.toFoodEntity().copy(RefRation = existing.RefRation)
-                                updateEntities.add(updated)
-                                allNutrientValues.addAll(
-                                        aliment.valMap.toNutrientValueEntities(aliment.uuid)
-                                )
-                                updateCount++
-                            } catch (_: Exception) {
+                    // Pré-traiter insert vs update (batch)
+                    batch.forEach { aliment ->
+                        try {
+                            if (aliment.uuid.isBlank()) {
                                 errorCount++
+                                return@forEach
+                            }
+                            val belongs: Boolean = existingFoodUUIDs.contains(aliment.uuid)
+                            if (!belongs) {
+                                val entity: FoodEntity =
+                                        aliment.toFoodEntity().copy(RefRation = null)
+                                newEntities.add(entity)
+                                val nutrientValues =
+                                        aliment.valMap.toNutrientValueEntities(aliment.uuid)
+                                batchNutrientValues.addAll(nutrientValues)
+                                aliment.energieParEspece.forEach { (especeNom, v) ->
+                                    if (v > 0.0) batchEnergyPerSpecies.add(EnergyPerSpeciesEntity(aliment.uuid, especeNom, v))
+                                }
+                                aliment.biblioRefs.forEach { ref ->
+                                    batchBiblioJunctions.add(AlimentBiblioRefEntity(alimentUuid = aliment.uuid, biblioRefUuid = ref.uuid))
+                                }
+                            } else {
+                                updateIds.add(aliment.uuid)
+                            }
+                        } catch (e: Exception) {
+                            e.rethrowIfCancellation()
+                            errorCount++
+                        }
+                    }
+
+                    // Préparer les updates en se basant sur l'état existant (batch)
+                    if (updateIds.isNotEmpty()) {
+                        val existants: Map<String, FoodEntity> =
+                                try {
+                                    foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
+                                } catch (ignored: Exception) {
+                                    ignored.rethrowIfCancellation()
+                                    emptyMap()
+                                }
+                        batch.forEach { aliment ->
+                            val id: String = aliment.uuid
+                            if (existants.containsKey(id)) {
+                                try {
+                                    val existing: FoodEntity = existants[id]!!
+                                    if (!shouldUpdateFood(
+                                                    existing,
+                                                    aliment.lastUpdateDate,
+                                                    importOnlyIfNewer
+                                            )) {
+                                        return@forEach
+                                    }
+                                    val updated: FoodEntity =
+                                            aliment.toFoodEntity()
+                                                    .copy(
+                                                            RefRation = existing.RefRation,
+                                                            deprecated =
+                                                                    if (aliment.deprecated) 1
+                                                                    else existing.deprecated
+                                                    )
+                                    updateEntities.add(updated)
+                                    batchNutrientValues.addAll(
+                                            aliment.valMap.toNutrientValueEntities(aliment.uuid)
+                                    )
+                                    aliment.energieParEspece.forEach { (especeNom, v) ->
+                                        if (v > 0.0) batchEnergyPerSpecies.add(EnergyPerSpeciesEntity(aliment.uuid, especeNom, v))
+                                    }
+                                    aliment.biblioRefs.forEach { ref ->
+                                        batchBiblioJunctions.add(AlimentBiblioRefEntity(alimentUuid = aliment.uuid, biblioRefUuid = ref.uuid))
+                                    }
+                                } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
+                                    errorCount++
+                                }
                             }
                         }
                     }
-                }
 
-                // Inserts/updates en lots
-                if (newEntities.isNotEmpty()) {
-                    try {
-                        newEntities.chunked(500).forEach { batch -> foodDao.insertFoods(batch) }
-                    } catch (_: Exception) {
-                        errorCount += newEntities.size
-                    }
-                }
-                if (updateEntities.isNotEmpty()) {
-                    try {
-                        updateEntities.chunked(500).forEach { batch -> foodDao.updateFoods(batch) }
-                    } catch (_: Exception) {
-                        errorCount += updateEntities.size
-                    }
-                }
-
-                // Nettoyer et réinsérer les nutriments pour tous les aliments traités
-                val allIds: List<String> = buildList {
-                    addAll(newEntities.map { it.uuid })
-                    addAll(updateEntities.map { it.uuid })
-                }
-                if (allIds.isNotEmpty()) {
-                    try {
-                        allIds.chunked(500).forEach { part ->
-                            nutrientValueDao?.deleteAllForAliments(part)
-                        }
-                    } catch (_: Exception) {}
-                }
-                if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
-                    try {
-                        allNutrientValues.chunked(1000).forEach { chunk ->
-                            nutrientValueDao.insertNutrientValues(chunk)
-                        }
-                    } catch (_: Exception) {
-                        // Fallback insertion élément par élément
-                        allNutrientValues.forEach { nv ->
+                    // Inserts/updates en lots (batch)
+                    if (newEntities.isNotEmpty()) {
+                        newEntities.chunked(500).forEach { part ->
                             try {
-                                nutrientValueDao.insertNutrientValues(listOf(nv))
-                            } catch (_: Exception) {}
+                                foodDao.insertFoods(part)
+                                importCount += part.size
+                            } catch (e: Exception) {
+                                e.rethrowIfCancellation()
+                                part.forEach { entity ->
+                                    try {
+                                        foodDao.insertFoods(listOf(entity))
+                                        importCount++
+                                    } catch (itemError: Exception) {
+                                        itemError.rethrowIfCancellation()
+                                        errorCount++
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (updateEntities.isNotEmpty()) {
+                        updateEntities.chunked(500).forEach { part ->
+                            try {
+                                foodDao.updateFoods(part)
+                                updateCount += part.size
+                            } catch (e: Exception) {
+                                e.rethrowIfCancellation()
+                                part.forEach { entity ->
+                                    try {
+                                        foodDao.updateFoods(listOf(entity))
+                                        updateCount++
+                                    } catch (itemError: Exception) {
+                                        itemError.rethrowIfCancellation()
+                                        errorCount++
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Nettoyer et réinsérer les nutriments (batch)
+                    if (batchNutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                        val allIds: List<String> = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateEntities.map { it.uuid })
+                        }
+
+                        if (!mergeNutrients && allIds.isNotEmpty()) {
+                            try {
+                                allIds.chunked(500).forEach { part ->
+                                    nutrientValueDao.deleteAllForAliments(part)
+                                }
+                            } catch (e: Exception) {
+                                e.rethrowIfCancellation()
+                                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
+                            }
+                        }
+                        try {
+                            batchNutrientValues.chunked(1000).forEach { chunk ->
+                                nutrientValueDao.insertNutrientValues(chunk)
+                            }
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
+                            batchNutrientValues.forEach { nv ->
+                                try {
+                                    nutrientValueDao.insertNutrientValues(listOf(nv))
+                                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+                            }
+                        }
+                    }
+                    // Énergie par espèce (batch)
+                    if (batchEnergyPerSpecies.isNotEmpty() && energyPerSpeciesDao != null) {
+                        val allIds: List<String> = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateEntities.map { it.uuid })
+                        }
+                        if (!mergeNutrients) {
+                            try { allIds.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+                        }
+                        try {
+                            batchEnergyPerSpecies.chunked(1000).forEach { chunk ->
+                                energyPerSpeciesDao.insert(chunk)
+                            }
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+                    }
+                    // Bibliographie liée aux aliments (batch)
+                    if (alimentBiblioRefDao != null) {
+                        val allIds: List<String> = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateEntities.map { it.uuid })
+                        }
+                        if (!mergeNutrients && allIds.isNotEmpty()) {
+                            try { allIds.forEach { alimentBiblioRefDao.deleteForAliment(it) } } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+                        }
+                        if (batchBiblioJunctions.isNotEmpty()) {
+                            try {
+                                alimentBiblioRefDao.insertAll(batchBiblioJunctions)
+                            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                         }
                     }
                 }
@@ -198,7 +491,7 @@ class DatabaseFoodRepository(
                     )
                 }
             }
-            return@withContext FoodImportResult(
+            val result = FoodImportResult(
                     importedCount = importCount,
                     updatedCount = updateCount,
                     errorCount = errorCount,
@@ -206,25 +499,25 @@ class DatabaseFoodRepository(
                     totalCount =
                             try {
                                 foodDao.getAllFoods().size
-                            } catch (_: Exception) {
+                            } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 0
                             },
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
                     nonResolvedNutrients = nonResolvedNutrients.keys.toList()
             )
+            return@withContext result
         }
     }
 
     init {
         // Initialiser le flow au démarrage
-        println("DEBUG: Initialisation du repository")
         coroutineScope.launch {
             try {
-                val initialFoods = getAllFoodsFresh()
+                val initialFoods = getAllFoodsLightAsEv()
                 _foodsFlow.value = initialFoods
-                println("DEBUG: Repository initialisé avec ${initialFoods.size} aliments")
             } catch (e: Exception) {
-                println("DEBUG: Erreur lors de l'initialisation du repository: ${e.message}")
+                e.rethrowIfCancellation()
                 _foodsFlow.value = emptyList()
             }
         }
@@ -233,14 +526,11 @@ class DatabaseFoodRepository(
     /** Met à jour le Flow avec la liste actuelle des aliments */
     private suspend fun refreshFoodsFlow() {
         try {
-            println("DEBUG: refreshFoodsFlow() appelé")
-            val foods = getAllFoodsFresh()
-            println("DEBUG: refreshFoodsFlow() - ${foods.size} aliments récupérés")
+            val foods = getAllFoodsLightAsEv()
             _foodsFlow.value = foods
-            println("DEBUG: refreshFoodsFlow() - Flow mis à jour")
         } catch (e: Exception) {
-            println("DEBUG: Erreur dans refreshFoodsFlow(): ${e.message}")
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
         }
     }
 
@@ -250,26 +540,93 @@ class DatabaseFoodRepository(
      */
     private suspend fun getAllFoodsFresh(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
-            // Récupérer tous les aliments de la base de données
             val foodEntities = foodDao.getAllFoods()
+            if (foodEntities.isEmpty()) return@withContext emptyList()
 
-            // Transformer chaque entité en modèle de domaine avec ses valeurs nutritionnelles
-            val result =
-                    foodEntities.map { foodEntity ->
-                        val nutrientValues =
-                                if (nutrientValueDao != null) {
-                                    nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                                } else {
-                                    emptyList()
-                                }
-                        foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+            // Requête batch unique au lieu de N requêtes individuelles
+            val nutrientsByFood: Map<String, List<NutrientValueEntity>> =
+                if (nutrientValueDao != null) {
+                    try {
+                        val uuids = foodEntities.map { it.uuid }
+                        // Découper en lots de 500 pour éviter les limites SQL IN (...)
+                        uuids.chunked(500)
+                            .flatMap { chunk -> nutrientValueDao.getNutrientValuesForAliments(chunk) }
+                            .groupBy { it.refAliment }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
+                } else emptyMap()
+
+            val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
+                if (energyPerSpeciesDao != null) {
+                    try {
+                        val uuids = foodEntities.map { it.uuid }
+                        uuids.chunked(500)
+                            .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
+                            .groupBy { it.refAliment }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
+                } else emptyMap()
+
+            val biblioRefsByFood: Map<String, List<fr.vetbrain.vetnutri_mp.Data.BiblioRef>> =
+                if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                    try {
+                        val uuids = foodEntities.map { it.uuid }
+                        val junctions = uuids.chunked(500)
+                            .flatMap { chunk ->
+                                alimentBiblioRefDao.getBiblioRefsForAliments(chunk)
+                            }
+                        val refsByUuid = junctions
+                            .map { it.biblioRefUuid }
+                            .distinct()
+                            .chunked(500)
+                            .flatMap { chunk -> biblioRefDao.getBiblioRefsByIds(chunk) }
+                            .associateBy { it.uuid }
+                        junctions.groupBy(
+                            keySelector = { it.alimentUuid },
+                            valueTransform = { refsByUuid[it.biblioRefUuid]?.toDomain() }
+                        ).mapValues { (_, refs) -> refs.filterNotNull() }
+                    } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
+                        emptyMap()
                     }
+                } else emptyMap()
 
-            // Mettre à jour le cache avec les données fraîches
+            val result = foodEntities.map { foodEntity ->
+                foodEntity.toAlimentEv(
+                    nutrientValues = nutrientsByFood[foodEntity.uuid] ?: emptyList(),
+                    biblioRefs = biblioRefsByFood[foodEntity.uuid] ?: emptyList(),
+                    energyPerSpecies = energyByFood[foodEntity.uuid] ?: emptyList()
+                )
+            }
+
             val currentTime = Clock.System.now().toEpochMilliseconds()
             cachedFoods = result
             lastCacheTime = currentTime
+            return@withContext result
+        }
+    }
 
+    /**
+     * Récupère tous les aliments en version légère (sans valeurs nutritionnelles),
+     * pour éviter les pics mémoire lors du chargement initial.
+     */
+    private suspend fun getAllFoodsLightAsEv(): List<AlimentEv> {
+        return withContext(AppDispatchers.IO) {
+            val foodEntities = foodDao.getAllFoods()
+            val result = foodEntities.map { foodEntity ->
+                val light = foodEntity.toAlimentEvLight()
+                AlimentEv(
+                    uuid = light.uuid,
+                    nom = light.nom,
+                    brand = light.brand,
+                    group = light.group,
+                    typeAliment = light.typeAliment,
+                    gamme = light.gamme,
+                    deprecated = light.deprecated,
+                    dataB = light.dataB,
+                    especes = light.especes.toMutableList(),
+                    indicat = light.indicat.toMutableList(),
+                    valMap = mutableMapOf()
+                )
+            }
             return@withContext result
         }
     }
@@ -282,7 +639,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.insertFood(food.toFoodEntity()) }
         // Invalider le cache après insertion
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -295,7 +652,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.update(food.toFoodEntity()) }
         // Invalider le cache après mise à jour
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -308,7 +665,7 @@ class DatabaseFoodRepository(
         withContext(AppDispatchers.IO) { foodDao.delete(food.toFoodEntity()) }
         // Invalider le cache après suppression
         clearCache()
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -319,33 +676,21 @@ class DatabaseFoodRepository(
      */
     override suspend fun getAllFoods(): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
+            // Fast path sans verrou — évite toute contention quand le cache est chaud
+            val snapshot = cachedFoods
             val currentTime = Clock.System.now().toEpochMilliseconds()
-
-            // Vérifier si le cache est encore valide
-            if (cachedFoods != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
-                return@withContext cachedFoods!!
+            if (snapshot != null && (currentTime - lastCacheTime) < cacheValidityDuration) {
+                return@withContext snapshot
             }
-
-            // Récupérer tous les aliments de la base de données
-            val foodEntities = foodDao.getAllFoods()
-
-            // Transformer chaque entité en modèle de domaine avec ses valeurs nutritionnelles
-            val result =
-                    foodEntities.map { foodEntity ->
-                        val nutrientValues =
-                                if (nutrientValueDao != null) {
-                                    nutrientValueDao.getNutrientValues(foodEntity.uuid)
-                                } else {
-                                    emptyList()
-                                }
-                        foodEntity.toAlimentEv(nutrientValues = nutrientValues)
-                    }
-
-            // Mettre à jour le cache
-            cachedFoods = result
-            lastCacheTime = currentTime
-
-            return@withContext result
+            // Slow path — un seul appel DB même si plusieurs coroutines arrivent simultanément
+            cacheMutex.withLock {
+                val snapshotLocked = cachedFoods
+                val now = Clock.System.now().toEpochMilliseconds()
+                if (snapshotLocked != null && (now - lastCacheTime) < cacheValidityDuration) {
+                    return@withLock snapshotLocked
+                }
+                getAllFoodsFresh()
+            }
         }
     }
 
@@ -353,6 +698,14 @@ class DatabaseFoodRepository(
     suspend fun getAllFoodIds(): Set<String> {
         return withContext(AppDispatchers.IO) { foodDao.getAllFoodIds().toSet() }
     }
+
+    override suspend fun getFoodsCount(): Int =
+        withContext(AppDispatchers.IO) { foodDao.getFoodsCount() }
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        withContext(AppDispatchers.IO) {
+            nutrientValueDao?.getDistinctNutrientLabels() ?: emptyList()
+        }
 
     /**
      * Récupère une liste légère de tous les aliments sans les valeurs nutritionnelles. Cette
@@ -388,7 +741,18 @@ class DatabaseFoodRepository(
                     } else {
                         emptyList()
                     }
-            return@withContext food.toAlimentEv(nutrientValues = nutrientValues)
+            val biblioRefs = if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                try {
+                    alimentBiblioRefDao.getBiblioRefUuids(food.uuid)
+                        .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyList() }
+            } else emptyList()
+            val energyPerSpecies = energyPerSpeciesDao?.getForAliment(food.uuid) ?: emptyList()
+            return@withContext food.toAlimentEv(
+                nutrientValues = nutrientValues,
+                biblioRefs = biblioRefs,
+                energyPerSpecies = energyPerSpecies
+            )
         }
     }
 
@@ -397,7 +761,6 @@ class DatabaseFoodRepository(
      * @return Un Flow émettant la liste des aliments à chaque modification
      */
     override fun observeAllFoods(): Flow<List<AlimentEv>> {
-        println("DEBUG: observeAllFoods() appelé - Flow créé")
         return _foodsFlow.asStateFlow()
     }
 
@@ -410,7 +773,11 @@ class DatabaseFoodRepository(
     // Description: Méthode critique pour l'importation des aliments depuis un format JSON.
     // Cette zone de code gère l'analyse et l'insertion des aliments dans la base de données,
     // incluant la vérification des aliments existants et la conversion des données.
-    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
+    override suspend fun importFoods(
+            foods: List<AlimentEvJson>,
+            mergeNutrients: Boolean,
+            importOnlyIfNewer: Boolean
+    ): FoodImportResult {
         return withContext(AppDispatchers.IO) {
             var importCount: Int = 0
             var updateCount: Int = 0
@@ -422,13 +789,16 @@ class DatabaseFoodRepository(
                 val existingFoodUUIDs: Set<String> =
                         try {
                             foodDao.getAllFoodIds().toSet()
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             emptySet()
                         }
                 val newEntities: MutableList<FoodEntity> = mutableListOf()
                 val updateEntities: MutableList<FoodEntity> = mutableListOf()
+                val updateCandidateIds: MutableList<String> = mutableListOf()
                 val updateIds: MutableList<String> = mutableListOf()
                 val allNutrientValues: MutableList<NutrientValueEntity> = mutableListOf()
+                val allEnergyPerSpecies: MutableList<EnergyPerSpeciesEntity> = mutableListOf()
                 fun nettoyerChaineBruteBrackets(valeur: String): String {
                     return valeur.replace("[", "").replace("]", "").replace("\"", "").trim()
                 }
@@ -438,7 +808,8 @@ class DatabaseFoodRepository(
                             val cleanedEspece: String = nettoyerChaineBruteBrackets(especeStr)
                             val espece: Espece? = Espece.getFromString(cleanedEspece)
                             if (espece != null) espece.name else cleanedEspece
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             especeStr
                         }
                     }
@@ -449,7 +820,8 @@ class DatabaseFoodRepository(
                             val cleanedIndic: String = nettoyerChaineBruteBrackets(indicStr)
                             val indication: AlimIndic? = AlimIndic.getFromString(cleanedIndic)
                             indication?.name ?: cleanedIndic
-                        } catch (_: Exception) {
+                        } catch (ignored: Exception) {
+                            ignored.rethrowIfCancellation()
                             indicStr
                         }
                     }
@@ -465,7 +837,8 @@ class DatabaseFoodRepository(
                             } -> raw.uppercase()
                             else -> fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO.name
                         }
-                    } catch (_: Exception) {
+                    } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
                         fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO.name
                     }
                 }
@@ -572,7 +945,7 @@ class DatabaseFoodRepository(
                                         )
                                 )
                             }
-                        } catch (_: Exception) {}
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                     }
                     return result
                 }
@@ -599,7 +972,8 @@ class DatabaseFoodRepository(
                                             groupAlim =
                                                     try {
                                                         GroupAlim.valueOf(food.group ?: "").ordinal
-                                                    } catch (_: Exception) {
+                                                    } catch (ignored: Exception) {
+                                                        ignored.rethrowIfCancellation()
                                                         0
                                                     },
                                             typeAlim =
@@ -626,41 +1000,51 @@ class DatabaseFoodRepository(
                                                     )
                                                             1
                                                     else 0,
-                                            deprecated = if (food.deprecated == true) 1 else 0,
+                                            deprecated = if (food.deprecated) 1 else 0,
                                             DataB = food.DataB ?: "",
                                             RefRation = null,
                                             RefAlimUnif = null,
                                             name = food.nom ?: "",
                                             quantite = 0.0,
+                                            lastUpdateDate = food.dateMaj,
+                                            imageRef = food.imageRef,
                                             especesJson = especesJson,
                                             indicationsJson = indicationsJson
                                     )
                             newEntities.add(entity)
                             allNutrientValues.addAll(genererNutrientValues(food))
+                            food.energieParEspece.forEach { (k, v) ->
+                                if (v > 0.0) allEnergyPerSpecies.add(EnergyPerSpeciesEntity(food.UUID, k, v))
+                            }
                             importCount++
                         } else {
-                            updateIds.add(food.UUID)
+                            updateCandidateIds.add(food.UUID)
                             // On résoudra RefRation et les champs conservés après avoir fetch tous
                             // les existants
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         errorCount++
                         importErrors.add(
                                 "Erreur générale lors du prétraitement de l'aliment ${food.nom} (${food.UUID}): ${e.message}"
                         )
                     }
                 }
-                if (updateIds.isNotEmpty()) {
+                if (updateCandidateIds.isNotEmpty()) {
                     val existants: Map<String, FoodEntity> =
                             try {
-                                foodDao.getFoodsByIds(updateIds).associateBy { it.uuid }
-                            } catch (_: Exception) {
+                                foodDao.getFoodsByIds(updateCandidateIds).associateBy { it.uuid }
+                            } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 emptyMap()
                             }
                     foods.forEach { food ->
-                        if (food.UUID != null && existants.containsKey(food.UUID)) {
+                        if (existants.containsKey(food.UUID)) {
                             try {
                                 val existing: FoodEntity = existants[food.UUID]!!
+                                if (!shouldUpdateFood(existing, food.dateMaj, importOnlyIfNewer)) {
+                                    return@forEach
+                                }
                                 val especes: List<String> = convertirEspecesList(food.Especes)
                                 val indications: List<String> =
                                         convertirIndicationsList(food.indication)
@@ -681,7 +1065,8 @@ class DatabaseFoodRepository(
                                                         fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
                                                                 .name
                                             }
-                                        } catch (_: Exception) {
+                                        } catch (ignored: Exception) {
+                                            ignored.rethrowIfCancellation()
                                             existing.cont
                                                     ?: fr.vetbrain.vetnutri_mp.Enumer.ContEnum.NO
                                                             .name
@@ -710,8 +1095,13 @@ class DatabaseFoodRepository(
                                         )
                                 updateEntities.add(updated)
                                 allNutrientValues.addAll(genererNutrientValues(food))
+                                food.energieParEspece.forEach { (k, v) ->
+                                    if (v > 0.0) allEnergyPerSpecies.add(EnergyPerSpeciesEntity(food.UUID, k, v))
+                                }
                                 updateCount++
+                                updateIds.add(food.UUID)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 errorCount++
                                 importErrors.add(
                                         "Erreur lors de la préparation update ${food.nom} (${food.UUID}): ${e.message}"
@@ -724,6 +1114,7 @@ class DatabaseFoodRepository(
                     try {
                         newEntities.chunked(500).forEach { batch -> foodDao.insertFoods(batch) }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         errorCount += newEntities.size
                     }
                 }
@@ -731,31 +1122,49 @@ class DatabaseFoodRepository(
                     try {
                         updateEntities.chunked(500).forEach { batch -> foodDao.updateFoods(batch) }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         errorCount += updateEntities.size
                     }
                 }
-                if (updateIds.isNotEmpty()) {
-                    try {
-                        updateIds.chunked(500).forEach { part ->
-                            nutrientValueDao?.deleteAllForAliments(part)
-                        }
-                    } catch (_: Exception) {}
-                }
+                // Nettoyer et réinsérer les nutriments SEULEMENT si on a des données de nutriments à importer
                 if (allNutrientValues.isNotEmpty() && nutrientValueDao != null) {
+                    // Supprimer les nutriments existants SEULEMENT si on va les remplacer
+                    if (!mergeNutrients && updateIds.isNotEmpty()) {
+                        try {
+                            updateIds.chunked(500).forEach { part ->
+                                nutrientValueDao.deleteAllForAliments(part)
+                            }
+                        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+                    }
+                    // Insérer les nouveaux nutriments
                     try {
                         allNutrientValues.chunked(1000).forEach { chunk ->
                             nutrientValueDao.insertNutrientValues(chunk)
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Fallback insertion une par une
                         var ok: Int = 0
                         allNutrientValues.forEach { nv ->
                             try {
                                 nutrientValueDao.insertNutrientValues(listOf(nv))
                                 ok++
-                            } catch (_: Exception) {}
+                            } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                         }
                     }
+                }
+                // Énergie par espèce
+                if (allEnergyPerSpecies.isNotEmpty() && energyPerSpeciesDao != null) {
+                    if (!mergeNutrients) {
+                        val idsToClean = buildList {
+                            addAll(newEntities.map { it.uuid })
+                            addAll(updateIds)
+                        }
+                        try { idsToClean.forEach { energyPerSpeciesDao.deleteForAliment(it) } } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
+                    }
+                    try {
+                        allEnergyPerSpecies.chunked(1000).forEach { energyPerSpeciesDao.insert(it) }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${ignored.message}") }
                 }
             } finally {
                 endBatch()
@@ -768,7 +1177,8 @@ class DatabaseFoodRepository(
                     totalCount =
                             try {
                                 foodDao.getAllFoods().size
-                            } catch (_: Exception) {
+                            } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
                                 0
                             },
                     nonResolvedNutrientsCount = nonResolvedNutrients.size,
@@ -803,7 +1213,8 @@ class DatabaseFoodRepository(
                 return
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
             // Continuer malgré l'erreur pour tenter l'insertion
         }
 
@@ -840,7 +1251,8 @@ class DatabaseFoodRepository(
                                 )
                         )
                     } catch (e: Exception) {
-                        e.printStackTrace()
+                        e.rethrowIfCancellation()
+                        AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                     }
                 } else {
                     // Deuxième essai - traitements spéciaux pour certains nutriments connus
@@ -934,7 +1346,8 @@ class DatabaseFoodRepository(
                                     )
                             )
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            e.rethrowIfCancellation()
+                            AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                         }
                     } else {
                         nonResolvedCount++
@@ -943,7 +1356,8 @@ class DatabaseFoodRepository(
                     }
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
             }
         }
 
@@ -954,7 +1368,8 @@ class DatabaseFoodRepository(
                     nutrientValueDao.insertNutrientValues(nutrientValues)
                 } else {}
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
 
                 // Tenter d'insérer les valeurs une par une en cas d'erreur sur l'insertion en bloc
                 if (nutrientValueDao != null) {
@@ -966,7 +1381,7 @@ class DatabaseFoodRepository(
                             // au lieu de insertNutrientValue qui n'existe pas
                             nutrientValueDao.insertNutrientValues(listOf(nutrientValue))
                             successCount++
-                        } catch (innerE: Exception) {}
+                        } catch (innerE: Exception) { innerE.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${innerE.message}") }
                     }
                 }
             }
@@ -979,13 +1394,13 @@ class DatabaseFoodRepository(
      * @param food L'aliment à insérer
      */
     override suspend fun insertFood(food: AlimentEv) {
-        println("DEBUG: insertFood() appelé pour ${food.nom}")
         withContext(AppDispatchers.IO) {
             try {
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] insertFood start uuid=${food.uuid} " +
+                        "valMapCount=${food.valMap.size}")
                 // Convertir en FoodEntity et insérer
                 val foodEntity = food.toFoodEntity().copy(RefRation = null)
                 foodDao.insertFood(foodEntity)
-                println("DEBUG: Aliment inséré en base: ${foodEntity.nameDef}")
 
                 // Ajout d'un espèce par défaut "AUTRE" si la liste est vide pour éviter l'erreur de
                 // clé étrangère
@@ -1007,37 +1422,56 @@ class DatabaseFoodRepository(
 
                 // Traiter les valeurs nutritionnelles
                 val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] insertFood nutrientEntities uuid=${food.uuid} " +
+                        "count=${nutrientValues.size} " +
+                        "sample=${nutrientValues.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
                 if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
                     nutrientValueDao.insertNutrientValues(nutrientValues)
+                    val reloaded = nutrientValueDao.getNutrientValues(food.uuid)
+                    AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] insertFood DB check uuid=${food.uuid} " +
+                            "dbCount=${reloaded.size} " +
+                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
                 }
+                saveCustomNutrientsFromFood(food)
+
+                // Insérer les références bibliographiques associées
+                if (alimentBiblioRefDao != null && food.biblioRefs.isNotEmpty()) {
+                    val junctions = food.biblioRefs.map { ref ->
+                        AlimentBiblioRefEntity(alimentUuid = food.uuid, biblioRefUuid = ref.uuid)
+                    }
+                    alimentBiblioRefDao.insertAll(junctions)
+                }
+
+                // Insérer les valeurs d'énergie par espèce
+                if (energyPerSpeciesDao != null && food.energieParEspece.isNotEmpty()) {
+                    val entities = food.energieParEspece
+                        .filter { (_, v) -> v > 0.0 }
+                        .map { (especeNom, v) -> EnergyPerSpeciesEntity(food.uuid, especeNom, v) }
+                    if (entities.isNotEmpty()) energyPerSpeciesDao.insert(entities)
+                }
+
+                clearCache()
             } catch (e: Exception) {
-                println("DEBUG: Erreur dans insertFood(): ${e.message}")
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                 throw e
             }
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        println("DEBUG: isBatchMode = $isBatchMode")
-        if (!isBatchMode) {
-            println("DEBUG: Lancement de refreshFoodsFlow()")
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch {
                 try {
                     refreshFoodsFlow()
                 } catch (e: Exception) {
-                    println("DEBUG: Erreur lors de refreshFoodsFlow(): ${e.message}")
+                    e.rethrowIfCancellation()
                     // Fallback: essayer de mettre à jour le Flow directement
                     try {
                         val foods = getAllFoodsFresh()
                         _foodsFlow.value = foods
-                        println("DEBUG: Mise à jour directe du Flow réussie")
-                    } catch (e2: Exception) {
-                        println("DEBUG: Échec de la mise à jour directe: ${e2.message}")
-                    }
+                    } catch (e2: Exception) { e2.rethrowIfCancellation(); AppLog.d("DatabaseFoodRepository", "Exception ignorée : ${e2.message}") }
                 }
             }
-        } else {
-            println("DEBUG: Mode batch activé, pas de refresh automatique")
         }
     }
 
@@ -1055,6 +1489,7 @@ class DatabaseFoodRepository(
                     try {
                         foodDao.getEspecesForAliment(uuid)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         emptyList()
                     }
 
@@ -1066,10 +1501,66 @@ class DatabaseFoodRepository(
                         emptyList()
                     }
 
+            // Récupérer les références bibliographiques associées
+            val biblioRefs = if (alimentBiblioRefDao != null && biblioRefDao != null) {
+                try {
+                    alimentBiblioRefDao.getBiblioRefUuids(uuid)
+                        .mapNotNull { refUuid -> biblioRefDao.getBiblioRefById(refUuid)?.toDomain() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyList() }
+            } else emptyList()
+
+            val energyPerSpecies = energyPerSpeciesDao?.getForAliment(uuid) ?: emptyList()
             return@withContext foodEntity.toAlimentEv(
                     especes = especeEntities,
-                    nutrientValues = nutrientValues
+                    nutrientValues = nutrientValues,
+                    biblioRefs = biblioRefs,
+                    energyPerSpecies = energyPerSpecies
             )
+        }
+    }
+
+    /**
+     * Récupère plusieurs aliments en batch (une requête par table au lieu de N×3 requêtes).
+     */
+    override suspend fun getFoodsByUuids(uuids: List<String>): Map<String, AlimentEv> {
+        if (uuids.isEmpty()) return emptyMap()
+        return withContext(AppDispatchers.IO) {
+            val foodEntities = uuids.chunked(500)
+                .flatMap { chunk -> foodDao.getFoodsByIds(chunk) }
+            if (foodEntities.isEmpty()) return@withContext emptyMap()
+
+            val ids = foodEntities.map { it.uuid }
+            val nutrientsByFood = nutrientValueDao?.let { dao ->
+                ids.chunked(500).flatMap { chunk -> dao.getNutrientValuesForAliments(chunk) }
+                    .groupBy { it.refAliment }
+            } ?: emptyMap()
+            val energyByFood = energyPerSpeciesDao?.let { dao ->
+                ids.chunked(500).flatMap { chunk -> dao.getForAliments(chunk) }
+                    .groupBy { it.refAliment }
+            } ?: emptyMap()
+            val biblioRefsByFood: Map<String, List<fr.vetbrain.vetnutri_mp.Data.BiblioRef>> =
+                try {
+                    val junctions = alimentBiblioRefDao?.let { dao ->
+                        ids.chunked(500).flatMap { chunk -> dao.getBiblioRefsForAliments(chunk) }
+                    } ?: emptyList()
+                    val biblioRefEntitiesByUuid = biblioRefDao?.let { dao ->
+                        junctions.map { it.biblioRefUuid }.distinct()
+                            .chunked(500).flatMap { chunk -> dao.getBiblioRefsByIds(chunk) }
+                            .associateBy { it.uuid }
+                    } ?: emptyMap()
+                    junctions.groupBy(
+                        { it.alimentUuid },
+                        { biblioRefEntitiesByUuid[it.biblioRefUuid]?.toDomain() }
+                    ).mapValues { (_, refs) -> refs.filterNotNull() }
+                } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
+
+            foodEntities.associate { entity ->
+                entity.uuid to entity.toAlimentEv(
+                    nutrientValues = nutrientsByFood[entity.uuid] ?: emptyList(),
+                    biblioRefs = biblioRefsByFood[entity.uuid] ?: emptyList(),
+                    energyPerSpecies = energyByFood[entity.uuid] ?: emptyList()
+                )
+            }
         }
     }
 
@@ -1088,6 +1579,11 @@ class DatabaseFoodRepository(
             // Supprimer l'aliment lui-même
             foodDao.deleteFood(uuid)
         }
+        // Invalider le cache et rafraîchir le Flow pour notifier les observateurs
+        clearCache()
+        if (batchModeCounter.value == 0) {
+            coroutineScope.launch { refreshFoodsFlow() }
+        }
     }
 
     /**
@@ -1099,8 +1595,10 @@ class DatabaseFoodRepository(
     // Cette zone de code gère la mise à jour des propriétés de l'aliment et de ses valeurs
     // nutritionnelles.
     override suspend fun updateFood(food: AlimentEv) {
-        return withContext(AppDispatchers.IO) {
+        withContext(AppDispatchers.IO) {
             try {
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] updateFood start uuid=${food.uuid} " +
+                        "valMapCount=${food.valMap.size}")
                 // Vérifier que l'aliment existe
                 val existingFood = foodDao.getFoodById(food.uuid)
                 if (existingFood == null) {
@@ -1115,6 +1613,7 @@ class DatabaseFoodRepository(
                     // Mettre à jour l'entité principale
                     foodDao.update(foodEntity)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
 
                     // Plan B: si la mise à jour échoue, on essaie de mettre à jour sans la
                     // référence à la ration
@@ -1138,38 +1637,56 @@ class DatabaseFoodRepository(
                         foodDao.insertEspeces(especeEntities)
                     } else {}
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.rethrowIfCancellation()
+                    AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                 }
 
-                // Supprimer toutes les anciennes valeurs nutritionnelles quelle que soit la
-                // situation
+                // Remplacer atomiquement les valeurs nutritionnelles (delete + insert en 1 transaction)
+                val replacing = food.valMap.toNutrientValueEntities(food.uuid)
+                AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] updateFood replace values uuid=${food.uuid} " +
+                        "replaceCount=${replacing.size} " +
+                        "sample=${replacing.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
+                nutrientValueDao?.replaceNutrientValues(
+                        food.uuid,
+                        replacing
+                )
                 if (nutrientValueDao != null) {
-                    nutrientValueDao.deleteAllNutrientValuesForAliment(food.uuid)
-                } else {}
+                    val reloaded = nutrientValueDao.getNutrientValues(food.uuid)
+                    AppLog.d("DatabaseFoodRepository", "[FoodSaveDebug][Repo] updateFood DB check uuid=${food.uuid} " +
+                            "dbCount=${reloaded.size} " +
+                            "sample=${reloaded.take(8).joinToString { "${it.nutrientLabel}=${it.value}" }}")
+                }
+                saveCustomNutrientsFromFood(food)
 
-                // Seulement si des valeurs nutritionnelles existent et que le DAO existe, les
-                // ajouter
-                val nutrientValues = food.valMap.toNutrientValueEntities(food.uuid)
-
-                // Insérer les nouvelles valeurs nutritionnelles
-                if (nutrientValueDao != null && nutrientValues.isNotEmpty()) {
-                    try {
-                        nutrientValueDao.insertNutrientValues(nutrientValues)
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        throw e
+                // Remplacer les références bibliographiques associées
+                if (alimentBiblioRefDao != null) {
+                    alimentBiblioRefDao.deleteForAliment(food.uuid)
+                    if (food.biblioRefs.isNotEmpty()) {
+                        val junctions = food.biblioRefs.map { ref ->
+                            AlimentBiblioRefEntity(alimentUuid = food.uuid, biblioRefUuid = ref.uuid)
+                        }
+                        alimentBiblioRefDao.insertAll(junctions)
                     }
-                } else {}
+                }
 
-                return@withContext
+                // Remplacer les valeurs d'énergie par espèce
+                if (energyPerSpeciesDao != null) {
+                    val entities = food.energieParEspece
+                        .filter { (_, v) -> v > 0.0 }
+                        .map { (especeNom, v) -> EnergyPerSpeciesEntity(food.uuid, especeNom, v) }
+                    energyPerSpeciesDao.replace(food.uuid, entities)
+                }
+
+                clearCache()
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("DatabaseFoodRepository", e.message ?: "Erreur", e)
                 throw e
             }
         }
 
         // Mettre à jour le Flow pour notifier les observateurs (dans le contexte Main)
-        if (!isBatchMode) {
+        if (batchModeCounter.value == 0) {
             coroutineScope.launch { refreshFoodsFlow() }
         }
     }
@@ -1239,6 +1756,7 @@ class DatabaseFoodRepository(
 
                 return@withContext true
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return@withContext false
             }
         }
@@ -1252,6 +1770,14 @@ class DatabaseFoodRepository(
     suspend fun getFoodsForRation(rationId: String): List<AlimentEv> {
         return withContext(AppDispatchers.IO) {
             val foods = foodDao.getAllFoods().filter { it.RefRation == rationId }
+            val energyByFood: Map<String, List<EnergyPerSpeciesEntity>> =
+                if (energyPerSpeciesDao != null && foods.isNotEmpty()) {
+                    try {
+                        foods.map { it.uuid }.chunked(500)
+                            .flatMap { chunk -> energyPerSpeciesDao.getForAliments(chunk) }
+                            .groupBy { it.refAliment }
+                    } catch (ignored: Exception) { ignored.rethrowIfCancellation(); emptyMap() }
+                } else emptyMap()
             return@withContext foods.map { foodEntity ->
                 val nutrientValues =
                         if (nutrientValueDao != null) {
@@ -1259,7 +1785,10 @@ class DatabaseFoodRepository(
                         } else {
                             emptyList()
                         }
-                foodEntity.toAlimentEv(nutrientValues = nutrientValues)
+                foodEntity.toAlimentEv(
+                    nutrientValues = nutrientValues,
+                    energyPerSpecies = energyByFood[foodEntity.uuid] ?: emptyList()
+                )
             }
         }
     }
@@ -1278,4 +1807,42 @@ class DatabaseFoodRepository(
      * notifiés des changements
      */
     fun getFoodsFlow(): Flow<List<AlimentEv>> = _foodsFlow
+
+    /**
+     * Charge les nutriments spécifiés pour une liste d'aliments depuis la base de données.
+     * Cette méthode est optimisée pour charger uniquement les nutriments nécessaires.
+     * 
+     * @param foodUuids Liste des UUID des aliments
+     * @param nutrients Liste des nutriments à charger
+     * @return Map avec l'UUID de l'aliment comme clé et une Map de nutriments avec leurs valeurs
+     */
+    suspend fun loadNutrientsForFoods(
+            foodUuids: List<String>,
+            nutrients: List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>
+    ): Map<String, Map<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>> {
+            return withContext(AppDispatchers.IO) {
+                    if (nutrientValueDao == null || foodUuids.isEmpty() || nutrients.isEmpty()) {
+                            return@withContext emptyMap()
+                    }
+                    
+                    val nutrientLabels = nutrients.map { it.label }
+                    val allNutrientValues = nutrientValueDao.getNutrientValuesForAliments(foodUuids)
+                    
+                    // Grouper par aliment et filtrer par nutriments demandés
+                    val result = mutableMapOf<String, MutableMap<fr.vetbrain.vetnutri_mp.Enumer.Nutrient, Double>>()
+                    
+                    allNutrientValues.forEach { nutrientValue ->
+                            if (nutrientLabels.contains(nutrientValue.nutrientLabel)) {
+                                    val nutrient = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
+                                            .AllNutrientResolver(nutrientValue.nutrientLabel)
+                                    if (nutrient != null) {
+                                            val alimentMap = result.getOrPut(nutrientValue.refAliment) { mutableMapOf() }
+                                            alimentMap[nutrient] = nutrientValue.value
+                                    }
+                            }
+                    }
+                    
+                    return@withContext result
+            }
+    }
 }

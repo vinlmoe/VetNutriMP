@@ -1,0 +1,48 @@
+---
+title: "Catalogue canin de référence VetNutri MP"
+format: html
+params:
+  root: ""
+execute:
+  echo: false
+---
+
+```{r}
+# Prefer the neighbouring sources so this report needs no package installation.
+report_path <- normalizePath(knitr::current_input(dir = TRUE), mustWork = TRUE)
+module_root <- dirname(dirname(dirname(report_path)))
+source_dir <- file.path(module_root, "R")
+if (file.exists(file.path(source_dir, "init_json_loader.R"))) {
+    if (!requireNamespace("jsonlite", quietly = TRUE)) {
+        stop('Installer la dépendance : install.packages("jsonlite")')
+    }
+    for (file in list.files(source_dir, pattern = "\\.R$", full.names = TRUE)) {
+        sys.source(file, envir = knitr::knit_global())
+    }
+} else if (requireNamespace("vetnutriDogR", quietly = TRUE)) {
+    library(vetnutriDogR)
+} else {
+    stop("Conserver catalogue.qmd dans vetnutriDogR/inst/quarto avec le dossier R du module, ou installer vetnutriDogR.")
+}
+model <- vn_load_init(root = params$root)
+knitr::kable(model$provenance)
+```
+
+Les données sont relues depuis le fichier INIT à chaque rendu. Les valeurs
+brutes restent accessibles dans `model$raw`. Les calculs interactifs sont
+accessibles dans l’application Shiny du module.
+
+```{r}
+knitr::kable(data.frame(
+    Objet = c("Aliments", "Compositions", "Références", "Équations"),
+    Nombre = c(
+        nrow(model$foods), nrow(model$food_nutrients),
+        nrow(model$references), nrow(model$equations)
+    )
+))
+knitr::kable(model$diagnostics)
+```
+
+```{r}
+barplot(table(model$foods$kind), las = 2, ylab = "Nombre d’aliments")
+```

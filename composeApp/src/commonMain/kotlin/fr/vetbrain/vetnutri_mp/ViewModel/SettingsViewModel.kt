@@ -1,5 +1,9 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
@@ -15,11 +19,16 @@ import fr.vetbrain.vetnutri_mp.Repository.AnimalRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseFoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.FoodImportResult
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 
 /** ViewModel pour la gestion des paramètres de l'application */
 class SettingsViewModel(
@@ -36,8 +45,53 @@ class SettingsViewModel(
         internal val consultationRepository:
                 fr.vetbrain.vetnutri_mp.Repository.ConsultationRepository? =
                 null,
-        internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null
-) {
+        internal val conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository? = null,
+        // Instance partagée : une préférence enregistrée ici est vue par la fiche animal
+        internal val preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository? =
+                null
+) : ViewModel() {
+    // Instance statique de Json pour éviter la création redondante
+    private val json = Json { ignoreUnknownKeys = true }
+
+    // --- Listes proposées par la sélection d'export (Paramètres > Import/Export) ---
+
+    suspend fun getAllAnimals(): List<fr.vetbrain.vetnutri_mp.Data.AnimalEv> = animalRepository.getAllAnimals()
+
+    suspend fun getAllFoods(): List<fr.vetbrain.vetnutri_mp.Data.AlimentEv> = foodRepository.getAllFoods()
+
+    suspend fun getAllRecipes(): List<fr.vetbrain.vetnutri_mp.Data.Recette> =
+            recipeRepository?.getAllRecipesAsRecette() ?: emptyList()
+
+    suspend fun getAllEquations(): List<fr.vetbrain.vetnutri_mp.Data.Equation> =
+            equationRepository?.getAllEquations() ?: emptyList()
+
+    suspend fun getAllReferences(): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> =
+            referenceEvRepository?.getAllReferenceEv() ?: emptyList()
+
+    suspend fun getActiveAdvices(): List<fr.vetbrain.vetnutri_mp.Export.HtmlSection> =
+            conseilRepository?.getConseilsActifs()?.getOrThrow() ?: emptyList()
+
+    suspend fun getAdviceCount(): Int = conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+
+    // --- Préférences (instance partagée avec la fiche animal) ---
+
+    /** false dans les aperçus et tests construits sans dépôt de préférences */
+    val preferencesAvailable: Boolean
+        get() = preferencesRepository != null
+
+    /** Préférences courantes ; défaut si le dépôt n'est pas fourni (aperçus, tests). */
+    suspend fun getLoadedPreferences(): fr.vetbrain.vetnutri_mp.Data.PreferencesApplication =
+            preferencesRepository?.getLoadedPreferences()
+                    ?: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
+
+    suspend fun savePreferences(preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) {
+        preferencesRepository?.savePreferences(preferences)
+    }
+
+    // Options d'import des aliments (configurées depuis l'UI)
+    var importMergeNutrients: Boolean = false
+    var importOnlyIfNewer: Boolean = false
+    
     private val _uiScale = MutableStateFlow(1.0)
     val uiScale: StateFlow<Double> = _uiScale.asStateFlow()
 
@@ -59,35 +113,6 @@ class SettingsViewModel(
     private val _nutritionalRequirementMessage = MutableStateFlow<String?>(null)
     val nutritionalRequirementMessage: StateFlow<String?> =
             _nutritionalRequirementMessage.asStateFlow()
-
-    // Menu latéral
-    private val _isDrawerOpen = MutableStateFlow(false)
-    val isDrawerOpen: StateFlow<Boolean> = _isDrawerOpen.asStateFlow()
-
-    // Préférences des nutriments par catégorie
-    private val _selectedMainNutrients =
-            MutableStateFlow<List<NutrientMain>>(NutrientMain.entries.toList())
-    val selectedMainNutrients: StateFlow<List<NutrientMain>> = _selectedMainNutrients.asStateFlow()
-
-    private val _selectedMinerals =
-            MutableStateFlow<List<NutrientMin>>(NutrientMin.entries.toList())
-    val selectedMinerals: StateFlow<List<NutrientMin>> = _selectedMinerals.asStateFlow()
-
-    private val _selectedVitamins =
-            MutableStateFlow<List<NutrientVitam>>(NutrientVitam.entries.toList())
-    val selectedVitamins: StateFlow<List<NutrientVitam>> = _selectedVitamins.asStateFlow()
-
-    private val _selectedLipids =
-            MutableStateFlow<List<NutrientLipid>>(NutrientLipid.entries.toList())
-    val selectedLipids: StateFlow<List<NutrientLipid>> = _selectedLipids.asStateFlow()
-
-    private val _selectedAminoAcids = MutableStateFlow<List<AAEnum>>(AAEnum.entries.toList())
-    val selectedAminoAcids: StateFlow<List<AAEnum>> = _selectedAminoAcids.asStateFlow()
-
-    private val _selectedOtherNutrients =
-            MutableStateFlow<List<NutrientOther>>(NutrientOther.entries.toList())
-    val selectedOtherNutrients: StateFlow<List<NutrientOther>> =
-            _selectedOtherNutrients.asStateFlow()
 
     /** Résultat d'une importation */
     sealed class ImportResult {
@@ -134,59 +159,6 @@ class SettingsViewModel(
         setUiScale(_uiScale.value - 0.1)
     }
 
-    /** Ouvre le menu latéral */
-    fun openDrawer() {
-        _isDrawerOpen.value = true
-    }
-
-    /** Ferme le menu latéral */
-    fun closeDrawer() {
-        _isDrawerOpen.value = false
-    }
-
-    /** Met à jour l'ordre et la sélection des nutriments principaux */
-    fun updateMainNutrients(nutrients: List<NutrientMain>) {
-        _selectedMainNutrients.value = nutrients
-    }
-
-    /** Met à jour l'ordre et la sélection des minéraux */
-    fun updateMinerals(minerals: List<NutrientMin>) {
-        _selectedMinerals.value = minerals
-    }
-
-    /** Met à jour l'ordre et la sélection des vitamines */
-    fun updateVitamins(vitamins: List<NutrientVitam>) {
-        _selectedVitamins.value = vitamins
-    }
-
-    /** Met à jour l'ordre et la sélection des lipides */
-    fun updateLipids(lipids: List<NutrientLipid>) {
-        _selectedLipids.value = lipids
-    }
-
-    /** Met à jour l'ordre et la sélection des acides aminés */
-    fun updateAminoAcids(aminoAcids: List<AAEnum>) {
-        _selectedAminoAcids.value = aminoAcids
-    }
-
-    /** Met à jour l'ordre et la sélection des autres nutriments */
-    fun updateOtherNutrients(otherNutrients: List<NutrientOther>) {
-        _selectedOtherNutrients.value = otherNutrients
-    }
-
-    /** Obtient tous les nutriments disponibles pour une catégorie spécifique */
-    fun getAllNutrientsForCategory(category: MainNutrientEnum): List<Nutrient> {
-        return when (category) {
-            MainNutrientEnum.BASE -> NutrientMain.entries.toList()
-            MainNutrientEnum.MIN -> NutrientMin.entries.toList()
-            MainNutrientEnum.VITAM -> NutrientVitam.entries.toList()
-            MainNutrientEnum.LIPID -> NutrientLipid.entries.toList()
-            MainNutrientEnum.AMA -> AAEnum.entries.toList()
-            MainNutrientEnum.OTHER -> NutrientOther.entries.toList()
-            else -> emptyList()
-        }
-    }
-
     /** Réinitialise le résultat de l'importation */
     fun resetImportResult() {
         _importResult.value = null
@@ -224,9 +196,12 @@ class SettingsViewModel(
      */
     suspend fun importFoodsFromJson(jsonContent: String): FoodImportResult {
         // Utilisation de kotlinx.serialization pour parser le JSON
-        val alimentsJson =
-                Json { ignoreUnknownKeys = true }.decodeFromString<List<AlimentEvJson>>(jsonContent)
-        return foodRepository.importFoods(alimentsJson)
+        val alimentsJson = json.decodeFromString<List<AlimentEvJson>>(jsonContent)
+        return foodRepository.importFoods(
+                alimentsJson,
+                mergeNutrients = importMergeNutrients,
+                importOnlyIfNewer = importOnlyIfNewer
+        )
     }
 
     /**
@@ -244,32 +219,127 @@ class SettingsViewModel(
     }
 
     /**
+     * Importe des données depuis jsonbin.io en utilisant un binId ou une URL
+     * @param binIdOrUrl L'ID du bin ou l'URL complète jsonbin.io
+     * @return Le résultat de l'importation
+     */
+    suspend fun importFromJsonBin(binIdOrUrl: String): ImportResult {
+        return try {
+            startApiImport()
+            appendApiImportLog(translate("settings.jsonbinLogStart"))
+
+            // Créer le service de partage JSON
+            val shareService = fr.vetbrain.vetnutri_mp.Service.createJsonShareService()
+
+            // Support QR JSON chiffré {binId, key, iv}
+            val qrPayload = shareService.parseQrPayload(binIdOrUrl)
+            val binId = when {
+                qrPayload != null -> qrPayload.binId
+                binIdOrUrl.contains("jsonbin.io") -> {
+                    shareService.extractBinIdFromUrl(binIdOrUrl) ?: run {
+                        finishApiImport()
+                        return ImportResult.Error(translate("settings.jsonbinErrorExtractId", binIdOrUrl))
+                    }
+                }
+                else -> binIdOrUrl
+            }
+            val keyBase64 = qrPayload?.key
+            val ivBase64 = qrPayload?.iv
+            if (qrPayload != null) {
+                appendApiImportLog(translate("settings.jsonbinLogQrDetected", binId))
+            }
+
+            appendApiImportLog(translate("settings.jsonbinLogDownloading", binId))
+            updateApiImportProgress(0.1)
+
+            // Télécharger le JSON depuis jsonbin.io
+            val downloadResult = shareService.downloadJson(binId, keyBase64, ivBase64)
+
+            val jsonContent = downloadResult.getOrElse { error ->
+                finishApiImport()
+                return ImportResult.Error(translate("settings.jsonbinErrorDownload", error.message ?: ""))
+            }
+
+            appendApiImportLog(translate("settings.jsonbinLogDownloaded", jsonContent.length.toString()))
+            updateApiImportProgress(0.3)
+            
+            // Créer l'ExportImportRepository avec tous les repositories nécessaires
+            val exportImportRepo = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                animalRepository = animalRepository,
+                foodRepository = foodRepository,
+                equationRepository = equationRepository,
+                referenceRepository = referenceEvRepository,
+                biblioRepository = biblioRefRepository,
+                consultationRepository = consultationRepository,
+                recipeRepository = recipeRepository,
+                conseilRepository = conseilRepository
+            )
+            
+            appendApiImportLog(translate("settings.jsonbinLogParsing"))
+            updateApiImportProgress(0.4)
+            
+            // Importer les données avec un listener de progression
+            val importCounts = exportImportRepo.importAll(
+                apiJson = jsonContent,
+                listener = fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ImportProgressListener(
+                    onProgress = { progress ->
+                        // Mapper la progression de 0.4 à 0.9 (car on commence à 0.4)
+                        val mappedProgress = 0.4 + (progress * 0.5)
+                        updateApiImportProgress(mappedProgress)
+                    },
+                    onLog = { message ->
+                        appendApiImportLog(message)
+                    }
+                )
+            ).requireComplete()
+            
+            updateApiImportProgress(1.0)
+            
+            val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + 
+                           importCounts.references + importCounts.biblios + importCounts.rations + 
+                           importCounts.recipes + importCounts.conseils
+            
+            appendApiImportLog(translate("settings.jsonbinLogSuccess"))
+            appendApiImportLog(translate("settings.jsonbinLogResultCount", totalCount.toString()))
+            
+            finishApiImport()
+            
+            ImportResult.Success(
+                count = totalCount,
+                importedCount = importCounts.animals + importCounts.foods + importCounts.equations + 
+                              importCounts.references + importCounts.biblios + importCounts.rations + 
+                              importCounts.recipes + importCounts.conseils,
+                updatedCount = 0, // L'importAll ne retourne pas les counts de mise à jour séparément
+                deletedCount = 0,
+                errorCount = 0,
+                conseils = importCounts.conseils
+            )
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            finishApiImport()
+            appendApiImportLog(translate("settings.errorFormat", e.message ?: ""))
+            ImportResult.Error(translate("settings.jsonbinErrorImport", e.message ?: ""))
+        }
+    }
+
+    /**
      * Interface pour importer des références nutritionnelles depuis l'UI Cette méthode est un point
      * d'entrée pour l'importation via l'UI
      */
     fun importNutritionalRequirementsFromFileUI() {
         try {
             // Lancer l'importation avec feedback dans SettingsViewModel
-            _nutritionalRequirementMessage.value = "🔄 Sélection du fichier en cours..."
+            _nutritionalRequirementMessage.value = translate("settings.nutritionalReqSelectingFile")
 
             // Créer un ImportViewModel temporaire avec les repositories nécessaires
             // Note: Nous devons utiliser l'ImportViewModel car il a les bons repositories
             // Cette fonction devrait plutôt être appelée depuis l'ImportViewModel
             _nutritionalRequirementMessage.value =
-                    "❌ Cette fonction doit être appelée depuis l'ImportViewModel qui a accès aux repositories nécessaires."
+                    translate("settings.nutritionalReqWrongViewModel")
         } catch (e: Exception) {
-            _nutritionalRequirementMessage.value = "❌ Erreur: ${e.message}"
+            e.rethrowIfCancellation()
+            _nutritionalRequirementMessage.value = translate("settings.errorFormat", e.message ?: "")
         }
-    }
-
-    /** Définit le message de résultat d'importation des références nutritionnelles */
-    fun setNutritionalRequirementMessage(message: String) {
-        _nutritionalRequirementMessage.value = message
-    }
-
-    /** Efface le message de résultat d'importation des références nutritionnelles */
-    fun clearNutritionalRequirementMessage() {
-        _nutritionalRequirementMessage.value = null
     }
 
     /**
@@ -299,8 +369,17 @@ class SettingsViewModel(
      * @param foodsList La liste d'aliments à importer
      * @return Le résultat détaillé de l'importation
      */
-    suspend fun importFoodsFromList(foodsList: List<AlimentEvJson>): FoodImportResult {
-        val result = foodRepository.importFoods(foodsList)
+    suspend fun importFoodsFromList(
+            foodsList: List<AlimentEvJson>,
+            mergeNutrients: Boolean = importMergeNutrients,
+            importOnlyIfNewer: Boolean = this.importOnlyIfNewer
+    ): FoodImportResult {
+        val result =
+                foodRepository.importFoods(
+                        foodsList,
+                        mergeNutrients = mergeNutrients,
+                        importOnlyIfNewer = importOnlyIfNewer
+                )
         // Mettre à jour le résultat de l'importation pour l'affichage dans l'interface
         _importResult.value =
                 ImportResult.Success(
@@ -369,10 +448,19 @@ class SettingsViewModel(
      * @return Le résultat de l'importation
      */
     suspend fun relaunchAutomaticImport(forceImport: Boolean = false): ImportResult {
-        println("🔄 [SETTINGS] Début de relaunchAutomaticImport")
+        val logMessages = mutableListOf<String>()
+        fun log(message: String) {
+            logMessages.add(message)
+        }
+        
         return try {
-            println("🔄 [SETTINGS] Création de l'ExportImportRepository...")
+            log("=".repeat(60))
+            log("🚀 DÉBUT DE L'IMPORT AUTOMATIQUE")
+            log("Force import: $forceImport")
+            log("=".repeat(60))
+            
             // Créer l'ExportImportRepository avec tous les repositories nécessaires
+            log("Création de l'ExportImportRepository...")
             val exportImportRepo =
                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
                             animalRepository = animalRepository,
@@ -381,64 +469,49 @@ class SettingsViewModel(
                             referenceRepository = referenceEvRepository,
                             biblioRepository = biblioRefRepository,
                             consultationRepository = consultationRepository,
-                            recipeRepository = recipeRepository
+                            recipeRepository = recipeRepository,
+                            conseilRepository = conseilRepository
                     )
-            println("✅ [SETTINGS] ExportImportRepository créé avec succès")
-
-            println("🔄 [SETTINGS] Lecture du fichier JSON...")
-            // Lire le fichier de ressources pour l'import automatique
-            val json =
-                    try {
-                        // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
-                        // (data/)
-                        try {
-                            println("🔄 [SETTINGS] Tentative 1 - Chemin iOS: vetnutri_export_init.json")
-                            val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
-                                    .readResource("vetnutri_export_init.json")
-                            println("✅ [SETTINGS] Succès avec le chemin iOS (${result.length} caractères)")
-                            result
-                        } catch (e: Exception) {
-                            println("❌ [SETTINGS] Échec chemin iOS: ${e.message}")
-                            println("🔄 [SETTINGS] Tentative 2 - Chemin Android/Desktop: data/vetnutri_export_init.json")
-                            val result = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
-                                    .readResource("data/vetnutri_export_init.json")
-                            println("✅ [SETTINGS] Succès avec le chemin Android/Desktop (${result.length} caractères)")
-                            result
-                        }
-                    } catch (e: Exception) {
-                        println("💥 [SETTINGS] Échec des deux chemins: ${e.message}")
-                        throw IllegalStateException(
-                                "Fichier vetnutri_export_init.json introuvable: ${e.message}"
-                        )
-                    }
-
-            if (json.isEmpty()) {
-                println("💥 [SETTINGS] Le fichier JSON est vide!")
-                throw IllegalStateException("Le fichier JSON d'import automatique est vide")
-            }
-
-            println("🔄 [SETTINGS] Vérification de la nécessité de mise à jour...")
-            // Vérifier si une mise à jour est nécessaire
-            val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
-            val updateNeeded = databaseVersionManager.isJsonUpdateNeeded(json)
-            println("🔄 [SETTINGS] Mise à jour nécessaire: $updateNeeded")
+            log("✓ ExportImportRepository créé")
 
             // 🔧 CORRECTION : Vérifier spécifiquement si les aliments sont manquants
-            val currentFoodCount = foodRepository.getAllFoods().size
+            log("Vérification de l'état actuel de la base de données...")
+            val currentFoodCount = foodRepository.getAllFoodsLight().size
             val currentReferenceCount = referenceEvRepository?.getAllReferenceEv()?.size ?: 0
             val foodsAreMissing = currentFoodCount == 0
             val databaseIsEmpty = currentFoodCount == 0 && currentReferenceCount == 0
+            
+            log("État actuel:")
+            log("  - Aliments: $currentFoodCount")
+            log("  - Références: $currentReferenceCount")
+            log("  - Aliments manquants: $foodsAreMissing")
+            log("  - Base vide: $databaseIsEmpty")
 
-            println("🔄 [SETTINGS] État de la base - Aliments: $currentFoodCount, Références: $currentReferenceCount")
-            println("🔄 [SETTINGS] Aliments manquants: $foodsAreMissing")
-            println("🔄 [SETTINGS] Base vide: $databaseIsEmpty")
-            println("🔄 [SETTINGS] Import forcé: $forceImport")
+            // Vérifier la version sans charger tout le JSON (évite OOM)
+            log("Vérification de la version JSON (lecture légère)...")
+            val databaseVersionManager = fr.vetbrain.vetnutri_mp.Utils.DatabaseVersionManager()
+            val resourceReader = fr.vetbrain.vetnutri_mp.Localization.ResourceReader()
+            val embeddedVersion =
+                    try {
+                        resourceReader.readJsonVersion("vetnutri_export_init.json")
+                                ?: resourceReader.readJsonVersion("data/vetnutri_export_init.json")
+                    } catch (ignored: Exception) {
+                        ignored.rethrowIfCancellation()
+                        null
+                    }
+            val updateNeeded =
+                    databaseVersionManager.isJsonUpdateNeededByVersion(embeddedVersion)
+            log("Version intégrée: ${embeddedVersion ?: "introuvable"}")
+            log("Mise à jour nécessaire: $updateNeeded")
 
             // Si l'import n'est pas forcé, vérifier si une mise à jour est nécessaire
             if (!forceImport && !updateNeeded && !foodsAreMissing) {
                 // Aucune mise à jour nécessaire et aliments présents
                 val currentJsonVersion = databaseVersionManager.getStoredJsonVersion()
-                println("ℹ️ [SETTINGS] Aucune mise à jour nécessaire, version actuelle: $currentJsonVersion")
+                log("ℹ️ Aucune mise à jour nécessaire")
+                log("  Version JSON stockée: ${currentJsonVersion ?: "Aucune"}")
+                log("✓ Import annulé (base déjà à jour)")
+                log("=".repeat(60))
                 return ImportResult.Success(
                         count = currentFoodCount + currentReferenceCount,
                         importedCount = 0,
@@ -448,45 +521,216 @@ class SettingsViewModel(
 
             // 🔧 CORRECTION : Forcer l'import si les aliments sont manquants ou si la base est vide
             if (foodsAreMissing || databaseIsEmpty) {
-                println("🔄 [SETTINGS] Aliments manquants ou base vide détecté(e), import forcé même si versions identiques")
+                log("⚠️ Import forcé: base de données incomplète ou vide")
             }
 
-            println("🔄 [SETTINGS] Lancement de l'import...")
+            // Lire et parser le fichier de ressources sans matérialiser le JSON complet sur JVM.
+            log("Lecture/parsing du fichier JSON de ressources...")
+            val envelope =
+                    try {
+                        // Essayer d'abord le chemin iOS (direct), puis le chemin Android/Desktop
+                        // (data/)
+                        try {
+                            log("Tentative de lecture: vetnutri_export_init.json")
+                            val result = resourceReader
+                                    .readApiEnvelopeOptimized("vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (foods=${result.foods.size}, references=${result.references.size})")
+                            result
+                        } catch (e: Exception) {
+                            e.rethrowIfCancellation()
+                            log("⚠ Chemin direct échoué, tentative: data/vetnutri_export_init.json")
+                            val result = resourceReader
+                                    .readApiEnvelopeOptimized("data/vetnutri_export_init.json")
+                            log("✓ Fichier lu avec succès (foods=${result.foods.size}, references=${result.references.size})")
+                            result
+                        }
+                    } catch (e: Exception) {
+                        e.rethrowIfCancellation()
+                        log("❌ ERREUR: Fichier introuvable - ${e.message}")
+                        throw IllegalStateException(
+                                translate("settings.importFileNotFound", e.message ?: "")
+                        )
+                    }
+
+            if (envelope.foods.isEmpty() && envelope.references.isEmpty() && envelope.animals.isEmpty()) {
+                log("❌ ERREUR: Le fichier JSON ne contient aucune donnée importable")
+                throw IllegalStateException(translate("settings.importFileEmpty"))
+            }
+
             // Lancer l'import avec un listener de progression
+            log("Démarrage de l'import des données...")
             val importCounts =
                     exportImportRepo.importAll(
-                            apiJson = json,
+                            envelope = envelope,
                             listener =
                                     fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
                                             .ImportProgressListener(
                                                     onProgress = { progress ->
                                                         // Mettre à jour la progression si
                                                         // nécessaire
-                                                        println("📊 [SETTINGS] Progression: ${(progress * 100).toInt()}%")
+                                                        if ((progress * 100).toInt() % 10 == 0) {
+                                                            log("📊 Progression: ${(progress * 100).toInt()}%")
+                                                        }
                                                     },
-                                                    onLog = { msg -> println("📝 [SETTINGS] $msg") }
+                                                    onLog = { message ->
+                                                        log("  → $message")
+                                                    }
                                             )
-                    )
+                    ).requireComplete()
 
-            println("✅ [SETTINGS] Import terminé avec succès")
-            println("📊 [SETTINGS] Résultats - Animaux: ${importCounts.animals}, Aliments: ${importCounts.foods}, Équations: ${importCounts.equations}, Références: ${importCounts.references}")
+            log("✓ Import terminé avec succès")
+            log("Résultats de l'import:")
+            log("  - Animaux: ${importCounts.animals}")
+            log("  - Aliments: ${importCounts.foods}")
+            log("  - Équations: ${importCounts.equations}")
+            log("  - Références: ${importCounts.references}")
+            log("  - Bibliographies: ${importCounts.biblios}")
+            log("  - Rations: ${importCounts.rations}")
+            log("  - Recettes: ${importCounts.recipes}")
+            log("  - Conseils: ${importCounts.conseils}")
 
             // Mettre à jour la version JSON après import réussi
-            println("🔄 [SETTINGS] Mise à jour de la version JSON...")
-            databaseVersionManager.updateJsonVersionAfterImport(json)
+            log("Mise à jour de la version JSON stockée...")
+            databaseVersionManager.updateJsonVersionAfterImport(
+                    embeddedVersion = embeddedVersion ?: envelope.version,
+                    embeddedTimestamp = envelope.generatedAtEpochMs
+            )
+            val newStoredVersion = databaseVersionManager.getStoredJsonVersion()
+            log("✓ Version JSON mise à jour: ${newStoredVersion ?: "Aucune"}")
+
+            if (newStoredVersion != null) {
+                databaseVersionManager.updateDatabaseVersion(
+                        newVersion = newStoredVersion,
+                        importSource = "vetnutri_export_init.json"
+                )
+                log("✓ Version interne mise à jour: $newStoredVersion")
+            }
 
             // Retourner le résultat de l'importation
             val totalCount = importCounts.animals + importCounts.foods + importCounts.equations + importCounts.references
-            println("✅ [SETTINGS] Retour du résultat: $totalCount éléments")
+            log("📊 Total importé: $totalCount éléments")
+            log("=".repeat(60))
+            log("✅ IMPORT TERMINÉ AVEC SUCCÈS")
+            log("=".repeat(60))
+            
             ImportResult.Success(
                     count = totalCount,
                     importedCount = totalCount,
-                    conseils = 0
+                    conseils = importCounts.conseils
             )
         } catch (e: Exception) {
-            println("💥 [SETTINGS] Exception dans relaunchAutomaticImport: ${e.message}")
-            println("💥 [SETTINGS] Stack trace: ${e.stackTraceToString()}")
-            ImportResult.Error("Erreur lors de l'import automatique: ${e.message}")
+            e.rethrowIfCancellation()
+            log("=".repeat(60))
+            log("❌ ERREUR LORS DE L'IMPORT")
+            log("Type: ${e::class.simpleName}")
+            log("Message: ${e.message}")
+            log("Stack trace:")
+            logMessages.forEach { AppLog.d("SettingsViewModel", (it).toString()) }
+            AppLog.e("SettingsViewModel", e.message ?: "Erreur", e)
+            log("=".repeat(60))
+            ImportResult.Error(translate("settings.autoImportErrorFormat", e.message ?: ""))
         }
     }
+
+    /**
+     * Lance l'import automatique en arrière-plan (survit à la destruction de la vue)
+     * @param forceImport Si true, force l'import
+     * @param onResult Callback appelé avec le résultat
+     */
+    fun launchAutomaticImport(
+        forceImport: Boolean = false,
+        onResult: (ImportResult) -> Unit
+    ) {
+        viewModelScope.launch {
+            val result = withContext(AppDispatchers.IO) {
+                relaunchAutomaticImport(forceImport)
+            }
+            onResult(result)
+        }
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Export d'un animal complet (fichier ou partage en ligne)
+    // ---------------------------------------------------------------------------------
+
+    private fun animalExportRepository(
+            fallbackEquationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+            fallbackRecipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository,
+            fallbackConseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+    ) =
+            fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository(
+                    animalRepository = animalRepository,
+                    foodRepository = foodRepository,
+                    equationRepository = equationRepository ?: fallbackEquationRepository,
+                    referenceRepository = referenceEvRepository,
+                    biblioRepository = biblioRefRepository,
+                    consultationRepository = consultationRepository,
+                    recipeRepository = recipeRepository ?: fallbackRecipeRepository,
+                    conseilRepository = conseilRepository ?: fallbackConseilRepository
+            )
+
+    /**
+     * Sélection d'export d'un animal : l'animal, les aliments de ses rations, les référentiels
+     * de ses consultations et les équations de ces référentiels (les références
+     * bibliographiques liées suivent automatiquement).
+     */
+    private suspend fun animalExportSelection(
+            animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv
+    ): fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ExportSelectionOptions =
+            withContext(AppDispatchers.IO) {
+                val foodIds = mutableSetOf<String>()
+                val referenceIds = mutableSetOf<String>()
+                val equationIds = mutableSetOf<String>()
+                animal.consultations.forEach { consultation ->
+                    consultation.rations.forEach { ration ->
+                        ration.alimentMutableList.forEach { alimentRation ->
+                            alimentRation.refAlimUnif?.takeIf { it.isNotBlank() }?.let { foodIds.add(it) }
+                            alimentRation.aliment?.uuid?.takeIf { it.isNotBlank() }?.let { foodIds.add(it) }
+                        }
+                    }
+                    val refs = listOfNotNull(consultation.referenceGeneraleId) + consultation.referencesMaladies
+                    refs.forEach { refId ->
+                        referenceIds.add(refId)
+                        referenceEvRepository?.getReferenceEvById(refId)
+                                ?.obtenirToutesEquations()
+                                ?.forEach { equation -> equationIds.add(equation.uuid) }
+                    }
+                }
+                fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository.ExportSelectionOptions(
+                        includeAnimals = true,
+                        includeFoods = true,
+                        includeRations = true,
+                        includeRecipes = false,
+                        includeEquations = true,
+                        includeConseils = false,
+                        animalIds = setOf(animal.uuid),
+                        foodIds = foodIds,
+                        referenceIds = referenceIds,
+                        equationIds = equationIds
+                )
+            }
+
+    /** Enveloppe d'export complète d'un animal (export fichier). */
+    suspend fun exportAnimalEnvelope(
+            animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv,
+            fallbackEquationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+            fallbackRecipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository,
+            fallbackConseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+    ): fr.vetbrain.vetnutri_mp.Data.ApiEnvelope =
+            animalExportRepository(fallbackEquationRepository, fallbackRecipeRepository, fallbackConseilRepository)
+                    .exportWithSelectionEnvelope(animalExportSelection(animal))
+
+    /** JSON d'export complet d'un animal (partage en ligne). */
+    suspend fun exportAnimalJson(
+            animal: fr.vetbrain.vetnutri_mp.Data.AnimalEv,
+            fallbackEquationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository,
+            fallbackRecipeRepository: fr.vetbrain.vetnutri_mp.Repository.RecipeRepository,
+            fallbackConseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+    ): String =
+            animalExportRepository(fallbackEquationRepository, fallbackRecipeRepository, fallbackConseilRepository)
+                    .exportWithSelection(animalExportSelection(animal))
+
+    /** Relit un animal en base (ex. pour obtenir un jsonbinId à jour). */
+    suspend fun reloadAnimal(uuid: String): fr.vetbrain.vetnutri_mp.Data.AnimalEv? =
+            withContext(AppDispatchers.IO) { animalRepository.getAnimalById(uuid) }
 }

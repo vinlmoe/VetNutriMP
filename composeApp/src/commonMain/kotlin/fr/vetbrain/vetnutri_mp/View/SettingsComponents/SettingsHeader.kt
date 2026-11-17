@@ -5,7 +5,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * En-tête des paramètres avec bouton de retour et animations
@@ -76,8 +78,8 @@ fun SettingsHeader(
                     .scale(backScale)
             ) {
                 Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Retour",
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                    contentDescription = translate(LocalizationKeys.AnimalDetail.BACK),
                     modifier = Modifier.size(AppSizes.iconSizeMedium),
                     tint = VetNutriColors.Primary
                 )
@@ -95,7 +97,7 @@ fun SettingsHeader(
                     modifier = Modifier.size(24.dp)
                 )
                 Text(
-                    text = "Paramètres",
+                    text = translate(LocalizationKeys.Settings.TITLE),
                     style = MaterialTheme.typography.h5.copy(
                         fontSize = AppSizes.fontSizeH5
                     ),

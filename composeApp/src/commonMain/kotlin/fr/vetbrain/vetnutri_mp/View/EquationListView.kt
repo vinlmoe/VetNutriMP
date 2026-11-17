@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +18,7 @@ import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * Vue affichant la liste des équations disponibles
@@ -49,13 +53,15 @@ fun EquationListView(
                 if (searchQuery.value.isBlank()) {
                     equations
                 } else {
-                    val query = searchQuery.value.lowercase()
                     equations.filter { equation ->
-                        equation.name.lowercase().contains(query) ||
-                                equation.description.lowercase().contains(query) ||
-                                equation.equationScript.lowercase().contains(query) ||
-                                equation.kind.toString().lowercase().contains(query) ||
-                                equation.specie.toString().lowercase().contains(query)
+                        Recherche.correspond(
+                                searchQuery.value,
+                                equation.name,
+                                equation.description,
+                                equation.equationScript,
+                                equation.kind.toString(),
+                                equation.specie.toString()
+                        )
                     }
                 }
             }
@@ -70,7 +76,7 @@ fun EquationListView(
                 ) {
                     Icon(
                             imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter une équation",
+                            contentDescription = translate("auto.view.equationlistview.ajouter_une_equation"),
                             tint = VetNutriColors.OnPrimary
                     )
                 }
@@ -81,14 +87,14 @@ fun EquationListView(
             OutlinedTextField(
                     value = searchQuery.value,
                     onValueChange = { searchQuery.value = it },
-                    label = { Text("Rechercher une équation") },
+                    label = { Text(translate("auto.view.equationlistview.rechercher_une_equation")) },
                     leadingIcon = {
-                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
+                        Icon(imageVector = AppIcons.Search, contentDescription = translate("consultation.edit.ref.search_tooltip"))
                     },
                     trailingIcon = {
                         if (searchQuery.value.isNotEmpty()) {
                             IconButton(onClick = { searchQuery.value = "" }) {
-                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer")
+                                Icon(imageVector = AppIcons.Close, contentDescription = translate("animalList.clearSearch"))
                             }
                         }
                     },
@@ -118,7 +124,7 @@ fun EquationListView(
                 }
             } else {
                 Text(
-                        text = "Liste des équations (${filteredEquations.size})",
+                        text = translate("equation.liste", filteredEquations.size.toString()),
                         style = MaterialTheme.typography.h6
                 )
 
@@ -150,7 +156,7 @@ fun EquationListView(
         Snackbar(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
                 action = {
-                    TextButton(onClick = { viewModel.clearOperationMessage() }) { Text("Fermer") }
+                    TextButton(onClick = { viewModel.clearOperationMessage() }) { Text(translate("settings.close")) }
                 }
         ) { Text(message) }
     }
@@ -162,7 +168,7 @@ fun EquationListView(
                     showDeleteConfirmation = false
                     equationToDelete = null
                 },
-                title = { Text("Confirmation de suppression") },
+                title = { Text(translate("settings.clearConfirmation.title")) },
                 text = {
                     Text(
                             "Êtes-vous sûr de vouloir supprimer l'équation '${equationToDelete?.name ?: ""}'?"
@@ -183,7 +189,7 @@ fun EquationListView(
                                     ButtonDefaults.buttonColors(
                                             backgroundColor = VetNutriColors.Error
                                     )
-                    ) { Text("Supprimer", color = VetNutriColors.OnError) }
+                    ) { Text(translate("general.delete"), color = VetNutriColors.OnError) }
                 },
                 dismissButton = {
                     OutlinedButton(
@@ -191,7 +197,7 @@ fun EquationListView(
                                 showDeleteConfirmation = false
                                 equationToDelete = null
                             }
-                    ) { Text("Annuler") }
+                    ) { Text(translate("general.cancel")) }
                 }
         )
     }
@@ -248,7 +254,7 @@ private fun EquationCard(
                         if (!equation.consistent) {
                             Icon(
                                     imageVector = AppIcons.Warning,
-                                    contentDescription = "Équation non cohérente",
+                                    contentDescription = translate("auto.view.equationlistview.equation_non_coherente"),
                                     tint = Color(0xFFD32F2F),
                                     modifier = Modifier.size(16.dp)
                             )
@@ -271,14 +277,14 @@ private fun EquationCard(
 
                     // Script de l'équation
                     Text(
-                            text = "Script: ${equation.equationScript}",
+                            text = "Script : ${equation.equationScript}",
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Medium
                     )
 
                     // Type et espèce
                     Text(
-                            text = "Type: ${equation.kind} | Espèce: ${equation.specie}",
+                            text = translate("equation.typeEspece", equation.kind.toEquationType().translateEnum(), (equation.specie ?: Espece.CH).translateEnum()),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                     )
@@ -286,7 +292,7 @@ private fun EquationCard(
                     // Message d'avertissement pour les équations non cohérentes
                     if (!equation.consistent) {
                         Text(
-                                text = "⚠️ Cette équation contient des variables non reconnues",
+                                text = translate("auto.view.equationlistview.cette_equation_contient_des_variables_non_reconn"),
                                 style = MaterialTheme.typography.caption,
                                 color = Color(0xFFD32F2F)
                         )
@@ -298,7 +304,7 @@ private fun EquationCard(
                     IconButton(onClick = onEdit) {
                         Icon(
                                 imageVector = AppIcons.Edit,
-                                contentDescription = "Modifier",
+                                contentDescription = translate("ration.editAction"),
                                 tint = VetNutriColors.Primary
                         )
                     }
@@ -307,7 +313,7 @@ private fun EquationCard(
                     IconButton(onClick = onDuplicate) {
                         Icon(
                                 imageVector = AppIcons.ContentCopy,
-                                contentDescription = "Dupliquer",
+                                contentDescription = translate("ration.duplicateAction"),
                                 tint = VetNutriColors.Primary
                         )
                     }
@@ -315,7 +321,7 @@ private fun EquationCard(
                     IconButton(onClick = onDelete) {
                         Icon(
                                 imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
+                                contentDescription = translate("general.delete"),
                                 tint = VetNutriColors.Error
                         )
                     }

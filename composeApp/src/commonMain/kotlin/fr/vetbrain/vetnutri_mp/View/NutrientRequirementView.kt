@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.deuxPoints
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,27 +14,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
-/**
- * Vue des besoins nutritionnels. Cette vue affiche la liste des références évaluées permettant
- * d'accéder à l'édition des besoins nutritionnels.
- *
- * @param viewModel ViewModel des références évaluées
- * @param onEditReference Callback pour éditer une référence
- * @param onCreateReference Callback pour créer une nouvelle référence
- * @param onEditNutrients Callback pour éditer les besoins nutritionnels d'une référence
- * @param modifier Modifier à appliquer à la vue
- */
 @Composable
 fun NutrientRequirementView(
         viewModel: ReferenceEvViewModel,
         onEditReference: (String) -> Unit,
         onCreateReference: () -> Unit,
         onEditNutrients: (String) -> Unit,
+        onBulkEdit: (List<String>) -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val allReferences by viewModel.allReferences.collectAsState(initial = emptyList())
@@ -40,70 +39,214 @@ fun NutrientRequirementView(
     val coroutineScope = rememberCoroutineScope()
     val searchQuery = remember { mutableStateOf("") }
 
-    // État pour la référence à supprimer
+    var isSelectionMode by remember { mutableStateOf(false) }
+    val selectedIds = remember { mutableStateListOf<String>() }
+    var filterEspece by remember { mutableStateOf<Espece?>(null) }
+    var filterStade by remember { mutableStateOf<StadePhysio?>(null) }
+    var showEspeceDropdown by remember { mutableStateOf(false) }
+    var showStadeDropdown by remember { mutableStateOf(false) }
+
     var refToDelete by remember { mutableStateOf<ReferenceEv?>(null) }
 
-    // Charger les références au démarrage
     LaunchedEffect(Unit) { viewModel.loadAllReferences() }
 
-    // Filtrer les références en fonction de la recherche
+    // Auto-sélection par filtre
+    LaunchedEffect(filterEspece, filterStade, isSelectionMode) {
+        if (!isSelectionMode) return@LaunchedEffect
+        allReferences.forEach { ref ->
+            val matchEspece = filterEspece == null || ref.espece == filterEspece
+            val matchStade = filterStade == null || ref.stadePhysio == filterStade
+            if (matchEspece && matchStade && ref.uuid !in selectedIds) {
+                selectedIds.add(ref.uuid)
+            }
+        }
+    }
+
     val filteredReferences =
             remember(allReferences, searchQuery.value) {
                 if (searchQuery.value.isBlank()) {
                     allReferences
                 } else {
-                    val query = searchQuery.value.lowercase()
                     allReferences.filter { reference ->
-                        reference.nom.lowercase().contains(query) ||
-                                reference.espece.toString().lowercase().contains(query) ||
-                                reference.stadePhysio.toString().lowercase().contains(query) ||
-                                (reference.maladie &&
-                                        reference.nomMaladie.lowercase().contains(query))
+                        Recherche.correspond(
+                                searchQuery.value,
+                                reference.nom,
+                                reference.espece.toString(),
+                                reference.stadePhysio.toString(),
+                                reference.nomMaladie.takeIf { reference.maladie }
+                        )
                     }
                 }
             }
 
     Scaffold(
             floatingActionButton = {
-                FloatingActionButton(
-                        onClick = onCreateReference,
-                        backgroundColor = VetNutriColors.Primary
-                ) {
-                    Icon(
-                            imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter une référence",
-                            tint = VetNutriColors.OnPrimary
+                if (isSelectionMode && selectedIds.isNotEmpty()) {
+                    ExtendedFloatingActionButton(
+                            text = {
+                                Text(
+                                        "Éditer les ${selectedIds.size} sélectionnée${if (selectedIds.size > 1) "s" else ""}"
+                                )
+                            },
+                            onClick = { onBulkEdit(selectedIds.toList()) },
+                            backgroundColor = VetNutriColors.Primary,
+                            contentColor = VetNutriColors.OnPrimary
                     )
+                } else {
+                    FloatingActionButton(
+                            onClick = onCreateReference,
+                            backgroundColor = VetNutriColors.Primary
+                    ) {
+                        Icon(
+                                imageVector = AppIcons.Add,
+                                contentDescription = translate("food_edit.biblio.add_button"),
+                                tint = VetNutriColors.OnPrimary
+                        )
+                    }
                 }
             }
     ) { paddingValues ->
         Column(modifier = modifier.fillMaxSize().padding(paddingValues).padding(16.dp)) {
-            // Barre de recherche
-            OutlinedTextField(
-                    value = searchQuery.value,
-                    onValueChange = { searchQuery.value = it },
-                    label = { Text("Rechercher une référence...") },
-                    leadingIcon = {
-                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
-                    },
-                    trailingIcon = {
-                        if (searchQuery.value.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery.value = "" }) {
-                                Icon(
-                                        imageVector = AppIcons.Close,
-                                        contentDescription = "Effacer la recherche"
+
+            // Barre de recherche + bouton mode sélection
+            Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                        value = searchQuery.value,
+                        onValueChange = { searchQuery.value = it },
+                        label = { Text(translate("auto.view.nutrientrequirementview.rechercher_une_reference")) },
+                        leadingIcon = {
+                            Icon(imageVector = AppIcons.Search, contentDescription = translate("consultation.edit.ref.search_tooltip"))
+                        },
+                        trailingIcon = {
+                            if (searchQuery.value.isNotEmpty()) {
+                                IconButton(onClick = { searchQuery.value = "" }) {
+                                    Icon(
+                                            imageVector = AppIcons.Close,
+                                            contentDescription = translate("auto.view.nutrientrequirementview.effacer_la_recherche")
+                                    )
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                OutlinedButton(
+                        onClick = {
+                            isSelectionMode = !isSelectionMode
+                            if (!isSelectionMode) {
+                                selectedIds.clear()
+                                filterEspece = null
+                                filterStade = null
+                            }
+                        },
+                        colors =
+                                ButtonDefaults.outlinedButtonColors(
+                                        contentColor =
+                                                if (isSelectionMode) VetNutriColors.Primary
+                                                else Color.Gray
                                 )
+                ) {
+                    Text(if (isSelectionMode) "Annuler" else "Sélectionner")
+                }
+            }
+
+            // Filtres espèce / stade (visibles uniquement en mode sélection)
+            if (isSelectionMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(translate("auto.view.nutrientrequirementview.filtrer"), style = MaterialTheme.typography.body2, color = Color.Gray)
+
+                    // Filtre espèce
+                    Box {
+                        OutlinedButton(
+                                onClick = { showEspeceDropdown = true },
+                                modifier = Modifier.widthIn(min = 100.dp)
+                        ) {
+                            Text(filterEspece?.translateEnum() ?: translate("animal.species"), maxLines = 1)
+                        }
+                        DropdownMenu(
+                                expanded = showEspeceDropdown,
+                                onDismissRequest = {
+                                    if (!isIosPlatform) showEspeceDropdown = false
+                                }
+                        ) {
+                            DropdownMenuItem(
+                                    onClick = {
+                                        filterEspece = null
+                                        showEspeceDropdown = false
+                                    }
+                            ) {
+                                Text(translate("crossConsultation.speciesAll"))
+                            }
+                            Espece.valuesExcept(Espece.CH).forEach { espece ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                            filterEspece = espece
+                                            showEspeceDropdown = false
+                                        }
+                                ) {
+                                    Text(espece.translateEnum())
+                                }
                             }
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-            )
-            // Titre et description
+                    }
+
+                    // Filtre stade physiologique
+                    Box {
+                        OutlinedButton(
+                                onClick = { showStadeDropdown = true },
+                                modifier = Modifier.widthIn(min = 100.dp)
+                        ) {
+                            Text(filterStade?.label ?: "Stade", maxLines = 1)
+                        }
+                        DropdownMenu(
+                                expanded = showStadeDropdown,
+                                onDismissRequest = {
+                                    if (!isIosPlatform) showStadeDropdown = false
+                                }
+                        ) {
+                            DropdownMenuItem(
+                                    onClick = {
+                                        filterStade = null
+                                        showStadeDropdown = false
+                                    }
+                            ) {
+                                Text(translate("crossConsultation.keywordsAll"))
+                            }
+                            StadePhysio.values().forEach { stade ->
+                                DropdownMenuItem(
+                                        onClick = {
+                                            filterStade = stade
+                                            showStadeDropdown = false
+                                        }
+                                ) {
+                                    Text(stade.label)
+                                }
+                            }
+                        }
+                    }
+
+                    // Effacer sélection
+                    if (selectedIds.isNotEmpty()) {
+                        TextButton(onClick = { selectedIds.clear() }) {
+                            Text(translate("auto.view.nutrientrequirementview.tout_deselectionner"))
+                        }
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Liste des références
             if (loading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = VetNutriColors.Primary)
@@ -120,7 +263,10 @@ fun NutrientRequirementView(
                 }
             } else {
                 Text(
-                        text = "Références disponibles (${filteredReferences.size})",
+                        text =
+                                if (isSelectionMode && selectedIds.isNotEmpty())
+                                        "Références disponibles (${filteredReferences.size}) — ${selectedIds.size} sélectionnée${if (selectedIds.size > 1) "s" else ""}"
+                                else "Références disponibles (${filteredReferences.size})",
                         style = MaterialTheme.typography.h6
                 )
 
@@ -133,6 +279,15 @@ fun NutrientRequirementView(
                     items(filteredReferences) { reference ->
                         ReferenceNutrientCard(
                                 reference = reference,
+                                isSelectionMode = isSelectionMode,
+                                isSelected = reference.uuid in selectedIds,
+                                onToggleSelect = {
+                                    if (reference.uuid in selectedIds) {
+                                        selectedIds.remove(reference.uuid)
+                                    } else {
+                                        selectedIds.add(reference.uuid)
+                                    }
+                                },
                                 onEdit = { onEditReference(reference.uuid) },
                                 onDelete = { refToDelete = reference },
                                 onDuplicate = {
@@ -146,11 +301,10 @@ fun NutrientRequirementView(
             }
         }
 
-        // Dialogue de confirmation pour la suppression
         refToDelete?.let { reference ->
             AlertDialog(
                     onDismissRequest = { refToDelete = null },
-                    title = { Text("Confirmer la suppression") },
+                    title = { Text(translate("new_reference.confirm_delete_title")) },
                     text = {
                         Text(
                                 "Êtes-vous sûr de vouloir supprimer la référence \"${reference.nom}\" ?"
@@ -168,9 +322,9 @@ fun NutrientRequirementView(
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = MaterialTheme.colors.error
                                         )
-                        ) { Text("Supprimer", color = Color.White) }
+                        ) { Text(translate("general.delete"), color = Color.White) }
                     },
-                    dismissButton = { Button(onClick = { refToDelete = null }) { Text("Annuler") } }
+                    dismissButton = { Button(onClick = { refToDelete = null }) { Text(translate("general.cancel")) } }
             )
         }
     }
@@ -179,76 +333,159 @@ fun NutrientRequirementView(
 @Composable
 private fun ReferenceNutrientCard(
         reference: ReferenceEv,
+        isSelectionMode: Boolean,
+        isSelected: Boolean,
+        onToggleSelect: () -> Unit,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
         onDuplicate: () -> Unit,
         modifier: Modifier = Modifier
 ) {
-    Card(modifier = modifier.fillMaxWidth().clickable { onEdit() }, elevation = 4.dp) {
-        Column(
+    val missingEquationLabels = remember(reference) { reference.getMissingEquationLabels() }
+
+    Card(
+            modifier =
+                    modifier.fillMaxWidth().clickable {
+                        if (isSelectionMode) onToggleSelect() else onEdit()
+                    },
+            elevation = 4.dp,
+            backgroundColor =
+                    if (isSelected) VetNutriColors.Primary.copy(alpha = 0.08f)
+                    else MaterialTheme.colors.surface
+    ) {
+        Row(
                 modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+            // Checkbox en mode sélection
+            if (isSelectionMode) {
+                Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelect() },
+                        colors =
+                                CheckboxDefaults.colors(
+                                        checkedColor = VetNutriColors.Primary
+                                ),
+                        modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+
+            Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                            text = reference.nom,
-                            style = MaterialTheme.typography.subtitle1,
-                            fontWeight = FontWeight.Bold
-                    )
-
-                    Text(
-                            text = "Espèce: ${reference.espece}",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
-
-                    Text(
-                            text = "Stade: ${reference.stadePhysio}",
-                            style = MaterialTheme.typography.body2,
-                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                    )
-
-                    if (reference.maladie) {
+                Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                                text = "Maladie: ${reference.nomMaladie}",
-                                style = MaterialTheme.typography.caption,
-                                color = MaterialTheme.colors.error
+                                text = reference.nom,
+                                style = MaterialTheme.typography.subtitle1,
+                                fontWeight = FontWeight.Bold
                         )
-                    }
-                }
 
-                // Boutons d'action
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                                imageVector = AppIcons.Edit,
-                                contentDescription = "Éditer la référence",
-                                tint = VetNutriColors.Primary
+                        if (missingEquationLabels.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Surface(
+                                    color = VetNutriColors.Error.copy(alpha = 0.12f),
+                                    contentColor = VetNutriColors.Error,
+                                    shape = MaterialTheme.shapes.small
+                            ) {
+                                Text(
+                                        text =
+                                                "${missingEquationLabels.size} ${translate(LocalizationKeys.NewReference.NOT_DEFINED)}",
+                                        modifier =
+                                                Modifier.padding(
+                                                        horizontal = 8.dp,
+                                                        vertical = 4.dp
+                                                ),
+                                        style = MaterialTheme.typography.caption,
+                                        fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+
+                        Text(
+                                text = translate("reference.espece", reference.espece.translateEnum()),
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                         )
+
+                        Text(
+                                text = translate("reference.stade", reference.stadePhysio.toString()),
+                                style = MaterialTheme.typography.body2,
+                                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                        )
+
+                        if (reference.maladie) {
+                            Text(
+                                    text = translate("reference.maladie", reference.nomMaladie),
+                                    style = MaterialTheme.typography.caption,
+                                    color = MaterialTheme.colors.error
+                            )
+                        }
+
+                        if (missingEquationLabels.isNotEmpty()) {
+                            Text(
+                                    text =
+                                            "${translate(LocalizationKeys.NewReference.NOT_DEFINED)}${deuxPoints()} ${missingEquationLabels.joinToString()}",
+                                    style = MaterialTheme.typography.caption,
+                                    color = VetNutriColors.Error
+                            )
+                        }
                     }
 
-                    IconButton(onClick = onDuplicate) {
-                        Icon(
-                                imageVector = AppIcons.ContentCopy,
-                                contentDescription = "Dupliquer la référence",
-                                tint = VetNutriColors.Primary
-                        )
-                    }
+                    // Boutons d'action (masqués en mode sélection pour ne pas gêner le tap)
+                    if (!isSelectionMode) {
+                        Row {
+                            IconButton(onClick = onEdit) {
+                                Icon(
+                                        imageVector = AppIcons.Edit,
+                                        contentDescription = translate("auto.view.nutrientrequirementview.editer_la_reference"),
+                                        tint = VetNutriColors.Primary
+                                )
+                            }
 
-                    IconButton(onClick = onDelete) {
-                        Icon(
-                                imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer la référence",
-                                tint = VetNutriColors.Error
-                        )
+                            IconButton(onClick = onDuplicate) {
+                                Icon(
+                                        imageVector = AppIcons.ContentCopy,
+                                        contentDescription = translate("auto.view.nutrientrequirementview.dupliquer_la_reference"),
+                                        tint = VetNutriColors.Primary
+                                )
+                            }
+
+                            IconButton(onClick = onDelete) {
+                                Icon(
+                                        imageVector = AppIcons.Delete,
+                                        contentDescription = translate("consultation.edit.ref.delete_tooltip"),
+                                        tint = VetNutriColors.Error
+                                )
+                            }
+                        }
                     }
                 }
             }
+        }
+    }
+}
+
+private fun ReferenceEv.getMissingEquationLabels(): List<String> {
+    if (maladie) return emptyList()
+
+    return buildList {
+        if (equationBW?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_METABOLIC_WEIGHT))
+        }
+        if (equationBEE?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_BEE))
+        }
+        if (equationDEcom?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_DECOM))
+        }
+        if (equationDEraw?.equationScript.isNullOrBlank()) {
+            add(translate(LocalizationKeys.NewReference.EQ_DERAW))
         }
     }
 }

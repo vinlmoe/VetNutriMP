@@ -7,11 +7,10 @@ import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSUserDomainMask
 
+fun getDatabasePath(): String = documentDirectory() + "/${AppDatabase.DATABASE_NAME}"
+
 fun getDatabaseBuilder(): RoomDatabase.Builder<AppDatabase> {
-    val dbFilePath = documentDirectory() + "/vetnutri.db"
-    return Room.databaseBuilder<AppDatabase>(
-            name = dbFilePath,
-    )
+    return Room.databaseBuilder<AppDatabase>(name = getDatabasePath())
 }
 
 @OptIn(ExperimentalForeignApi::class)

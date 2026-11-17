@@ -1,0 +1,178 @@
+package fr.vetbrain.vetnutri_mp.Utils
+
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.log10
+import kotlin.math.pow
+import kotlin.math.round
+
+/**
+ * Utilitaires de formatage intelligent pour les graphiques
+ */
+object GraphFormattingUtils {
+
+    /** Formate les graduations sans exposer les erreurs binaires des Float. */
+    fun formatAxisTick(value: Float, range: ClosedFloatingPointRange<Float>): String {
+        if (!value.isFinite()) return "N/A"
+        val span = (range.endInclusive.toDouble() - range.start.toDouble()).let { abs(it) }
+        // Garder assez de précision pour distinguer les graduations après un zoom.
+        val decimals = if (span > 0.0 && span.isFinite()) {
+            ceil(-log10(span / 10.0)).toInt().coerceIn(0, 9)
+        } else {
+            2
+        }
+        val scale = 10.0.pow(decimals).toLong()
+        val scaled = round(value.toDouble() * scale).toLong()
+        val magnitude = abs(scaled)
+        val sign = if (scaled < 0) "-" else ""
+        val integer = magnitude / scale
+        if (decimals == 0) return "$sign$integer"
+        val fraction = (magnitude % scale).toString().padStart(decimals, '0').trimEnd('0')
+        return if (fraction.isEmpty()) "$sign$integer" else "$sign$integer.$fraction"
+    }
+
+    /**
+     * Formate un nombre avec un nombre intelligent de décimales selon la valeur
+     * 
+     * @param value La valeur à formater
+     * @param maxDecimals Nombre maximum de décimales (défaut: 3)
+     * @return String formatée
+     */
+    fun formatSmartDecimal(value: Double, maxDecimals: Int = 3): String {
+        if (value.isNaN() || value.isInfinite()) {
+            return "N/A"
+        }
+
+        val absValue = abs(value)
+        
+        return when {
+            // Valeur zéro : pas de décimales
+            absValue == 0.0 -> {
+                "0"
+            }
+            // Valeurs très petites (< 0.01) : 3-4 décimales
+            absValue < 0.01 -> {
+                formatDecimal(value, 4)
+            }
+            // Valeurs petites (< 0.1) : 3 décimales
+            absValue < 0.1 -> {
+                formatDecimal(value, 3)
+            }
+            // Valeurs moyennes (< 1) : 2 décimales
+            absValue < 1.0 -> {
+                formatDecimal(value, 2)
+            }
+            // Valeurs normales (< 10) : 1 décimale
+            absValue < 10.0 -> {
+                formatDecimal(value, 1)
+            }
+            // Valeurs >= 10 : pas de décimales
+            else -> {
+                formatDecimal(value, 0)
+            }
+        }
+    }
+
+    /**
+     * Formate un nombre avec un nombre fixe de décimales
+     * 
+     * @param value La valeur à formater
+     * @param decimals Nombre de décimales
+     * @return String formatée
+     */
+    fun formatDecimal(value: Double, decimals: Int): String {
+        if (value.isNaN() || value.isInfinite()) {
+            return "N/A"
+        }
+
+        // Arrondi (demi vers l'extérieur) puis découpage en entiers : (6,8 − 6) × 100 vaut
+        // 79,999…, tronqué en 79, d'où « 6.79 » quand on recalculait la partie décimale en Double
+        val multiplier = 10.0.pow(decimals).toLong()
+        val scaled = kotlin.math.floor(abs(value) * multiplier + 0.5).toLong()
+        val signe = if (value < 0 && scaled != 0L) "-" else ""
+        return if (decimals == 0) {
+            "$signe$scaled"
+        } else {
+            "$signe${scaled / multiplier}.${(scaled % multiplier).toString().padStart(decimals, '0')}"
+        }
+    }
+
+    /**
+     * Formate un pourcentage avec un nombre intelligent de décimales
+     * 
+     * @param value La valeur en pourcentage (0-100)
+     * @return String formatée avec le symbole %
+     */
+    fun formatPercentage(value: Double): String {
+        val formatted = formatSmartDecimal(value, 1)
+        return "$formatted%"
+    }
+
+    /**
+     * Formate une valeur énergétique (kcal)
+     * 
+     * @param value La valeur énergétique
+     * @return String formatée avec l'unité kcal
+     */
+    fun formatEnergy(value: Double): String {
+        val formatted = formatSmartDecimal(value, 1)
+        return "${formatted} kcal"
+    }
+
+    /**
+     * Formate une densité énergétique (kcal/100g)
+     * 
+     * @param value La densité énergétique
+     * @return String formatée avec l'unité
+     */
+    fun formatEnergyDensity(value: Double): String {
+        val formatted = formatSmartDecimal(value, 1)
+        return "${formatted} kcal/100g"
+    }
+
+    /**
+     * Formate une valeur de nutriment (g/1000kcal)
+     * 
+     * @param value La valeur du nutriment
+     * @return String formatée avec l'unité
+     */
+    fun formatNutrientPer1000Kcal(value: Double): String {
+        val formatted = formatSmartDecimal(value, 2)
+        return "${formatted} g/1000kcal"
+    }
+
+    /**
+     * Formate un poids (kg)
+     * 
+     * @param value Le poids
+     * @return String formatée avec l'unité kg
+     */
+    fun formatWeight(value: Double): String {
+        val formatted = formatSmartDecimal(value, 1)
+        return "${formatted} kg"
+    }
+
+    /**
+     * Formate un âge en mois avec décimales intelligentes
+     * 
+     * @param ageInMonths L'âge en mois
+     * @return String formatée
+     */
+    fun formatAgeInMonths(ageInMonths: Double): String {
+        return when {
+            ageInMonths < 1.0 -> {
+                val days = (ageInMonths * 30.44).toInt()
+                "${days} jours"
+            }
+            ageInMonths < 12.0 -> {
+                val formatted = formatSmartDecimal(ageInMonths, 1)
+                "${formatted} mois"
+            }
+            else -> {
+                val years = ageInMonths / 12.0
+                val formatted = formatSmartDecimal(years, 1)
+                "${formatted} ans"
+            }
+        }
+    }
+}

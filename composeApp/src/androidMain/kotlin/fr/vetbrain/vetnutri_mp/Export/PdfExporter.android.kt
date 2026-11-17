@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Export
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import android.app.Activity
 import android.content.Context
 import android.print.PrintAttributes
@@ -8,23 +9,42 @@ import android.print.PrintManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 actual object PdfExporter {
-        actual fun exportDocument(
-                documentType: DocumentType,
-                data: ExportData,
-                defaultFileName: String
-        ): Boolean {
+    actual suspend fun exportDocument(
+            documentType: DocumentType,
+            data: ExportData,
+            defaultFileName: String
+    ): Boolean = withContext(Dispatchers.Main) {
                 val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
-                if (activity == null) return false
+                if (activity == null) return@withContext false
                 val html: String = HtmlDocumentBuilder.buildHtml(documentType, data)
+                exportHtmlInternal(activity, html, defaultFileName)
+        }
+
+    actual suspend fun exportHtmlDocument(
+            html: String,
+            defaultFileName: String
+    ): Boolean = withContext(Dispatchers.Main) {
+                val activity: Activity? = AndroidContext.getCurrentActivityOrNull()
+                if (activity == null) return@withContext false
+                exportHtmlInternal(activity, html, defaultFileName)
+        }
+
+    private fun exportHtmlInternal(
+            activity: Activity,
+            html: String,
+            defaultFileName: String
+    ): Boolean {
                 try {
                         val webView = WebView(activity)
                         webView.settings.javaScriptEnabled = false
-                        webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                         webView.webViewClient =
                                 object : WebViewClient() {
                                         override fun onPageFinished(view: WebView?, url: String?) {
+                                                val loadedView = view ?: return
                                                 val printManager =
                                                         activity.getSystemService(
                                                                 Context.PRINT_SERVICE
@@ -33,12 +53,13 @@ actual object PdfExporter {
                                                 val jobName =
                                                         defaultFileName.ifBlank { "document.pdf" }
                                                 val printAdapter: PrintDocumentAdapter =
-                                                        view!!.createPrintDocumentAdapter(jobName)
+                                                        loadedView.createPrintDocumentAdapter(jobName)
                                                 val attributes =
                                                         PrintAttributes.Builder()
                                                                 .setMediaSize(
                                                                         PrintAttributes.MediaSize
                                                                                 .ISO_A4
+                                                                                .asLandscape()
                                                                 )
                                                                 .setResolution(
                                                                         PrintAttributes.Resolution(
@@ -60,9 +81,11 @@ actual object PdfExporter {
                                                 )
                                         }
                                 }
+                        webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null)
                         return true
                 } catch (t: Throwable) {
+                        t.rethrowIfCancellation()
                         return false
                 }
-        }
+    }
 }

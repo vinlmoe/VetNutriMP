@@ -104,6 +104,11 @@ object AppSizes {
 
     // Breakpoints
     val breakpointWideScreen = 900.dp
+    /** En dessous : téléphone, une seule colonne (liste puis détail). */
+    val breakpointCompact = 600.dp
+
+    /** Hauteur minimale de la grille de l'onglet Rations (listes et analyse) : en dessous, la page défile. */
+    val hauteurMinGrilleRations = 600.dp
 
     // Tailles spécifiques de dialogue
     val dialogMaxHeight

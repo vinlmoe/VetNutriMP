@@ -10,11 +10,14 @@ enum class EquationKind(
     MW("metabolicWeightDesc", "metabolicWeight", 2),
     INDICATOR("indicatorDesc", "indicator", 3),
     NEED("NeedDesc", "NeedEq", 4),
-    COMPLEMENTARY_NUTRIENT("complementaryNutrientDesc", "complementaryNutrient", 5);
+    COMPLEMENTARY_NUTRIENT("complementaryNutrientDesc", "complementaryNutrient", 5),
+      ENERCOMP("energyCompDesc", "energyComp", 6);
 
     fun getDescription() = description
     fun getNom() = nom
     fun getUuid() = uuid
+
+    fun toEquationType(): EquationType = EquationType.entries.first { it.toEquationKind() == this }
 
     companion object {
         fun getById(i: Int) = values().find { it.uuid == i } ?: ENERGYNEED

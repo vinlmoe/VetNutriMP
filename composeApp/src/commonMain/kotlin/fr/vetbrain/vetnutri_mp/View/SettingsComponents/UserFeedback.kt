@@ -17,6 +17,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.delay
 
 /**
@@ -90,7 +92,7 @@ fun UserFeedback(
                 ) {
                     Icon(
                         imageVector = type.icon,
-                        contentDescription = type.description,
+                        contentDescription = translate(type.description),
                         tint = type.iconColor,
                         modifier = Modifier.size(24.dp)
                     )
@@ -113,7 +115,7 @@ fun UserFeedback(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = translate(LocalizationKeys.General.CLOSE),
                         tint = type.textColor.copy(alpha = 0.7f),
                         modifier = Modifier.size(20.dp)
                     )
@@ -138,28 +140,28 @@ enum class FeedbackType(
         backgroundColor = Color(0xFFE8F5E8),
         textColor = Color(0xFF2E7D32),
         iconColor = Color(0xFF4CAF50),
-        description = "Succès"
+        description = LocalizationKeys.General.SUCCESS
     ),
     ERROR(
         icon = Icons.Default.Error,
         backgroundColor = Color(0xFFFFEBEE),
         textColor = Color(0xFFC62828),
         iconColor = Color(0xFFF44336),
-        description = "Erreur"
+        description = LocalizationKeys.General.ERROR
     ),
     WARNING(
         icon = Icons.Default.Warning,
         backgroundColor = Color(0xFFFFF8E1),
         textColor = Color(0xFFEF6C00),
         iconColor = Color(0xFFFF9800),
-        description = "Avertissement"
+        description = LocalizationKeys.Settings.FEEDBACK_WARNING
     ),
     INFO(
         icon = Icons.Default.Info,
         backgroundColor = Color(0xFFE3F2FD),
         textColor = Color(0xFF1565C0),
         iconColor = Color(0xFF2196F3),
-        description = "Information"
+        description = LocalizationKeys.Settings.FEEDBACK_INFO
     )
 }
 

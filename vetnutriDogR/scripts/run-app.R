@@ -1,0 +1,13 @@
+# Run from any directory: Rscript /path/to/vetnutriDogR/scripts/run-app.R [VetNutriMP]
+args <- commandArgs(trailingOnly = FALSE)
+script <- sub("^--file=", "", args[grepl("^--file=", args)][1])
+module_root <- dirname(dirname(normalizePath(script, mustWork = TRUE)))
+repo <- commandArgs(trailingOnly = TRUE)
+if (length(repo)) Sys.setenv(VETNUTRI_MP_ROOT = normalizePath(repo[1], mustWork = TRUE))
+if (!nzchar(Sys.getenv("VETNUTRI_MP_ROOT")) && dir.exists(file.path(dirname(module_root), "composeApp")))
+  Sys.setenv(VETNUTRI_MP_ROOT = dirname(module_root))
+if (!requireNamespace("shiny", quietly = TRUE) || !requireNamespace("jsonlite", quietly = TRUE))
+  stop('Installer les dépendances : install.packages(c("jsonlite", "shiny"))')
+for (file in list.files(file.path(module_root, "R"), pattern = "\\.R$", full.names = TRUE)) source(file)
+options(vetnutriDogR.source_mode = TRUE)
+shiny::runApp(file.path(module_root, "inst/shiny"))

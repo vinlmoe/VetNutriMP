@@ -1,11 +1,15 @@
 package fr.vetbrain.vetnutri_mp.View.SettingsSections
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LibraryAdd
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,6 +22,8 @@ import fr.vetbrain.vetnutri_mp.View.SettingsComponents.FullScreenProgressIndicat
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsSection
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.WarningSection
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 /**
@@ -33,6 +39,8 @@ fun AdministrationSettings(
         onAnimalListRefresh: () -> Unit,
         onFoodListRefresh: () -> Unit,
         onBackupClick: () -> Unit = {},
+        onLegacyMigrationClick: () -> Unit = {},
+        onBulkBiblioClick: () -> Unit = {},
         modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -55,8 +63,8 @@ fun AdministrationSettings(
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(24.dp)) {
         // Section d'administration
         SettingsSection(
-                title = "Administration de la base de données",
-                subtitle = "Actions d'administration et de maintenance de la base de données",
+                title = translate(LocalizationKeys.Administration.TITLE),
+                subtitle = translate(LocalizationKeys.Administration.SUBTITLE),
                 icon = Icons.Default.AdminPanelSettings,
                 content = {
                     Column(
@@ -74,18 +82,19 @@ fun AdministrationSettings(
                                             when (result) {
                                                 is SettingsViewModel.ImportResult.Success -> {
                                                     autoImportResult =
-                                                            "✅ Import automatique réussi: ${result.count} éléments importés"
+                                                            translate(LocalizationKeys.Administration.AUTO_IMPORT_SUCCESS, result.count.toString())
                                                     // Rafraîchir les listes après l'import
                                                     onAnimalListRefresh()
                                                     onFoodListRefresh()
                                                 }
                                                 is SettingsViewModel.ImportResult.Error -> {
                                                     autoImportResult =
-                                                            "❌ Erreur lors de l'import: ${result.message}"
+                                                            translate(LocalizationKeys.Administration.AUTO_IMPORT_ERROR, result.message)
                                                 }
                                             }
                                         } catch (e: Exception) {
-                                            autoImportResult = "❌ Erreur inattendue: ${e.message}"
+                                            e.rethrowIfCancellation()
+                                            autoImportResult = translate(LocalizationKeys.Administration.UNEXPECTED_ERROR, e.message ?: "")
                                         } finally {
                                             isAutoImporting = false
                                         }
@@ -114,8 +123,8 @@ fun AdministrationSettings(
                             }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                    if (isAutoImporting) "Import en cours..."
-                                    else "Relancer l'import automatique des données initiales"
+                                    if (isAutoImporting) translate(LocalizationKeys.Administration.AUTO_IMPORT_RUNNING)
+                                    else translate(LocalizationKeys.Administration.AUTO_IMPORT_ACTION)
                             )
                         }
 
@@ -134,7 +143,35 @@ fun AdministrationSettings(
                                     modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Gérer les sauvegardes")
+                            Text(translate(LocalizationKeys.Administration.MANAGE_BACKUPS))
+                        }
+
+                        // Bouton migration VetNutri 2
+                        OutlinedButton(
+                                onClick = onLegacyMigrationClick,
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.Upload,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(translate(LocalizationKeys.Administration.IMPORT_LEGACY))
+                        }
+
+                        // Bouton d'ajout en masse de bibliographie aux aliments
+                        OutlinedButton(
+                                onClick = onBulkBiblioClick,
+                                modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                    imageVector = Icons.Default.LibraryAdd,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(translate("admin.bibliographieEnMasse"))
                         }
 
                         // Affichage du résultat de l'import automatique
@@ -164,7 +201,7 @@ fun AdministrationSettings(
                                     IconButton(onClick = { autoImportResult = null }) {
                                         Icon(
                                                 Icons.Default.Delete,
-                                                contentDescription = "Fermer",
+                                                contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                                                 tint = Color.Gray
                                         )
                                     }
@@ -174,9 +211,8 @@ fun AdministrationSettings(
 
                         // Avertissement général
                         WarningSection(
-                                title = "⚠️ Actions irréversibles",
-                                message =
-                                        "Ces actions sont irréversibles et supprimeront définitivement les données. Utilisez avec précaution."
+                                title = translate(LocalizationKeys.Administration.IRREVERSIBLE_TITLE),
+                                message = translate(LocalizationKeys.Administration.IRREVERSIBLE_MSG)
                         )
 
                         // Boutons d'action
@@ -197,7 +233,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des aliments")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_FOODS))
                             }
 
                             // Supprimer les animaux
@@ -216,7 +252,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des animaux")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_ANIMALS))
                             }
 
                             // Supprimer les références nutritionnelles
@@ -235,7 +271,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des références nutritionnelles")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_REFS))
                             }
 
                             // Supprimer les équations
@@ -254,7 +290,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des équations")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_EQUATIONS))
                             }
 
                             // Supprimer les bibliographies
@@ -273,7 +309,7 @@ fun AdministrationSettings(
                                         modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Vider la base de données des bibliographies")
+                                Text(translate(LocalizationKeys.Administration.CLEAR_BIBLIO))
                             }
                         }
                     }
@@ -284,17 +320,18 @@ fun AdministrationSettings(
     // Dialogues de confirmation
     if (showFoodDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "aliments",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_FOODS),
                 onConfirm = {
                     showFoodDeleteDialog = false
                     isProcessing = true
                     coroutineScope.launch {
                         try {
                             val count = viewModel.clearAllFoods()
-                            resultMessage = "$count aliments ont été supprimés avec succès."
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_FOODS_SUCCESS, count.toString())
                             onFoodListRefresh()
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            e.rethrowIfCancellation()
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -306,17 +343,18 @@ fun AdministrationSettings(
 
     if (showAnimalDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "animaux",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_ANIMALS),
                 onConfirm = {
                     showAnimalDeleteDialog = false
                     isProcessing = true
                     coroutineScope.launch {
                         try {
                             val count = viewModel.clearAllAnimals()
-                            resultMessage = "$count animaux ont été supprimés avec succès."
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ANIMALS_SUCCESS, count.toString())
                             onAnimalListRefresh()
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            e.rethrowIfCancellation()
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -328,7 +366,7 @@ fun AdministrationSettings(
 
     if (showReferenceDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "références nutritionnelles, équations et bibliographies",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_REFERENCES_ALL),
                 onConfirm = {
                     showReferenceDeleteDialog = false
                     isProcessing = true
@@ -340,18 +378,24 @@ fun AdministrationSettings(
 
                             try {
                                 refCount = viewModel.clearAllReferences()
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AdministrationSettings", "Exception ignorée : ${e.message}") }
                             try {
                                 eqCount = viewModel.clearAllEquations()
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AdministrationSettings", "Exception ignorée : ${e.message}") }
                             try {
                                 bibCount = viewModel.clearAllBiblioRefs()
-                            } catch (e: Exception) {}
+                            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("AdministrationSettings", "Exception ignorée : ${e.message}") }
 
                             resultMessage =
-                                    "$refCount références nutritionnelles, $eqCount équations et $bibCount bibliographies ont été supprimées avec succès."
+                                    translate(
+                                            LocalizationKeys.Administration.DELETE_REFERENCES_SUCCESS,
+                                            refCount.toString(),
+                                            eqCount.toString(),
+                                            bibCount.toString()
+                                    )
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            e.rethrowIfCancellation()
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -363,16 +407,17 @@ fun AdministrationSettings(
 
     if (showEquationDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "équations",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_EQUATIONS),
                 onConfirm = {
                     showEquationDeleteDialog = false
                     isProcessing = true
                     coroutineScope.launch {
                         try {
                             val count = viewModel.clearAllEquations()
-                            resultMessage = "$count équations ont été supprimées avec succès."
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_EQUATIONS_SUCCESS, count.toString())
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            e.rethrowIfCancellation()
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -384,7 +429,7 @@ fun AdministrationSettings(
 
     if (showBiblioDeleteDialog) {
         DatabaseClearConfirmationDialog(
-                entityName = "références bibliographiques",
+                entityName = translate(LocalizationKeys.Administration.ENTITY_BIBLIO),
                 onConfirm = {
                     showBiblioDeleteDialog = false
                     isProcessing = true
@@ -392,9 +437,10 @@ fun AdministrationSettings(
                         try {
                             val count = viewModel.clearAllBiblioRefs()
                             resultMessage =
-                                    "$count références bibliographiques ont été supprimées avec succès."
+                                    translate(LocalizationKeys.Administration.DELETE_BIBLIO_SUCCESS, count.toString())
                         } catch (e: Exception) {
-                            resultMessage = "Erreur lors de la suppression : ${e.message}"
+                            e.rethrowIfCancellation()
+                            resultMessage = translate(LocalizationKeys.Administration.DELETE_ERROR, e.message ?: "null")
                         } finally {
                             isProcessing = false
                         }
@@ -411,7 +457,7 @@ fun AdministrationSettings(
     if (resultMessage.isNotEmpty()) {
         Snackbar(
                 modifier = Modifier.padding(16.dp),
-                action = { TextButton(onClick = { resultMessage = "" }) { Text("OK") } }
+                action = { TextButton(onClick = { resultMessage = "" }) { Text(translate(LocalizationKeys.General.OK)) } }
         ) { Text(resultMessage) }
     }
 }

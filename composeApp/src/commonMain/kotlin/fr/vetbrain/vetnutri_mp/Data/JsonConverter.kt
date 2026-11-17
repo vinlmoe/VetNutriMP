@@ -4,11 +4,12 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
+import fr.vetbrain.vetnutri_mp.Utils.isDebugBuild
 
 /** Classe utilitaire pour convertir les objets du modèle en JSON */
 class JsonConverter {
     private val json = Json {
-        prettyPrint = true
+        prettyPrint = isDebugBuild()
         ignoreUnknownKeys = true
         isLenient = true
         encodeDefaults = true

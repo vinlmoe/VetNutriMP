@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,10 +17,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.ViewModel.BackupRestoreViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
- * Vue pour la gestion des sauvegardes et de la restauration
+ * Vue sauvegardes/restauration.
+ * - Liste les backups, création, suppression, restauration avec dialogues de confirmation.
+ * - Affiche progression/log et bilan de restauration.
  */
 @Composable
 fun BackupRestoreView(
@@ -56,19 +62,22 @@ fun BackupRestoreView(
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
-                }
-                Text("Sauvegardes et Restauration", style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
+                IconButtonWithTooltip(
+                    onClick = onBack,
+                    imageVector = Icons.AutoMirrored.Default.ArrowBack,
+                    contentDescription = translate(LocalizationKeys.Backup.BACK),
+                    tooltip = translate(LocalizationKeys.Backup.BACK)
+                )
+                Text(translate(LocalizationKeys.Backup.TITLE), style = MaterialTheme.typography.h5, fontWeight = FontWeight.Bold)
             }
-            
+
             Button(
                 onClick = { viewModel.createManualBackup() },
                 enabled = !isLoading && !isRestoring
             ) {
                 Icon(Icons.Default.Backup, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Nouvelle sauvegarde")
+                Text(translate(LocalizationKeys.Backup.NEW_BACKUP_ACTION))
             }
         }
         
@@ -92,7 +101,7 @@ fun BackupRestoreView(
                     IconButton(onClick = { viewModel.clearError() }) {
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = "Fermer",
+                            contentDescription = translate(LocalizationKeys.General.CLOSE),
                             tint = MaterialTheme.colors.error
                         )
                     }
@@ -107,7 +116,7 @@ fun BackupRestoreView(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text("Restauration en cours...", style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
+                    Text(translate(LocalizationKeys.Backup.RESTORE_IN_PROGRESS), style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(8.dp))
                     LinearProgressIndicator(progress = restoreProgress.toFloat(), modifier = Modifier.fillMaxWidth())
                     Spacer(modifier = Modifier.height(8.dp))
@@ -135,9 +144,9 @@ fun BackupRestoreView(
                 ) {
                     Icon(Icons.Default.Backup, contentDescription = null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("Aucune sauvegarde disponible", style = MaterialTheme.typography.subtitle1, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
+                    Text(translate("auto.view.backuprestoreview.aucune_sauvegarde_disponible"), style = MaterialTheme.typography.subtitle1, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Créez votre première sauvegarde en cliquant sur le bouton ci-dessus", style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), textAlign = TextAlign.Center)
+                    Text(translate("auto.view.backuprestoreview.creez_votre_premiere_sauvegarde_en_cliquant_sur"), style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f), textAlign = TextAlign.Center)
                 }
             }
         } else {
@@ -160,9 +169,9 @@ fun BackupRestoreView(
     showDeleteDialog?.let { backup ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
-            title = { Text("Supprimer la sauvegarde") },
+            title = { Text(translate("auto.view.backuprestoreview.supprimer_la_sauvegarde")) },
             text = { 
-                Text("Êtes-vous sûr de vouloir supprimer la sauvegarde du ${viewModel.formatDate(backup.createdAt)} ?")
+                Text(translate("auto.view.backuprestoreview.etes_vous_sur_de_vouloir_supprimer_la_sauvegarde_d", (viewModel.formatDate(backup.createdAt)).toString()))
             },
             confirmButton = {
                 TextButton(
@@ -171,12 +180,12 @@ fun BackupRestoreView(
                         showDeleteDialog = null
                     }
                 ) {
-                    Text("Supprimer")
+                    Text(translate("general.delete"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Annuler")
+                    Text(translate("general.cancel"))
                 }
             }
         )
@@ -186,12 +195,12 @@ fun BackupRestoreView(
     showRestoreDialog?.let { backup ->
         AlertDialog(
             onDismissRequest = { showRestoreDialog = null },
-            title = { Text("Restaurer la sauvegarde") },
+            title = { Text(translate("auto.view.backuprestoreview.restaurer_la_sauvegarde")) },
             text = { 
                 Column {
-                    Text("Êtes-vous sûr de vouloir restaurer la sauvegarde du ${viewModel.formatDate(backup.createdAt)} ?")
+                    Text(translate("auto.view.backuprestoreview.etes_vous_sur_de_vouloir_restaurer_la_sauvegarde_d", (viewModel.formatDate(backup.createdAt)).toString()))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Cette action remplacera toutes les données actuelles par celles de la sauvegarde.", style = MaterialTheme.typography.body2, color = MaterialTheme.colors.error)
+                    Text(translate("auto.view.backuprestoreview.cette_action_remplacera_toutes_les_donnees_actue"), style = MaterialTheme.typography.body2, color = MaterialTheme.colors.error)
                 }
             },
             confirmButton = {
@@ -201,12 +210,12 @@ fun BackupRestoreView(
                         showRestoreDialog = null
                     }
                 ) {
-                    Text("Restaurer")
+                    Text(translate("auto.view.backuprestoreview.restaurer"))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showRestoreDialog = null }) {
-                    Text("Annuler")
+                    Text(translate("general.cancel"))
                 }
             }
         )
@@ -218,7 +227,7 @@ fun BackupRestoreView(
             onDismissRequest = { viewModel.dismissRestoreResultDialog() },
             title = { 
                 Text(
-                    "Restauration terminée",
+                    translate("auto.view.backuprestoreview.restauration_terminee"),
                     style = MaterialTheme.typography.h6,
                     color = MaterialTheme.colors.primary
                 )
@@ -226,7 +235,7 @@ fun BackupRestoreView(
             text = { 
                 Column {
                     Text(
-                        "La sauvegarde a été restaurée avec succès !",
+                        translate("auto.view.backuprestoreview.la_sauvegarde_a_ete_restauree_avec_succes"),
                         style = MaterialTheme.typography.body1,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
@@ -239,7 +248,7 @@ fun BackupRestoreView(
                             modifier = Modifier.padding(16.dp)
                         ) {
                             Text(
-                                "Bilan de l'import :",
+                                translate("auto.view.backuprestoreview.bilan_de_l_import"),
                                 style = MaterialTheme.typography.subtitle1,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -251,15 +260,15 @@ fun BackupRestoreView(
                             ) {
                                 Column {
                                     Text("${importCounts.animals}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Animaux", style = MaterialTheme.typography.body2)
+                                    Text(translate("auto.view.backuprestoreview.animaux"), style = MaterialTheme.typography.body2)
                                 }
                                 Column {
                                     Text("${importCounts.foods}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Aliments", style = MaterialTheme.typography.body2)
+                                    Text(translate("database.stat.foods"), style = MaterialTheme.typography.body2)
                                 }
                                 Column {
                                     Text("${importCounts.equations}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Équations", style = MaterialTheme.typography.body2)
+                                    Text(translate("new_reference.tab.equations"), style = MaterialTheme.typography.body2)
                                 }
                             }
                             
@@ -271,15 +280,15 @@ fun BackupRestoreView(
                             ) {
                                 Column {
                                     Text("${importCounts.conseils}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Conseils", style = MaterialTheme.typography.body2)
+                                    Text(translate("database.stat.conseils"), style = MaterialTheme.typography.body2)
                                 }
                                 Column {
                                     Text("${importCounts.rations}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Rations", style = MaterialTheme.typography.body2)
+                                    Text(translate("crossConsultation.rationsLabel"), style = MaterialTheme.typography.body2)
                                 }
                                 Column {
                                     Text("${importCounts.recipes}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Recettes", style = MaterialTheme.typography.body2)
+                                    Text(translate("settings.tabRecipes"), style = MaterialTheme.typography.body2)
                                 }
                             }
                             
@@ -291,11 +300,11 @@ fun BackupRestoreView(
                             ) {
                                 Column {
                                     Text("${importCounts.references}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Références", style = MaterialTheme.typography.body2)
+                                    Text(translate("database.stat.references"), style = MaterialTheme.typography.body2)
                                 }
                                 Column {
                                     Text("${importCounts.biblios}", style = MaterialTheme.typography.h6, color = MaterialTheme.colors.primary)
-                                    Text("Biblios", style = MaterialTheme.typography.body2)
+                                    Text(translate("auto.view.backuprestoreview.biblios"), style = MaterialTheme.typography.body2)
                                 }
                                 Column { } // Colonne vide pour l'alignement
                             }
@@ -307,7 +316,7 @@ fun BackupRestoreView(
                 TextButton(
                     onClick = { viewModel.dismissRestoreResultDialog() }
                 ) {
-                    Text("OK")
+                    Text(translate("general.ok"))
                 }
             }
         )
@@ -333,6 +342,14 @@ private fun BackupItem(
             ) {
                 Column {
                     Text(viewModel.formatDate(backup.createdAt), style = MaterialTheme.typography.subtitle1, fontWeight = FontWeight.Bold)
+                    if (backup.isLongTerm) {
+                        Text(
+                            text = translate("backup.long_term_label"),
+                            style = MaterialTheme.typography.caption,
+                            color = MaterialTheme.colors.primary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                     Text(
                         text = backup.fileName,
                         style = MaterialTheme.typography.body2,
@@ -342,10 +359,10 @@ private fun BackupItem(
                 
                 Row {
                     IconButton(onClick = onRestore) {
-                        Icon(Icons.Default.Restore, contentDescription = "Restaurer", tint = MaterialTheme.colors.primary)
+                        Icon(Icons.Default.Restore, contentDescription = translate("auto.view.backuprestoreview.restaurer"), tint = MaterialTheme.colors.primary)
                     }
                     IconButton(onClick = onDelete) {
-                        Icon(Icons.Default.Delete, contentDescription = "Supprimer", tint = MaterialTheme.colors.error)
+                        Icon(Icons.Default.Delete, contentDescription = translate("general.delete"), tint = MaterialTheme.colors.error)
                     }
                 }
             }
@@ -366,7 +383,7 @@ private fun BackupItem(
             Spacer(modifier = Modifier.height(8.dp))
             
             // Taille du fichier
-            Text("Taille: ${viewModel.formatFileSize(backup.fileSize)}", style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
+            Text(translate("auto.view.backuprestoreview.taille_arg", (viewModel.formatFileSize(backup.fileSize)).toString()), style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f))
         }
     }
 }

@@ -19,7 +19,12 @@ fun Labelable.translateEnum(): String {
     val nutrientHeuristicKey: String? = computeNutrientHeuristicKey(className, this.label)
     if (nutrientHeuristicKey != null) {
         val translatedHeuristic: String = LocalizationManager.translate(nutrientHeuristicKey)
-        if (translatedHeuristic != nutrientHeuristicKey) return translatedHeuristic
+        if (translatedHeuristic != nutrientHeuristicKey) {
+            // Debug temporaire pour DM
+            if (this.label == "DM") {
+            }
+            return translatedHeuristic
+        }
     }
 
     val enumConstName: String? = (this as? Enum<*>)?.name
@@ -58,6 +63,7 @@ private fun computeNutrientHeuristicKey(className: String, rawLabel: String): St
                     "GLUCIDE" -> "nutrition.carbohydrates"
                     "CENDRE" -> "nutrition.ash"
                     "ENERGIE" -> "nutrition.energy"
+                    "DM" -> "nutrition.dryMatter"
                     else -> null
                 }
         // Minéraux macros
@@ -113,3 +119,6 @@ private fun computeNutrientHeuristicKey(className: String, rawLabel: String): St
         else -> null
     }
 }
+
+/** Deux-points après une étiquette : espace avant en français (« Espèce : Chien »), pas en anglais. */
+fun deuxPoints(): String = if (LocalizationManager.currentLocale == "fr") " :" else ":"

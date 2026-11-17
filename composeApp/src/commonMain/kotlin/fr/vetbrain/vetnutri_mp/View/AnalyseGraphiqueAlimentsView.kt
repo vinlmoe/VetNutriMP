@@ -1,10 +1,22 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.LocalHauteurGraphique
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.withContext
+import fr.vetbrain.vetnutri_mp.Repository.EquationsMemorisees
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.hauteurGraphiquePour
+
+import fr.vetbrain.vetnutri_mp.Data.ajouterOuCumulerAliment
+import fr.vetbrain.vetnutri_mp.Utils.UserErrors
+import fr.vetbrain.vetnutri_mp.Utils.orUserError
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -15,254 +27,43 @@ import androidx.compose.material.DropdownMenuItem
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
-import fr.vetbrain.vetnutri_mp.Components.DropdownField
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
-import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.Utils.DataB
-import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import io.github.koalaplot.core.*
-import io.github.koalaplot.core.bar.DefaultVerticalBar
-import io.github.koalaplot.core.bar.VerticalBarPlot
-import io.github.koalaplot.core.line.LinePlot
-import io.github.koalaplot.core.style.LineStyle
-import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 import io.github.koalaplot.core.xygraph.*
-import io.github.koalaplot.core.xygraph.FloatLinearAxisModel
-import io.github.koalaplot.core.xygraph.Point
-import io.github.koalaplot.core.xygraph.XYGraph
-
-/** Données calculées pour un aliment avec sa densité énergétique et pourcentages */
-data class AlimentAnalyseData(
-        val aliment: AlimentEv,
-        val numero: Int,
-        val densiteEnergetique: Double,
-        val pourcentageProteines: Double,
-        val pourcentageLipides: Double,
-        val phosphorePer1000Kcal: Double = 0.0,
-        val proteinePer1000Kcal: Double = 0.0,
-        val calciumPer1000Kcal: Double = 0.0,
-        // Tous les nutriments principaux en g/1000kcal
-        val energiePer1000Kcal: Double = 0.0,
-        val lipidePer1000Kcal: Double = 0.0,
-        val glucidePer1000Kcal: Double = 0.0,
-        // Autres nutriments macro en g/1000kcal
-        val fibrePer1000Kcal: Double = 0.0,
-        val cendrePer1000Kcal: Double = 0.0,
-        val eauPer1000Kcal: Double = 0.0
-)
-
-/** Calcule la densité énergétique d'un aliment de manière asynchrone */
-private suspend fun calculerDensiteEnergetiqueAsync(
-        aliment: AlimentEv,
-        referenceEv: ReferenceEv?,
-        equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
-): Double {
-    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
-    if (referenceEv != null && equationRepository != null) {
-        try {
-            val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
-
-            val _energie =
-                    alimentRation.getNutrientWithComplementary(
-                            nutrient = NutrientMain.ENERGIE,
-                            preferences = null,
-                            equationRepository = equationRepository,
-                            referenceEv = referenceEv
-                    )
-            if (_energie != null && _energie > 0) {
-                return _energie
-            }
-        } catch (e: Exception) {
-            // Fallback sur la méthode simple
-        }
-    }
-
-    // Méthode simple : calcul basé sur les macronutriments
-    val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
-
-    val _proteines =
-            alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.PROTEINE,
-                    preferences = preferencesEspece,
-                    equationRepository = equationRepository,
-                    referenceEv = referenceEv
-            )
-                    ?: 0.0
-
-    val _lipides =
-            alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.LIPIDE,
-                    preferences = preferencesEspece,
-                    equationRepository = equationRepository,
-                    referenceEv = referenceEv
-            )
-                    ?: 0.0
-
-    val _glucides =
-            alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.GLUCIDE,
-                    preferences = preferencesEspece,
-                    equationRepository = equationRepository,
-                    referenceEv = referenceEv
-            )
-                    ?: 0.0
-
-    // Coefficients énergétiques (kcal/g)
-    val kcalProteines = _proteines * 3.5
-    val kcalLipides = _lipides * 8.5
-    val kcalGlucides = _glucides * 3.5
-
-    return kcalProteines + kcalLipides + kcalGlucides
-}
-
-/** Calcule le pourcentage d'énergie apporté par les protéines de manière asynchrone */
-private suspend fun calculerPourcentageEnergieProteinesAsync(
-        aliment: AlimentEv,
-        densiteEnergetique: Double,
-        equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
-): Double {
-    if (densiteEnergetique <= 0) return 0.0
-
-    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
-    val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
-
-    val _proteines =
-            alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.PROTEINE,
-                    preferences = preferencesEspece,
-                    equationRepository = equationRepository,
-                    referenceEv = null
-            )
-                    ?: 0.0
-    val energieProteines = _proteines * 3.5
-
-    return (energieProteines / densiteEnergetique) * 100.0
-}
-
-/** Calcule le pourcentage d'énergie apporté par les lipides de manière asynchrone */
-private suspend fun calculerPourcentageEnergieLipidesAsync(
-        aliment: AlimentEv,
-        densiteEnergetique: Double,
-        equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece?
-): Double {
-    if (densiteEnergetique <= 0) return 0.0
-
-    // ✅ UTILISER LA MÊME APPROCHE QUE RATIONSVIEW : AlimentRation transitoire
-    val alimentRation = AlimentRation(aliment = aliment, quantite = 100.0, weight = 1.0)
-
-    val _lipides =
-            alimentRation.getNutrientWithComplementary(
-                    nutrient = NutrientMain.LIPIDE,
-                    preferences = preferencesEspece,
-                    equationRepository = equationRepository,
-                    referenceEv = null
-            )
-                    ?: 0.0
-    val energieLipides = _lipides * 8.5
-
-    return (energieLipides / densiteEnergetique) * 100.0
-}
-
-/** Liste des nutriments disponibles pour les graphiques personnalisés */
-data class NutrimentOption(
-        val key: String,
-        val displayName: String,
-        val unit: String = "g/1000 kcal"
-)
-
-/** Options de nutriments disponibles */
-private val NUTRIMENT_OPTIONS =
-        listOf(
-                NutrimentOption("", "Aucun"), // Option "aucun" pour l'axe Y
-                NutrimentOption("energie", "Énergie", "kcal/1000 kcal"),
-                NutrimentOption("proteine", "Protéines"),
-                NutrimentOption("lipide", "Lipides"),
-                NutrimentOption("glucide", "Glucides"),
-                NutrimentOption("fibre", "Magnésium"), // Remplacement de fibre par magnésium
-                NutrimentOption("phosphore", "Phosphore"),
-                NutrimentOption("calcium", "Calcium"),
-                NutrimentOption("cendre", "Sodium"), // Remplacement de cendre par sodium
-                NutrimentOption("eau", "Potassium") // Remplacement d'eau par potassium
-        )
-
-/** Récupère la valeur d'un nutriment depuis AlimentAnalyseData */
-private fun AlimentAnalyseData.getNutrimentValue(key: String?): Double {
-    return when (key) {
-        "" -> 0.0 // Option "aucun"
-        "energie" -> energiePer1000Kcal
-        "proteine" -> proteinePer1000Kcal
-        "lipide" -> lipidePer1000Kcal
-        "glucide" -> glucidePer1000Kcal
-        "fibre" -> fibrePer1000Kcal // Maintenant magnesium
-        "phosphore" -> phosphorePer1000Kcal
-        "calcium" -> calciumPer1000Kcal
-        "cendre" -> cendrePer1000Kcal // Maintenant sodium
-        "eau" -> eauPer1000Kcal // Maintenant potassium
-        else -> 0.0
-    }
-}
-
-/**
- * Calcule une plage adaptative pour les axes Y des histogrammes basée sur la distribution des
- * données - Version robuste et flexible
- */
-private fun calculateAdaptiveRange(
-        values: List<Float>,
-        paddingPercent: Float = 0.08f
-): ClosedFloatingPointRange<Float> {
-    if (values.isEmpty()) return 0f..1f
-
-    val minValue = values.minOf { it }
-    val maxValue = values.maxOf { it }
-
-    // Valeurs de sécurité pour éviter tout problème
-    val safeMinValue = maxOf(0f, minValue) // Pas de valeurs négatives
-    val safeMaxValue = maxOf(safeMinValue + 0.1f, maxValue) // Au moins une petite plage
-
-    // Calcul de la plage de données
-    val dataRange = safeMaxValue - safeMinValue
-
-    // Padding adaptatif basé sur la plage des données
-    val adaptivePadding =
-            when {
-                dataRange == 0f -> maxOf(safeMaxValue * 0.2f, 1f) // Valeurs identiques
-                dataRange < 10f -> dataRange * 0.3f // Petite plage
-                dataRange < 100f -> dataRange * 0.15f // Plage moyenne
-                else -> dataRange * 0.1f // Grande plage
-            }
-
-    // Calcul des bornes avec padding adaptatif
-    val lowerBound = maxOf(0f, safeMinValue - adaptivePadding)
-    val upperBound = safeMaxValue + adaptivePadding
-
-    // Garantie finale : plage d'au moins 0.1f et au plus raisonnable
-    val finalLowerBound = lowerBound
-    val finalUpperBound = maxOf(upperBound, lowerBound + 0.1f)
-
-    return finalLowerBound..finalUpperBound
-}
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.rememberGraphicsLayer
+import fr.vetbrain.vetnutri_mp.Export.DocumentAliments
+import fr.vetbrain.vetnutri_mp.Export.DocumentGraphiquesAliments
+import fr.vetbrain.vetnutri_mp.Export.DocumentComparaisonGroupes
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.DialogueChoixGraphiques
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.DialogueExportEnCours
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.FormatExport
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.capturerGraphiques
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.SignalerCalculGraphique
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.SuiviCalculsGraphiques
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.ZoneGraphiquesExportables
+import fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.enregistrerArchiveGraphiques
 
 /** Sélecteur de nutriment avec dropdown */
 @Composable
@@ -287,47 +88,65 @@ private fun NutrimentSelector(
         OutlinedButton(onClick = { expanded = true }, modifier = Modifier.fillMaxWidth()) {
             val selectedOption = NUTRIMENT_OPTIONS.find { it.key == selectedNutriment }
             Text(
-                    text = selectedOption?.displayName ?: "Sélectionner...",
+                    text = selectedOption?.displayName ?: translate("graphAliments.selectionner"),
                     style = MaterialTheme.typography.body2
             )
             Spacer(modifier = Modifier.weight(1f))
-            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = "Déplier")
+            Icon(imageVector = Icons.Default.ArrowDropDown, contentDescription = translate("general.expand"))
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            NUTRIMENT_OPTIONS.forEach { option ->
-                DropdownMenuItem(
-                        onClick = {
-                            onNutrimentSelected(option.key)
-                            expanded = false
-                        }
-                ) {
-                    Text(
-                            text = "${option.displayName} (${option.unit})",
-                            style = MaterialTheme.typography.body2
-                    )
-                }
-            }
-        }
+        MenuNutriments(
+                expanded = expanded,
+                onDismiss = { expanded = false },
+                options = NUTRIMENT_OPTIONS,
+                onChoisi = { onNutrimentSelected(it.key) }
+        )
     }
 }
 
 /** Vue d'analyse graphique des aliments sélectionnés */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AnalyseGraphiqueAlimentsView(
         aliments: List<AlimentEv>,
         referenceEv: ReferenceEv?,
         equationRepository: EquationRepository?,
-        preferencesEspece: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
+        viewModel: fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel? = null,
         onClose: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        /** Groupe B comparé aux [aliments] dans l'onglet « Comparaison A/B » (vide = pas de comparaison). */
+        alimentsComparaison: List<AlimentEv> = emptyList(),
+        /** Noms donnés aux groupes (vide = « Groupe A », « Groupe B »). */
+        nomGroupeA: String = "",
+        nomGroupeB: String = ""
 ) {
     // États pour les données d'analyse
     var alimentsAnalyses by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
+    // États pour observer les consultations et rations sélectionnées
+    val selectedConsultation by viewModel?.selectedConsultation?.collectAsState() ?: remember { mutableStateOf(null) }
+    val selectedRation by viewModel?.selectedRation?.collectAsState() ?: remember { mutableStateOf(null) }
+    var rationGraphData by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
+    
+    // États pour les valeurs métaboliques nécessaires à la HeatMap
+    val poidsMetabolique by viewModel?.poidsMetabolique?.collectAsState() ?: remember { mutableStateOf(null) }
+    val besoinEnergetiqueStandard by viewModel?.besoinEnergetiqueStandard?.collectAsState() ?: remember { mutableStateOf(null) }
+    val besoinEnergetiqueTotal by viewModel?.besoinEnergetiqueTotal?.collectAsState() ?: remember { mutableStateOf(null) }
+    
+    // Déclencher les calculs métaboliques si nécessaire
+    LaunchedEffect(selectedConsultation) {
+        selectedConsultation?.let { viewModel?.calculerValeursMetaboliques(it) }
+    }
+
+    // CoroutineScope pour les opérations asynchrones
+    val coroutineScope = rememberCoroutineScope()
+
     // État pour l'aliment sélectionné (UUID de l'aliment)
     var alimentSelectionne by remember { mutableStateOf<String?>(null) }
+    
+    // État pour les aliments masqués (Set d'UUIDs)
+    var alimentsMasques by remember { mutableStateOf<Set<String>>(emptySet()) }
 
     // État pour l'onglet actif
     var ongletActif by remember { mutableStateOf("densite_energetique") }
@@ -336,314 +155,198 @@ fun AnalyseGraphiqueAlimentsView(
     var nutrimentX by remember { mutableStateOf<String?>("proteine") }
     var nutrimentY by remember { mutableStateOf<String?>("") } // Par défaut : aucun
 
-    // États pour les filtres
-    var searchQuery by remember { mutableStateOf("") }
-    var selectedFoodType by remember { mutableStateOf<FoodKind?>(null) }
-    var selectedEspece by remember { mutableStateOf<Espece?>(null) }
-    var selectedDataB by remember { mutableStateOf<String?>(null) }
-    var selectedIndication by remember { mutableStateOf<AlimIndic?>(null) }
+    // États pour les toggles d'unités
+    var useDryMatterPer100g by remember { mutableStateOf(false) } // Toggle pour /1000 kcal vs /100g MS
 
-    // Filtrer les aliments selon les critères
-    val alimentsFiltres = remember(
-        aliments,
-        searchQuery,
-        selectedFoodType,
-        selectedEspece,
-        selectedDataB,
-        selectedIndication
-    ) {
-        aliments.filter { aliment ->
-            // Filtre par recherche textuelle avec recherche multi-mots (AND)
-            val matchesSearch = if (searchQuery.isEmpty()) true
-            else {
-                val searchWords = searchQuery.trim().split("\\s+".toRegex())
-                    .filter { it.isNotEmpty() }
-                    .map { it.lowercase() }
-
-                if (searchWords.isEmpty()) true
-                else {
-                    // Chaque mot doit être trouvé dans au moins un des champs
-                    searchWords.all { word ->
-                        aliment.nom?.lowercase()?.contains(word) == true ||
-                        aliment.brand?.lowercase()?.contains(word) == true ||
-                        aliment.gamme?.lowercase()?.contains(word) == true ||
-                        aliment.ingredients?.lowercase()?.contains(word) == true
-                    }
-                }
-            }
-
-            // Filtre par type d'aliment (ALL = pas de filtre)
-            val matchesType = when (val sel = selectedFoodType) {
-                null -> true
-                FoodKind.ALL -> true // "ALL" = pas de filtre, tous les types acceptés
-                else -> aliment.typeAliment == sel
-            }
-
-            // Filtre par espèce (CH = "ALL" = pas de filtre)
-            val matchesEspece = when (val sel = selectedEspece) {
-                null -> true
-                Espece.CH -> true // "CH" (avec label "ALL") = pas de filtre, toutes les espèces acceptées
-                else -> {
-                    val foodSpecies = aliment.getEspecesList()
-                    foodSpecies.isEmpty() || 
-                    foodSpecies.contains(Espece.CH) || // Aliment compatible avec toutes les espèces
-                    foodSpecies.contains(sel)
-                }
-            }
-
-            // Filtre par base de données (null/"" = pas de filtre)
-            val matchesDataB = when (val dataBFilter = selectedDataB) {
-                null -> true // null = pas de filtre
-                "" -> true // chaîne vide = pas de filtre
-                else -> {
-                    aliment.dataB?.trim() == dataBFilter.trim() // Comparaison exacte
-                }
-            }
-
-            // Filtre par indication (null = pas de filtre)
-            val matchesIndication = when (val indicationFilter = selectedIndication) {
-                null -> true // null = pas de filtre
-                else -> {
-                    val foodIndications = aliment.getIndications()
-                    foodIndications.isEmpty() || foodIndications.contains(indicationFilter)
-                }
-            }
-
-            matchesSearch && matchesType && matchesEspece && matchesDataB && matchesIndication
+    var calculRations by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedConsultation, referenceEv, equationRepository, useDryMatterPer100g) {
+        rationGraphData = emptyList()
+        val consultation = selectedConsultation ?: return@LaunchedEffect
+        calculRations = true
+        try {
+        val prepared = fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.prepareGraphConsultations(
+            emptyList(), consultation, true, true
+        ).single()
+        val result = mutableListOf<AlimentAnalyseData>()
+        var number = 0
+        for (ration in prepared.rations) {
+            val isSum = fr.vetbrain.vetnutri_mp.View.AnalyseGraphique.graphRationLabel(ration.uuid, 0) == "Σ"
+            if (!isSum) number++
+            rationFoodGraphData(ration, number, isSum, referenceEv, equationRepository, useDryMatterPer100g)
+                ?.let { result.add(it) }
+        }
+        rationGraphData = result
+        } finally {
+            calculRations = false
         }
     }
 
+    // Utiliser directement la liste des aliments sans filtrage
+    val alimentsFiltres = aliments
+
     // Calculer les données d'analyse pour chaque aliment filtré de manière asynchrone
-    LaunchedEffect(alimentsFiltres, referenceEv, equationRepository) {
+    LaunchedEffect(alimentsFiltres, referenceEv, equationRepository, useDryMatterPer100g) {
         isLoading = true
-        val resultat = mutableListOf<AlimentAnalyseData>()
-
-        for (aliment in alimentsFiltres) {
-            try {
-                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs de base de l'aliment
-
-                // ✅ CRÉER UN ALIMENTRATION TRANSITOIRE POUR UTILISER getNutrientWithComplementary
-                val alimentRation =
-                        AlimentRation(
-                                aliment = aliment,
-                                quantite = 100.0, // 100g pour les calculs
-                                weight = 1.0
-                        )
-
-                // Utiliser getNutrientWithComplementary de manière asynchrone
-                val _proteines =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.PROTEINE,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val _lipides =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.LIPIDE,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val _glucides =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.GLUCIDE,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val _energie =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMain.ENERGIE,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Récupération du phosphore pour le second graphique
-                val phosphore =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.PHOS,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Récupération du calcium pour le troisième graphique
-                val calcium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.CAL,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                // Récupération des autres nutriments pour le graphique personnalisé
-                // Note: Seuls CAL, PHOS, MG, NA, K, CHL sont disponibles dans NutrientMacro
-                val magnesium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.MG,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val sodium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.NA,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val potassium =
-                        alimentRation.getNutrientWithComplementary(
-                                nutrient = NutrientMacro.K,
-                                preferences = preferencesEspece,
-                                equationRepository = equationRepository,
-                                referenceEv = referenceEv
-                        )
-                                ?: 0.0
-
-                val densiteEnergetique =
-                        calculerDensiteEnergetiqueAsync(
-                                aliment,
-                                referenceEv,
-                                equationRepository,
-                                preferencesEspece
-                        )
-                val pourcentageProteines =
-                        calculerPourcentageEnergieProteinesAsync(
-                                aliment,
-                                densiteEnergetique,
-                                equationRepository,
-                                preferencesEspece
-                        )
-                val pourcentageLipides =
-                        calculerPourcentageEnergieLipidesAsync(
-                                aliment,
-                                densiteEnergetique,
-                                equationRepository,
-                                preferencesEspece
-                        )
-
-                // Calculs pour le graphique Phosphore/Protéines (par 1000 kcal)
-                val proteinePer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (_proteines * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val phosphorePer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (phosphore * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val calciumPer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (calcium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                // Calculs pour tous les nutriments en g/1000kcal
-                val energiePer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (_energie * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val lipidePer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (_lipides * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val glucidePer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (_glucides * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val magnesiumPer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (magnesium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val sodiumPer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (sodium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                val potassiumPer1000Kcal =
-                        if (densiteEnergetique > 0) {
-                            (potassium * 1000.0) / densiteEnergetique
-                        } else {
-                            0.0
-                        }
-
-                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs calculées
-
-                resultat.add(
-                        AlimentAnalyseData(
-                                aliment = aliment,
-                                numero = 0, // Numéro temporaire, sera réassigné après le tri
-                                densiteEnergetique = densiteEnergetique,
-                                pourcentageProteines = pourcentageProteines,
-                                pourcentageLipides = pourcentageLipides,
-                                phosphorePer1000Kcal = phosphorePer1000Kcal,
-                                proteinePer1000Kcal = proteinePer1000Kcal,
-                                calciumPer1000Kcal = calciumPer1000Kcal,
-                                energiePer1000Kcal = energiePer1000Kcal,
-                                lipidePer1000Kcal = lipidePer1000Kcal,
-                                glucidePer1000Kcal = glucidePer1000Kcal,
-                                fibrePer1000Kcal =
-                                        magnesiumPer1000Kcal, // Utilisation de magnesium à la place
-                                // de fibre
-                                cendrePer1000Kcal =
-                                        sodiumPer1000Kcal, // Utilisation de sodium à la place de
-                                // cendre
-                                eauPer1000Kcal =
-                                        potassiumPer1000Kcal // Utilisation de potassium à la place
-                                // d'eau
-                                )
-                )
-            } catch (e: Exception) {
-
-                e.printStackTrace()
-            }
-        }
-
-        // Mettre à jour l'état avec les résultats triés par densité énergétique décroissante
-        // et réassigner les numéros dans l'ordre du tri
-        alimentsAnalyses =
-                resultat.sortedByDescending { it.densiteEnergetique }.mapIndexed { index, data ->
-                    data.copy(numero = index + 1)
-                }
+        alimentsAnalyses = analyserAliments(alimentsFiltres, referenceEv, equationRepository, useDryMatterPer100g)
         isLoading = false
     }
 
+    LaunchedEffect(alimentsComparaison.isEmpty()) {
+        if (ongletActif == "comparaison" && alimentsComparaison.isEmpty()) ongletActif = "densite_energetique"
+    }
+
+    // Groupe B : mêmes calculs, pour les boîtes à moustaches
+    var analysesComparaison by remember { mutableStateOf<List<AlimentAnalyseData>>(emptyList()) }
+    var calculComparaison by remember { mutableStateOf(false) }
+    LaunchedEffect(alimentsComparaison, referenceEv, equationRepository, useDryMatterPer100g) {
+        calculComparaison = true
+        try {
+            analysesComparaison =
+                    if (alimentsComparaison.isEmpty()) emptyList()
+                    else analyserAliments(alimentsComparaison, referenceEv, equationRepository, useDryMatterPer100g)
+        } finally {
+            calculComparaison = false
+        }
+    }
+
+    // Boîtes à moustaches : nutriments ajoutés par l'utilisateur (une carte chacun) et leurs valeurs
+    val groupeA = remember(alimentsAnalyses, alimentsMasques) { alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques } }
+    var nutrimentsBoites by remember { mutableStateOf<List<String>>(emptyList()) }
+    var valeursBoites by remember { mutableStateOf<Map<String, ValeursGroupes>>(emptyMap()) }
+    var calculBoites by remember { mutableStateOf(false) }
+    LaunchedEffect(nutrimentsBoites, groupeA, analysesComparaison, referenceEv, equationRepository, useDryMatterPer100g) {
+        calculBoites = true
+        try {
+            valeursBoites = valeursNutrimentsGroupes(
+                    (clesNutrimentsDeBase + nutrimentsBoites).distinct(), groupeA, analysesComparaison,
+                    referenceEv, equationRepository, useDryMatterPer100g
+            )
+        } finally {
+            calculBoites = false
+        }
+    }
+    val mesuresBoites = remember(groupeA, analysesComparaison, useDryMatterPer100g, nutrimentsBoites, valeursBoites) {
+        mesuresBoites(groupeA, analysesComparaison, useDryMatterPer100g, nutrimentsBoites, valeursBoites)
+    }
+    val nutrimentsDisponibles = remember(alimentsAnalyses, analysesComparaison) {
+        nutrimentsAjoutables(alimentsAnalyses + analysesComparaison)
+    }
+    val libelleA = libelleGroupe("A", nomGroupeA, groupeA.size)
+    val libelleB = libelleGroupe("B", nomGroupeB, analysesComparaison.size)
+
+    // Export commun : chaque graphique choisi est affiché à tour de rôle et capturé depuis « coucheGraphique »
+    val coucheGraphique = rememberGraphicsLayer()
+    val suiviCalculs = remember { SuiviCalculsGraphiques() }
+    val captureGraphique = Modifier.drawWithContent {
+        coucheGraphique.record { this@drawWithContent.drawContent() }
+        drawLayer(coucheGraphique)
+    }
+    var dialogueExport by remember { mutableStateOf(false) }
+    // Réglages de la heatmap, gardés ici pour que l'export reprenne ceux affichés
+    var heatmapSeulementMin by remember { mutableStateOf(false) }
+    var heatmapCoefficient by remember { mutableStateOf(1.0) }
+    var exportEnCours by remember { mutableStateOf(false) }
+    var messageExport by remember { mutableStateOf<String?>(null) }
+
+    fun exporter(format: FormatExport, onglets: List<String>) {
+        coroutineScope.launch {
+            exportEnCours = true
+            val ongletInitial = ongletActif
+            try {
+                val images = capturerGraphiques(
+                        onglets.filter { it !in ONGLETS_TABLEAUX }, coucheGraphique, suiviCalculs,
+                        afficher = { ongletActif = it },
+                        fichier = { index, onglet -> "images/${index + 1}_$onglet.jpg" },
+                        titre = { titreGraphiqueAliments(it, nutrimentX, nutrimentY) }
+                )
+                ongletActif = ongletInitial
+                val visibles = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques }
+                val nombre = { v: Double -> DocumentComparaisonGroupes.nombre(v, libellesStatistiques()) }
+                val tableaux = listOfNotNull(
+                        if ("heatmap" in onglets) tableauHeatMap(
+                                visibles, referenceEv, equationRepository, besoinEnergetiqueStandard,
+                                selectedConsultation?.weight, poidsMetabolique,
+                                heatmapSeulementMin, heatmapCoefficient, nombre
+                        ) else null,
+                        if ("analyse_detaillee" in onglets)
+                            tableauAnalyseDetaillee(visibles, referenceEv, equationRepository, useDryMatterPer100g, nombre)
+                        else null
+                )
+                val document = DocumentAliments(
+                        titre = translate("graphAliments.export.docTitle"),
+                        sousTitre = listOfNotNull(
+                                referenceEv?.nom?.takeIf { it.isNotBlank() },
+                                translate(if (useDryMatterPer100g) "chart.togglePer100gDm" else "chart.togglePer1000Kcal")
+                        ).joinToString(" · "),
+                        graphiques = images.map { it.first },
+                        elements = elementsPourExport(
+                                (alimentsAnalyses + rationGraphData).filter { it.aliment.uuid !in alimentsMasques }
+                        ),
+                        tableaux = tableaux,
+                        comparaison = if ("comparaison" in onglets)
+                            comparaisonPourExport(mesuresBoites, groupeA, analysesComparaison, libelleA, libelleB)
+                        else null
+                )
+                val texte = when (format) {
+                    FormatExport.MARKDOWN -> DocumentGraphiquesAliments.markdown(document, libellesExportAliments())
+                    FormatExport.LATEX -> DocumentGraphiquesAliments.latex(document, libellesExportAliments())
+                }
+                messageExport = enregistrerArchiveGraphiques("graphiques_aliments", format, texte, images)
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                AppLog.e("AnalyseGraphiqueAlimentsView", e.message ?: "Erreur", e)
+                messageExport = translate("graph.export.error", e.message.orEmpty())
+            } finally {
+                ongletActif = ongletInitial
+                exportEnCours = false
+            }
+        }
+    }
+
+    if (dialogueExport) {
+        val onglets = ongletsExportablesAliments(analysesComparaison.isNotEmpty())
+        DialogueChoixGraphiques(
+                titre = translate("graphAliments.export.title"),
+                info = translate("graphAliments.export.info"),
+                graphiques = onglets,
+                libelle = { titreGraphiqueAliments(it, nutrimentX, nutrimentY) },
+                choisisParDefaut = onglets.toSet(),
+                onDismiss = { dialogueExport = false },
+                onExport = { format, choisis ->
+                    dialogueExport = false
+                    exporter(format, choisis)
+                }
+        )
+    }
+    if (exportEnCours) DialogueExportEnCours(translate("graphAliments.export.title"))
+    messageExport?.let { message ->
+        AlertDialog(
+                onDismissRequest = { messageExport = null },
+                text = { Text(message) },
+                confirmButton = { TextButton(onClick = { messageExport = null }) { Text(translate("general.close")) } }
+        )
+    }
+
+    @Composable
+    fun BoitesAMoustachesAliments(modifier: Modifier) {
+        ComparaisonBoitesAMoustaches(
+                mesures = mesuresBoites,
+                libelleA = libelleA,
+                libelleB = libelleB,
+                groupeBVide = analysesComparaison.isEmpty(),
+                nutrimentsDisponibles = nutrimentsDisponibles,
+                nutrimentsAjoutes = nutrimentsBoites,
+                onAjouterNutriment = { nutrimentsBoites = nutrimentsBoites + it },
+                onRetirerNutriment = { nutrimentsBoites = nutrimentsBoites - it },
+                onRetirerTous = { nutrimentsBoites = emptyList() },
+                couche = coucheGraphique,
+                modifier = modifier
+        )
+    }
+
+    ZoneGraphiquesExportables(suiviCalculs, exportEnCours) {
+    // Calculs de l'écran (analyses, rations, groupe B, boîtes) : l'export attend leur fin
+    SignalerCalculGraphique(isLoading || calculRations || calculComparaison || calculBoites)
     Column(
             modifier = modifier.fillMaxSize().padding(AppSizes.paddingMedium),
             verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
@@ -658,36 +361,47 @@ fun AnalyseGraphiqueAlimentsView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
             ) {
-                IconButton(onClick = onClose) {
-                    Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Retour à la sélection d'aliments",
-                            tint = VetNutriColors.Primary
-                    )
-                }
+                IconButtonWithTooltip(
+                        onClick = onClose,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = translate("auto.view.analysegraphiquealimentsview.retour_a_la_selection_d_aliments"),
+                        tooltip = translate("graph.back"),
+                        tint = VetNutriColors.Primary
+                )
                 Column {
                     Text(
-                            text = "Analyse graphique de ${aliments.size} aliment(s)",
+                            text = translate("graphAliments.titreAnalyse", aliments.size.toString()),
                             style = MaterialTheme.typography.h5,
                             fontWeight = FontWeight.Bold,
                             color = VetNutriColors.Primary
                     )
                     Text(
-                            text = "Visualisation des caractéristiques nutritionnelles",
+                            text = translate("auto.view.analysegraphiquealimentsview.visualisation_des_caracteristiques_nutritionnell"),
                             style = MaterialTheme.typography.caption,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
                 }
             }
+            OutlinedButton(
+                    onClick = { dialogueExport = true },
+                    enabled = referenceEv != null && equationRepository != null && !isLoading && !exportEnCours
+            ) {
+                Icon(Icons.Default.FileDownload, contentDescription = null)
+                Spacer(Modifier.width(AppSizes.paddingSmall))
+                Text(translate("graph.export.button"))
+            }
         }
 
-        // Onglets pour choisir le type de graphique
-        Row(
+        // Onglets pour choisir le type de graphique : tous visibles, sur plusieurs lignes si besoin
+        FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             // ✨ Onglet Histogramme Densité Énergétique (PREMIER)
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "densite_energetique" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -698,12 +412,13 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "densite_energetique") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
-            ) { Text("Densité énergétique") }
+                            )
+            ) { Text(translate("chart.energyDensityLabel"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // Onglet Protéines/Lipides
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "protein_lipid" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -714,12 +429,13 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "protein_lipid") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
-            ) { Text("Protéines/Lipides (%)") }
+                            )
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.proteines_lipides"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // Onglet Phosphore/Protéines
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "phosphore_protein" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -730,12 +446,13 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "phosphore_protein") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
-            ) { Text("Phosphore/Protéines") }
+                            )
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.phosphore_proteines"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // Onglet Calcium/Phosphore
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "calcium_phosphore" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -746,12 +463,13 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "calcium_phosphore") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
-            ) { Text("Calcium/Phosphore") }
+                            )
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.calcium_phosphore"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
 
             // ✨ Nouvel onglet Nutriments personnalisés
             Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
                     onClick = { ongletActif = "nutriments_perso" },
                     colors =
                             ButtonDefaults.buttonColors(
@@ -762,143 +480,130 @@ fun AnalyseGraphiqueAlimentsView(
                                     contentColor =
                                             if (ongletActif == "nutriments_perso") Color.White
                                             else Color.Black
-                            ),
-                    modifier = Modifier.weight(1f)
-            ) { Text("Nutriments\npersonnalisés") }
+                            )
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.nutriments_personnalisas"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
+
+            // ✨ Nouvel onglet Analyse détaillée
+            Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
+                    onClick = { ongletActif = "analyse_detaillee" },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor =
+                                            if (ongletActif == "analyse_detaillee")
+                                                    VetNutriColors.Primary
+                                            else Color.Gray.copy(alpha = 0.3f),
+                                    contentColor =
+                                            if (ongletActif == "analyse_detaillee") Color.White
+                                            else Color.Black
+                            )
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.analyse_dataillae"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
+
+            // ✨ Nouvel onglet HeatMap
+            Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
+                    onClick = { ongletActif = "heatmap" },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor =
+                                            if (ongletActif == "heatmap")
+                                                    VetNutriColors.Primary
+                                            else Color.Gray.copy(alpha = 0.3f),
+                                    contentColor =
+                                            if (ongletActif == "heatmap") Color.White
+                                            else Color.Black
+                            )
+            ) { Text(translate("auto.view.analysegraphiquealimentsview.heatmap"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
+
+            // Comparaison avec le groupe B (boîtes à moustaches) : seulement si un groupe B est choisi
+            if (alimentsComparaison.isNotEmpty()) Button(
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                    modifier = Modifier.heightIn(min = 32.dp),
+                    onClick = { ongletActif = "comparaison" },
+                    colors =
+                            ButtonDefaults.buttonColors(
+                                    backgroundColor =
+                                            if (ongletActif == "comparaison")
+                                                    VetNutriColors.Primary
+                                            else Color.Gray.copy(alpha = 0.3f),
+                                    contentColor =
+                                            if (ongletActif == "comparaison") Color.White
+                                            else Color.Black
+                            )
+            ) { Text(translate("graph.comparaison.tab"), style = MaterialTheme.typography.caption, fontWeight = FontWeight.Bold) }
         }
 
-        // Section des filtres
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = AppSizes.elevationSmall
+        // Toggle pour /1000 kcal vs /100g MS (pas pour les ratios énergétiques, l'analyse détaillée et la heatmap)
+        if (ongletActif != "protein_lipid" && ongletActif != "analyse_detaillee" && ongletActif != "heatmap") {
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(AppSizes.paddingMedium),
-                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-            ) {
                 Text(
-                    text = "Filtres de recherche",
-                    style = MaterialTheme.typography.subtitle2,
-                    color = VetNutriColors.Primary,
-                    fontWeight = FontWeight.Bold
+                                text = translate("chart.togglePer1000Kcal"),
+                        style = MaterialTheme.typography.caption,
+                                color = if (!useDryMatterPer100g) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
-
-                // Barre de recherche
-                BasicAppTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = "Nom, marque, ingrédients...",
-                    leadingIcon = Icons.Default.Search,
-                    trailingIcon = if (searchQuery.isNotEmpty()) Icons.Default.Clear else null,
-                    onTrailingIconClick = { searchQuery = "" },
-                    modifier = Modifier.fillMaxWidth().height(40.dp)
+                Switch(
+                                checked = useDryMatterPer100g,
+                                onCheckedChange = { useDryMatterPer100g = it }
                 )
-
-                // Première ligne de filtres : Type et Indications
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                    // Type d'aliment
-                    Box(modifier = Modifier.weight(1f)) {
-                        DropdownField(
-                            label = "Type",
-                            selectedValue = selectedFoodType,
-                            options = FoodKind.entries,
-                            onValueChange = { selectedFoodType = it },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.fillMaxWidth(),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                        )
-                    }
-
-                    // Indications
-                    Box(modifier = Modifier.weight(1f)) {
-                        DropdownField(
-                            label = "Indications",
-                            selectedValue = selectedIndication,
-                            options = AlimIndic.entries,
-                            onValueChange = { selectedIndication = it },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.fillMaxWidth(),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                        )
-                    }
-                }
-
-                // Deuxième ligne de filtres : Espèce et Base de données
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
-                    // Espèce
-                    Box(modifier = Modifier.weight(1f)) {
-                        DropdownField(
-                            label = "Espèce",
-                            selectedValue = selectedEspece,
-                            options = Espece.entries,
-                            onValueChange = { selectedEspece = it },
-                            valueToString = { it.translateEnum() },
-                            modifier = Modifier.fillMaxWidth(),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                        )
-                    }
-
-                    // Base de données
-                    Box(modifier = Modifier.weight(1f)) {
-                        val dataBOptions = remember(aliments) {
-                            val options = listOf("") + aliments
-                                .mapNotNull { it.dataB?.trim() }
-                                .filter { it.isNotEmpty() }
-                                .distinct()
-                                .sorted()
-                            options
-                        }
-                        val selectedDataBValue = selectedDataB ?: ""
-
-                        DropdownField(
-                            label = "Base de données",
-                            selectedValue = selectedDataBValue,
-                            options = dataBOptions,
-                            onValueChange = {
-                                selectedDataB = if (it.isEmpty()) null else it
-                            },
-                            valueToString = {
-                                if (it.isEmpty()) "Toutes"
-                                else {
-                                    val dataBEnum = DataB.fromCode(it)
-                                    dataBEnum?.displayName ?: it
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            height = 40.dp,
-                            fontSize = 12.sp,
-                            labelFontSize = 10.sp,
-                            borderWidth = 0.5.dp
-                        )
-                    }
-                }
-
-                // Compteur de résultats
                 Text(
-                    text = "Aliments analysés: ${alimentsFiltres.size} / ${aliments.size}",
-                    style = MaterialTheme.typography.caption,
-                    color = VetNutriColors.Primary
+                                text = translate("chart.togglePer100gDm"),
+                        style = MaterialTheme.typography.caption,
+                                color = if (useDryMatterPer100g) VetNutriColors.Primary else MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
+        // Vérifier si une référence est disponible
+        val hasReference = referenceEv != null
+        val hasEquationRepository = equationRepository != null
 
         // Contenu principal - responsive selon la largeur
-        if (isLoading) {
+        if (!hasReference) {
+            // Aucune référence disponible
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = translate("consultation.edit.ref.general_none"),
+                            style = MaterialTheme.typography.body1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Error
+                    )
+                    Text(
+                            text = translate("graph.selectReferenceHint"),
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else if (!hasEquationRepository) {
+            // Aucun repository d'équations disponible
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                ) {
+                    Text(
+                            text = translate("auto.view.analysegraphiquealimentsview.repository_d_equations_non_disponible"),
+                            style = MaterialTheme.typography.body1,
+                            fontWeight = FontWeight.Bold,
+                            color = VetNutriColors.Error
+                    )
+                    Text(
+                            text = translate("auto.view.analysegraphiquealimentsview.le_repository_d_equations_est_requis_pour_calcul"),
+                            style = MaterialTheme.typography.body2,
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                    )
+                }
+            }
+        } else if (isLoading) {
             // Indicateur de chargement
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(
@@ -907,7 +612,7 @@ fun AnalyseGraphiqueAlimentsView(
                 ) {
                     CircularProgressIndicator(color = VetNutriColors.Primary)
                     Text(
-                            text = "Calcul des valeurs nutritionnelles...",
+                            text = translate("auto.view.analysegraphiquealimentsview.calcul_des_valeurs_nutritionnelles"),
                             style = MaterialTheme.typography.body1,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                     )
@@ -917,99 +622,73 @@ fun AnalyseGraphiqueAlimentsView(
 
             BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
                 val isCompact = maxWidth < 800.dp
+                CompositionLocalProvider(
+                        LocalHauteurGraphique provides hauteurGraphiquePour(maxWidth, maxHeight)
+                ) {
 
                 if (isCompact) {
                     // Vue compacte : graphiques puis liste avec bouton retour plus visible ET
-                    // SCROLLABLE
-                    Column(
-                            modifier =
-                                    Modifier.fillMaxWidth()
-                                            .verticalScroll(
-                                                    rememberScrollState()
-                                            ), // ✨ Rendre la vue principale scrollable
-                            verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                    ) {
-                        // 🔧 Bouton retour plus visible en mode compact
-
-                        // Graphique principal
-                        GraphiqueNuagePoints(
-                                alimentsAnalyses = alimentsAnalyses,
-                                ongletActif = ongletActif,
-                                alimentSelectionne = alimentSelectionne,
-                                nutrimentX = nutrimentX,
-                                nutrimentY = nutrimentY,
-                                modifier = Modifier.fillMaxWidth()
-                        )
-
-                        // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le graphique)
-                        if (ongletActif == "nutriments_perso") {
-                            Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                            Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement =
-                                            Arrangement.spacedBy(AppSizes.paddingMedium)
-                            ) {
-                                NutrimentSelector(
-                                        label = "Axe X",
-                                        selectedNutriment = nutrimentX,
-                                        onNutrimentSelected = { nutrimentX = it },
-                                        modifier = Modifier.weight(1f)
-                                )
-
-                                NutrimentSelector(
-                                        label = "Axe Y",
-                                        selectedNutriment = nutrimentY,
-                                        onNutrimentSelected = { nutrimentY = it },
-                                        modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-
-                        // Liste des aliments (sans LazyColumn en mode compact)
-                        ListeAlimentsAnalyse(
-                                alimentsAnalyses = alimentsAnalyses,
+                    // SCROLLABLE (sauf pour analyse_detaillee et heatmap qui gèrent leur propre scroll)
+                    if (ongletActif == "analyse_detaillee") {
+                        // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
+                        AnalyseDetailleeAlimentsView(
+                                aliments = aliments,
+                                alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                referenceEv = referenceEv,
+                                equationRepository = equationRepository,
+                                viewModel = viewModel,
+                                useDryMatterPer100g = useDryMatterPer100g,
                                 alimentSelectionne = alimentSelectionne,
                                 onAlimentSelected = { uuid -> alimentSelectionne = uuid },
-                                isCompactMode = true, // ✨ Mode compact = pas de LazyColumn
-                                modifier = Modifier.fillMaxWidth()
+                                onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
+                                modifier = Modifier.fillMaxSize()
                         )
-                    }
-                } else {
-                    // Vue large : côte à côte
-                    Row(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
-                    ) {
-                        // Colonne gauche : liste des aliments (1/4 de la largeur)
+                    } else if (ongletActif == "comparaison") {
+                        BoitesAMoustachesAliments(
+                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                        )
+                    } else if (ongletActif == "heatmap") {
+                        // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
+                        HeatMapAlimentsView(
+                                aliments = aliments,
+                                alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                referenceEv = referenceEv,
+                                equationRepository = equationRepository,
+                                besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                poidsAnimal = selectedConsultation?.weight,
+                                poidsMetabolique = poidsMetabolique,
+                                utiliserSeulementMin = heatmapSeulementMin,
+                                onUtiliserSeulementMinChange = { heatmapSeulementMin = it },
+                                coefficient = heatmapCoefficient,
+                                onCoefficientChange = { heatmapCoefficient = it },
+                                modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
                         Column(
-                                modifier = Modifier.weight(0.25f),
-                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                        ) {
-                            ListeAlimentsAnalyse(
-                                    alimentsAnalyses = alimentsAnalyses,
-                                    alimentSelectionne = alimentSelectionne,
-                                    onAlimentSelected = { uuid -> alimentSelectionne = uuid },
-                                    isCompactMode = false, // ✨ Mode large = avec LazyColumn
-                                    modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        // Colonne droite : graphiques (3/4 de la largeur)
-                        Column(
-                                modifier = Modifier.weight(0.75f),
+                                modifier =
+                                        Modifier.fillMaxWidth()
+                                                .verticalScroll(
+                                                        rememberScrollState()
+                                                ), // ✨ Rendre la vue principale scrollable
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
+                            // 🔧 Bouton retour plus visible en mode compact
+
+                            // Graphique principal
+                            // Graphique principal
                             GraphiqueNuagePoints(
-                                    alimentsAnalyses = alimentsAnalyses,
+                                    alimentsAnalyses = (alimentsAnalyses + rationGraphData).filter { it.aliment.uuid !in alimentsMasques },
                                     ongletActif = ongletActif,
                                     alimentSelectionne = alimentSelectionne,
                                     nutrimentX = nutrimentX,
                                     nutrimentY = nutrimentY,
-                                    modifier = Modifier.fillMaxWidth()
+                                    useDryMatterPer100g = useDryMatterPer100g,
+                                    referenceEv = referenceEv,
+                                    equationRepository = equationRepository,
+                                    modifier = Modifier.fillMaxWidth().then(captureGraphique)
                             )
 
-                            // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le
-                            // graphique)
+                            // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le graphique)
                             if (ongletActif == "nutriments_perso") {
                                 Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
                                 Row(
@@ -1018,676 +697,294 @@ fun AnalyseGraphiqueAlimentsView(
                                                 Arrangement.spacedBy(AppSizes.paddingMedium)
                                 ) {
                                     NutrimentSelector(
-                                            label = "Axe X",
+                                            label = translate("graph.axisXLabel"),
                                             selectedNutriment = nutrimentX,
                                             onNutrimentSelected = { nutrimentX = it },
                                             modifier = Modifier.weight(1f)
                                     )
 
                                     NutrimentSelector(
-                                            label = "Axe Y",
+                                            label = translate("graph.axisYLabel"),
                                             selectedNutriment = nutrimentY,
                                             onNutrimentSelected = { nutrimentY = it },
                                             modifier = Modifier.weight(1f)
                                     )
                                 }
                             }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
-/** Graphique en nuage de points : % énergie protéines vs % énergie lipides */
-@OptIn(ExperimentalKoalaPlotApi::class)
-@Composable
-private fun GraphiqueNuagePoints(
-        alimentsAnalyses: List<AlimentAnalyseData>,
-        ongletActif: String,
-        alimentSelectionne: String? = null,
-        nutrimentX: String? = null,
-        nutrimentY: String? = null,
-        modifier: Modifier = Modifier
-) {
-    Card(modifier = modifier, elevation = AppSizes.elevationMedium) {
-        Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
-            // Titre dynamique selon l'onglet
-            val titre =
-                    when (ongletActif) {
-                        "protein_lipid" -> "Répartition énergétique : Protéines vs Lipides"
-                        "phosphore_protein" -> "Phosphore vs Protéines (par 1000 kcal)"
-                        "calcium_phosphore" -> "Calcium vs Phosphore (par 1000 kcal)"
-                        "nutriments_perso" -> {
-                            val xOption = NUTRIMENT_OPTIONS.find { it.key == nutrimentX }
-                            val yOption = NUTRIMENT_OPTIONS.find { it.key == nutrimentY }
-                            if (nutrimentY != null && nutrimentY.isNotEmpty()) {
-                                "${xOption?.displayName ?: "X"} vs ${yOption?.displayName ?: "Y"} (g/1000 kcal)"
-                            } else {
-                                "Distribution de ${xOption?.displayName ?: "Nutriment"} (g/1000 kcal)"
-                            }
-                        }
-                        else -> "Analyse nutritionnelle"
-                    }
-
-            Text(
-                    text = titre,
-                    style = MaterialTheme.typography.h6,
-                    fontWeight = FontWeight.Bold,
-                    color = VetNutriColors.Primary
-            )
-
-            Text(
-                    text =
-                            "Chaque point représente un aliment (numéroté de 1 à ${alimentsAnalyses.size})",
-                    style = MaterialTheme.typography.caption,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-            )
-
-            // Légende des lignes de référence pour le graphique Calcium/Phosphore
-            if (ongletActif == "calcium_phosphore") {
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Ligne rouge 1:1
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color.Red.copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "Ratio 1:1",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.Red.copy(alpha = 0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-
-                    // Ligne bleue 2:1
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color.Blue.copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "Ratio 2:1",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.Blue.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            // Légende des lignes de référence pour le graphique Protéines/Phosphore
-            if (ongletActif == "phosphore_protein") {
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Ligne verte 35:1
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color.Green.copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "Ratio 35:1",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.Green.copy(alpha = 0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-
-                    // Ligne orange 25:1
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color(0xFFFF9800).copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "Ratio 25:1",
-                            style = MaterialTheme.typography.caption,
-                            color = Color(0xFFFF9800).copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            // Légende des lignes de référence pour le graphique Répartition énergétique
-            if (ongletActif == "protein_lipid") {
-                Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Ligne magenta 80-x
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color.Magenta.copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "20% ENA",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.Magenta.copy(alpha = 0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-
-                    // Ligne cyan 60-x
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color.Cyan.copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "60% ENA",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.Cyan.copy(alpha = 0.7f)
-                    )
-
-                    Spacer(modifier = Modifier.width(AppSizes.paddingMedium))
-
-                    // Ligne jaune 40-x
-                    androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp, 2.dp)) {
-                        drawLine(
-                                color = Color.Yellow.copy(alpha = 0.7f),
-                                start = androidx.compose.ui.geometry.Offset(0f, size.height / 2),
-                                end =
-                                        androidx.compose.ui.geometry.Offset(
-                                                size.width,
-                                                size.height / 2
-                                        ),
-                                strokeWidth = 2.dp.toPx()
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                    Text(
-                            text = "40% ENA",
-                            style = MaterialTheme.typography.caption,
-                            color = Color.Yellow.copy(alpha = 0.7f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(AppSizes.paddingMedium))
-
-            if (alimentsAnalyses.isNotEmpty()) {
-                // Affichage selon le type de graphique
-                if (ongletActif == "densite_energetique") {
-                    // 📊 HISTOGRAMME DENSITÉ ÉNERGÉTIQUE
-                    HistogrammeEnergieAliments(
-                            alimentsAnalyses = alimentsAnalyses,
-                            alimentSelectionne = alimentSelectionne,
-                            modifier = Modifier.fillMaxWidth().height(400.dp)
-                    )
-                } else if (ongletActif == "nutriments_perso") {
-                    // ✨ GRAPHIQUE PERSONNALISÉ
-                    GraphiqueNutrimentsPersonnalise(
-                            alimentsAnalyses = alimentsAnalyses,
-                            nutrimentX = nutrimentX ?: "proteine",
-                            nutrimentY = nutrimentY,
-                            alimentSelectionne = alimentSelectionne,
-                            modifier = Modifier.fillMaxWidth().height(400.dp)
-                    )
-                } else {
-                    // 📈 SCATTER PLOTS (PROTÉINES/LIPIDES et PHOSPHORE/PROTÉINES)
-                    // Préparer les données pour le graphique selon l'onglet actif
-                    val points =
-                            when (ongletActif) {
-                                "protein_lipid" -> {
-                                    alimentsAnalyses.map { data ->
-                                        Point(
-                                                x = data.pourcentageProteines.toFloat(),
-                                                y = data.pourcentageLipides.toFloat()
-                                        )
-                                    }
-                                }
-                                "phosphore_protein" -> {
-                                    alimentsAnalyses.map { data ->
-                                        Point(
-                                                x = data.phosphorePer1000Kcal.toFloat(),
-                                                y = data.proteinePer1000Kcal.toFloat()
-                                        )
-                                    }
-                                }
-                                "calcium_phosphore" -> {
-                                    alimentsAnalyses.map { data ->
-                                        Point(
-                                                x = data.phosphorePer1000Kcal.toFloat(),
-                                                y = data.calciumPer1000Kcal.toFloat()
-                                        )
-                                    }
-                                }
-                                else -> {
-                                    alimentsAnalyses.map { data ->
-                                        Point(
-                                                x = data.pourcentageProteines.toFloat(),
-                                                y = data.pourcentageLipides.toFloat()
-                                        )
-                                    }
-                                }
-                            }
-
-                    // Calculer les plages des axes selon le type de graphique
-                    val minX = points.minOf { it.x }.coerceAtLeast(0f)
-                    val maxX = points.maxOf { it.x }
-                    val minY = points.minOf { it.y }.coerceAtLeast(0f)
-                    val maxY = points.maxOf { it.y }
-
-                    // Ajuster les plages selon le type de graphique
-                    val (xRange, yRange) =
-                            when (ongletActif) {
-                                "phosphore_protein" -> {
-                                    // Plages fixes pour une meilleure visibilité du graphique
-                                    // phosphore/protéines
-                                    val xRangeFixed = (minX - minX * 0.05f)..(maxX + maxX * 0.05f)
-                                    val yRangeFixed = (minY - minY * 0.05f)..(maxY + maxY * 0.05f)
-                                    Pair(xRangeFixed, yRangeFixed)
-                                }
-                                else -> {
-                                    // Plages automatiques avec padding pour le graphique
-                                    // protéines/lipides
-                                    val xRangeAuto =
-                                            (minX - minX * 0.05f)..(maxX.coerceAtMost(100f) +
-                                                            maxX * 0.05f)
-                                    val yRangeAuto =
-                                            (minY - minY * 0.05f)..(maxY.coerceAtMost(100f) +
-                                                            maxY * 0.05f)
-                                    Pair(xRangeAuto, yRangeAuto)
-                                }
-                            }
-
-                    // 🎯 Graphique avec numéros superposés
-                    BoxWithConstraints(modifier = Modifier.height(400.dp)) {
-                        // Graphique principal
-                        XYGraph(
-                                xAxisModel = FloatLinearAxisModel(range = xRange),
-                                yAxisModel = FloatLinearAxisModel(range = yRange),
-                                modifier = Modifier.fillMaxSize()
-                        ) {
-                            // Afficher chaque point individuellement avec LinePlot et symbol
-                            alimentsAnalyses.forEachIndexed { index, data ->
-                                val point =
-                                        points[index] // Utiliser le point calculé selon l'onglet
-                                // actif
-                                LinePlot(
-                                        data = listOf(point),
-                                        symbol = {
-                                            // Point principal avec couleur selon sélection
-                                            val couleurPoint =
-                                                    if (data.aliment.uuid == alimentSelectionne) {
-                                                        Color(0xFF9C27B0) // Violet pour sélectionné
-                                                    } else {
-                                                        // Vérifier l'humidité pour les aliments non
-                                                        // sélectionnés
-                                                        val humidite =
-                                                                data.aliment.getNutrient(
-                                                                        NutrientMain.HUMIDITE
-                                                                )
-                                                        if (humidite == null || humidite < 20.0) {
-                                                            Color(
-                                                                    0xFFFF9800
-                                                            ) // Orange pour aliments sans humidité
-                                                            // ou < 20%
-                                                        } else {
-                                                            VetNutriColors
-                                                                    .Primary // Couleur normale
-                                                        }
-                                                    }
-
-                                            androidx.compose.foundation.Canvas(
-                                                    modifier = Modifier.size(12.dp)
-                                            ) {
-                                                drawCircle(
-                                                        color = couleurPoint,
-                                                        radius = 6f,
-                                                        center = center
-                                                )
-                                            }
-                                        }
-                                )
-                            }
-
-                            // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Calcium/Phosphore
-                            if (ongletActif == "calcium_phosphore") {
-                                // Ligne 1:1 (Calcium = Phosphore)
-                                val ligne1to1 =
-                                        listOf(
-                                                Point(x = xRange.start, y = xRange.start),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = xRange.endInclusive
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne1to1,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color.Red.copy(alpha = 0.7f)
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-
-                                // Ligne 2:1 (Calcium = 2 × Phosphore)
-                                val ligne2to1 =
-                                        listOf(
-                                                Point(x = xRange.start, y = xRange.start * 2),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = xRange.endInclusive * 2
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne2to1,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color.Blue.copy(
-                                                                                alpha = 0.7f
-                                                                        )
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-                            }
-
-                            // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Protéines/Phosphore
-                            if (ongletActif == "phosphore_protein") {
-                                // Ligne 35:1 (Protéines = 35 × Phosphore)
-                                val ligne35to1 =
-                                        listOf(
-                                                Point(x = xRange.start, y = xRange.start * 35),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = xRange.endInclusive * 35
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne35to1,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color.Green.copy(
-                                                                                alpha = 0.7f
-                                                                        )
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-
-                                // Ligne 25:1 (Protéines = 25 × Phosphore)
-                                val ligne25to1 =
-                                        listOf(
-                                                Point(x = xRange.start, y = xRange.start * 25),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = xRange.endInclusive * 25
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne25to1,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color(0xFFFF9800)
-                                                                                .copy(alpha = 0.7f)
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-                            }
-
-                            // 🔸 LIGNES DE RÉFÉRENCE pour le graphique Répartition énergétique
-                            // (Protéines/Lipides)
-                            if (ongletActif == "protein_lipid") {
-                                // Ligne 80-x : Protéines + Lipides = 80% (reste = glucides)
-                                val ligne80MinusX =
-                                        listOf(
-                                                Point(x = xRange.start, y = 80f - xRange.start),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = 80f - xRange.endInclusive
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne80MinusX,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color.Magenta.copy(
-                                                                                alpha = 0.7f
-                                                                        )
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-
-                                // Ligne 60-x : Protéines + Lipides = 60% (reste = glucides)
-                                val ligne60MinusX =
-                                        listOf(
-                                                Point(x = xRange.start, y = 60f - xRange.start),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = 60f - xRange.endInclusive
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne60MinusX,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color.Cyan.copy(
-                                                                                alpha = 0.7f
-                                                                        )
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-
-                                // Ligne 40-x : Protéines + Lipides = 40% (reste = glucides)
-                                val ligne40MinusX =
-                                        listOf(
-                                                Point(x = xRange.start, y = 40f - xRange.start),
-                                                Point(
-                                                        x = xRange.endInclusive,
-                                                        y = 40f - xRange.endInclusive
-                                                )
-                                        )
-                                LinePlot(
-                                        data = ligne40MinusX,
-                                        lineStyle =
-                                                LineStyle(
-                                                        brush =
-                                                                SolidColor(
-                                                                        Color.Yellow.copy(
-                                                                                alpha = 0.7f
-                                                                        )
-                                                                ),
-                                                        strokeWidth = 2.dp
-                                                )
-                                )
-                            }
-                        }
-
-                        // 🎯 Numéros superposés directement avec correction des marges d'axes
-                        alimentsAnalyses.forEachIndexed { index, data ->
-                            val point =
-                                    points[index] // Utiliser le point calculé selon l'onglet actif
-                            // Calculer la position du numéro avec les vraies dimensions
-                            val xPosition =
-                                    ((point.x - xRange.start) /
-                                            (xRange.endInclusive - xRange.start))
-                            val yPosition =
-                                    1f -
-                                            ((point.y - yRange.start) /
-                                                    (yRange.endInclusive - yRange.start))
-
-                            // Marges typiques des axes KoalaPlot (estimation)
-                            // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage
-                            // empirique)
-                            val leftAxisMargin =
-                                    10.dp // Marge pour les labels de l'axe Y (augmentée)
-                            val bottomAxisMargin =
-                                    15.dp // Marge pour les labels de l'axe X (augmentée)
-                            val topMargin = 10.dp // Marge supérieure
-                            val rightMargin = 20.dp // Marge droite
-
-                            // Zone de graphique effective
-                            val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
-                            val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
-
-                            // Couleur selon la sélection et l'humidité
-                            val numeroColor =
-                                    if (data.aliment.uuid == alimentSelectionne) {
-                                        Color(0xFF9C27B0) // Violet pour sélectionné
-                                    } else {
-                                        // Vérifier l'humidité pour les aliments non sélectionnés
-                                        val humidite =
-                                                data.aliment.getNutrient(NutrientMain.HUMIDITE)
-                                        if (humidite == null || humidite < 20.0) {
-                                            Color(
-                                                    0xFFFF9800
-                                            ) // Orange pour aliments sans humidité ou < 20%
+                            // Liste des aliments (sans LazyColumn en mode compact)
+                            ListeAlimentsAnalyse(
+                                    alimentsAnalyses = alimentsAnalyses + rationGraphData,
+                                    alimentSelectionne = alimentSelectionne,
+                                    alimentsMasques = alimentsMasques,
+                                    onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                    onToggleHidden = { uuid, isHidden ->
+                                        alimentsMasques = if (isHidden) {
+                                            alimentsMasques + uuid
                                         } else {
-                                            VetNutriColors.Primary // Couleur par défaut
+                                            alimentsMasques - uuid
                                         }
-                                    }
-
-                            Box(
-                                    modifier =
-                                            Modifier.fillMaxSize()
-                                                    .wrapContentSize(Alignment.TopStart)
-                                                    .offset(
-                                                            x =
-                                                                    leftAxisMargin +
-                                                                            (xPosition *
-                                                                                            effectiveGraphWidth
-                                                                                                    .value)
-                                                                                    .dp -
-                                                                            10.dp, // Position dans
-                                                            // la zone
-                                                            // effective +
-                                                            // centrage
-                                                            y =
-                                                                    topMargin +
-                                                                            (yPosition *
-                                                                                            effectiveGraphHeight
-                                                                                                    .value)
-                                                                                    .dp -
-                                                                            30.dp // Position dans
-                                                            // la zone
-                                                            // effective +
-                                                            // au-dessus du
-                                                            // point
-                                                            ),
-                                    contentAlignment = Alignment.Center
+                                    },
+                                    isCompactMode = true, // ✨ Mode compact = pas de LazyColumn
+                                    modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                } else {
+                    // Vue large : côte à côte avec scroll uniquement sur la partie droite
+                    Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                    ) {
+                        // Colonne gauche : liste des aliments (1/4 de la largeur) - masquée pour l'analyse détaillée et la heatmap
+                        if (ongletActif != "analyse_detaillee" && ongletActif != "heatmap") {
+                            Column(
+                                    modifier = Modifier
+                                        .weight(0.25f)
+                                        .fillMaxHeight(),
+                                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                             ) {
-                                // Fond du numéro
-                                androidx.compose.foundation.Canvas(
-                                        modifier = Modifier.size(20.dp)
-                                ) {
-                                    drawCircle(color = Color.White, radius = 10.dp.toPx())
-                                    drawCircle(
-                                            color = numeroColor,
-                                            radius = 10.dp.toPx(),
-                                            style = Stroke(width = 2.dp.toPx())
-                                    )
-                                }
-
-                                // Numéro
-                                Text(
-                                        text = "${data.numero}",
-                                        style =
-                                                MaterialTheme.typography.caption.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        fontSize = 12.sp
-                                                ),
-                                        color = numeroColor
+                                ListeAlimentsAnalyse(
+                                        alimentsAnalyses = alimentsAnalyses + rationGraphData,
+                                        alimentSelectionne = alimentSelectionne,
+                                        alimentsMasques = alimentsMasques,
+                                        onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                        onToggleHidden = { uuid, isHidden ->
+                                            alimentsMasques = if (isHidden) {
+                                                alimentsMasques + uuid
+                                            } else {
+                                                alimentsMasques - uuid
+                                            }
+                                        },
+                                        isCompactMode = false, // ✨ Mode large = avec LazyColumn
+                                        modifier = Modifier.fillMaxWidth()
                                 )
                             }
                         }
+
+                        // Colonne droite : graphiques (3/4 de la largeur) ou analyse détaillée/heatmap (plein écran)
+                        if (ongletActif == "analyse_detaillee") {
+                            // ✨ Nouvelle vue détaillée - pas de scroll parent, le LazyColumn gère le scroll
+                            AnalyseDetailleeAlimentsView(
+                                    aliments = aliments,
+                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                    referenceEv = referenceEv,
+                                    equationRepository = equationRepository,
+                                    viewModel = viewModel,
+                                    useDryMatterPer100g = useDryMatterPer100g,
+                                    alimentSelectionne = alimentSelectionne,
+                                    onAlimentSelected = { uuid -> alimentSelectionne = uuid },
+                                    onUseDryMatterPer100gChange = { newValue -> useDryMatterPer100g = newValue },
+                                    modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                            )
+                        } else if (ongletActif == "comparaison") {
+                            BoitesAMoustachesAliments(
+                                    modifier = Modifier
+                                            .weight(0.75f)
+                                            .fillMaxHeight()
+                                            .verticalScroll(rememberScrollState())
+                            )
+                        } else if (ongletActif == "heatmap") {
+                            // ✨ Vue HeatMap - pas de scroll parent, le LazyColumn gère le scroll
+                            HeatMapAlimentsView(
+                                    aliments = aliments,
+                                    alimentsAnalyses = alimentsAnalyses.filter { it.aliment.uuid !in alimentsMasques },
+                                    referenceEv = referenceEv,
+                                    equationRepository = equationRepository,
+                                    besoinEnergetiqueEntretien = besoinEnergetiqueStandard,
+                                    poidsAnimal = selectedConsultation?.weight,
+                                    poidsMetabolique = poidsMetabolique,
+                                    utiliserSeulementMin = heatmapSeulementMin,
+                                    onUtiliserSeulementMinChange = { heatmapSeulementMin = it },
+                                    coefficient = heatmapCoefficient,
+                                    onCoefficientChange = { heatmapCoefficient = it },
+                                    modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                            )
+                        } else {
+                            // Graphiques avec scroll
+                            Column(
+                                    modifier = Modifier
+                                        .weight(0.75f)
+                                        .fillMaxHeight()
+                                        .verticalScroll(rememberScrollState()),
+                                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                            ) {
+                                GraphiqueNuagePoints(
+                                        alimentsAnalyses = (alimentsAnalyses + rationGraphData).filter { it.aliment.uuid !in alimentsMasques },
+                                        ongletActif = ongletActif,
+                                        alimentSelectionne = alimentSelectionne,
+                                        nutrimentX = nutrimentX,
+                                        nutrimentY = nutrimentY,
+                                        useDryMatterPer100g = useDryMatterPer100g,
+                                        referenceEv = referenceEv,
+                                        equationRepository = equationRepository,
+                                        modifier = Modifier.fillMaxWidth().then(captureGraphique)
+                                )
+
+                                // ✨ Sélecteurs de nutriments pour l'onglet personnalisé (sous le
+                                // graphique)
+                                if (ongletActif == "nutriments_perso") {
+                                    Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
+                                    Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement =
+                                                    Arrangement.spacedBy(AppSizes.paddingMedium)
+                                    ) {
+                                        NutrimentSelector(
+                                                label = translate("graph.axisXLabel"),
+                                                selectedNutriment = nutrimentX,
+                                                onNutrimentSelected = { nutrimentX = it },
+                                                modifier = Modifier.weight(1f)
+                                        )
+
+                                        NutrimentSelector(
+                                                label = translate("graph.axisYLabel"),
+                                                selectedNutriment = nutrimentY,
+                                                onNutrimentSelected = { nutrimentY = it },
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
-                } // Fin du bloc else (scatter plots)
-            } else {
-                Text(
-                        text = "Aucune donnée disponible pour l'analyse",
-                        style = MaterialTheme.typography.body1,
-                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-                )
+                }
+                
+                // Boutons flottants pour ajouter des aliments aux rations
+                if (viewModel != null) {
+                    // Bouton + (ajouter à la ration existante)
+                    FloatingActionButton(
+                        onClick = {
+                            val aliment = aliments.find { it.uuid == alimentSelectionne }
+                                .orUserError("aucun aliment n'est sélectionné")
+                            if (aliment != null) {
+                                // Même logique que RationsView.kt pour une mise à jour immédiate
+                                coroutineScope.launch {
+                                    val alimentComplet = viewModel.getAlimentComplet(aliment.uuid)
+                                        .orUserError("l'aliment « ${aliment.nom ?: aliment.uuid} » est introuvable en base")
+                                        ?: return@launch
+                                    // Sélections relues après le chargement : elles ont pu changer
+                                    val ration = selectedRation
+                                        .orUserError("aucune ration n'est sélectionnée") ?: return@launch
+                                    val consultation = selectedConsultation
+                                        .orUserError("aucune consultation n'est sélectionnée") ?: return@launch
+                                    val newAlimentRation = AlimentRation(
+                                        refAlimUnif = alimentComplet.uuid,
+                                        quantite = 100.0,
+                                        aliment = alimentComplet,
+                                        refRation = ration.uuid
+                                    )
+                                    // Aliment déjà présent : quantité cumulée (une ligne par aliment en base)
+                                    val updatedAliments =
+                                        ajouterOuCumulerAliment(ration.alimentMutableList, newAlimentRation).toMutableList()
+                                    val updatedRation = ration.copy(alimentMutableList = updatedAliments)
+
+                                    val updatedRations = consultation.rations.toMutableList()
+                                    val rationIndex = updatedRations.indexOfFirst { it.uuid == ration.uuid }
+                                    if (rationIndex < 0) {
+                                        UserErrors.report(
+                                            "Action impossible : la ration « ${ration.name} » n'appartient plus à la consultation sélectionnée."
+                                        )
+                                        return@launch
+                                    }
+                                    updatedRations[rationIndex] = updatedRation
+                                    viewModel.updateConsultation(consultation.copy(rations = updatedRations))
+                                    // Sélectionner la ration mise à jour pour une mise à jour immédiate
+                                    viewModel.selectRation(updatedRation)
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
+                            .offset(y = (-80).dp),
+                        backgroundColor = VetNutriColors.Primary,
+                        contentColor = Color.White
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = translate("auto.view.analysegraphiquealimentsview.ajouter_a_la_ration")
+                        )
+                    }
+                    
+                    // Bouton ++ (créer nouvelle ration)
+                    FloatingActionButton(
+                        onClick = {
+                            val aliment = aliments.find { it.uuid == alimentSelectionne }
+                                .orUserError("aucun aliment n'est sélectionné")
+                            if (aliment != null) {
+                                // Même logique que RationsView.kt pour une mise à jour immédiate
+                                coroutineScope.launch {
+                                    val alimentComplet = viewModel.getAlimentComplet(aliment.uuid)
+                                        .orUserError("l'aliment « ${aliment.nom ?: aliment.uuid} » est introuvable en base")
+                                        ?: return@launch
+                                    val consultation = selectedConsultation
+                                        .orUserError("aucune consultation n'est sélectionnée") ?: return@launch
+                                    // Nouvelle ration nommée d'après la marque de l'aliment
+                                    val nomRation = alimentComplet.brand ?: alimentComplet.nom ?: translate("graphAliments.newRation")
+                                    val nouvelleRation = fr.vetbrain.vetnutri_mp.Data.Ration(
+                                        name = nomRation,
+                                        actual = false,
+                                        alimentMutableList = mutableListOf()
+                                    )
+                                    val newAlimentRation = AlimentRation(
+                                        refAlimUnif = alimentComplet.uuid,
+                                        quantite = 100.0,
+                                        aliment = alimentComplet,
+                                        refRation = nouvelleRation.uuid
+                                    )
+                                    val rationAvecAliment = nouvelleRation.copy(
+                                        alimentMutableList = mutableListOf(newAlimentRation)
+                                    )
+                                    val updatedRations = consultation.rations.toMutableList()
+                                    updatedRations.add(rationAvecAliment)
+                                    viewModel.updateConsultation(consultation.copy(rations = updatedRations))
+                                    // Sélectionner automatiquement la nouvelle ration créée
+                                    viewModel.selectRation(rationAvecAliment)
+                                }
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                        backgroundColor = VetNutriColors.Secondary,
+                        contentColor = Color.White
+                    ) {
+                        Text(
+                            text = "+R",
+                            color = Color.White,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
             }
         }
     }
 }
+}
 
-/** Ligne d'aliment dans le tableau */
+/** Ligne d'aliment, de ration ou de somme dans la légende du graphique. */
 @Composable
 private fun AlimentRow(
         data: AlimentAnalyseData,
         isSelected: Boolean,
-        onAlimentSelected: (String?) -> Unit
+        isHidden: Boolean,
+        onAlimentSelected: (String?) -> Unit,
+        onToggleHidden: (String, Boolean) -> Unit
 ) {
+    val rowColor = data.rationColor ?: VetNutriColors.Primary
+    val itemType = when {
+        data.isRationSum -> "sum"
+        data.rationActual != null -> "ration"
+        else -> "food"
+    }
+    val visibilityLabel = translate("graphAliments.${if (isHidden) "show" else "hide"}.$itemType")
     Row(
             modifier =
                     Modifier.fillMaxWidth()
@@ -1703,43 +1000,58 @@ private fun AlimentRow(
             verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-                text = "${data.numero}",
-                modifier = Modifier.weight(0.1f),
+                text = data.graphLabel,
+                modifier = Modifier.width(28.dp),
                 style = MaterialTheme.typography.caption,
                 fontWeight = FontWeight.Bold,
-                color = VetNutriColors.Primary
+                color = rowColor
         )
         Text(
-                text = data.aliment.nom ?: "Sans nom",
-                modifier = Modifier.weight(0.4f),
-                style = MaterialTheme.typography.caption
+                text = if (data.isRationSum) data.aliment.nom.orEmpty().removePrefix("Σ").trim().ifEmpty { translate("graphAliments.sum") }
+                       else data.aliment.nom ?: translate("graphAliments.noName"),
+                modifier = Modifier.weight(0.6f),
+                style = MaterialTheme.typography.caption,
+                fontWeight = FontWeight.Medium,
+                color = data.rationColor ?: MaterialTheme.colors.onSurface
         )
         Text(
-                text = data.aliment.gamme ?: "-",
-                modifier = Modifier.weight(0.25f),
+                text = when (data.rationActual) {
+                    true -> translate("graphAliments.current")
+                    false -> translate("graphAliments.proposed")
+                    null -> data.aliment.brand ?: "-"
+                },
+                modifier = Modifier.weight(0.3f),
                 style = MaterialTheme.typography.caption
         )
-        Text(
-                text = data.aliment.brand ?: "-",
-                modifier = Modifier.weight(0.25f),
-                style = MaterialTheme.typography.caption
+        // Visibilité individuelle des aliments, rations et sommes.
+        IconButtonWithTooltip(
+                onClick = { onToggleHidden(data.aliment.uuid, !isHidden) },
+                modifier = Modifier.size(32.dp),
+                imageVector = if (isHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                contentDescription = visibilityLabel,
+                tooltip = visibilityLabel,
+                iconModifier = Modifier.size(20.dp),
+                tint = if (isHidden) MaterialTheme.colors.onSurface.copy(alpha = 0.5f) else rowColor
         )
     }
 }
 
-/** Liste des aliments avec leurs données d'analyse */
+/** Légende commune aux aliments, rations et sommes représentés dans les graphiques. */
 @Composable
 private fun ListeAlimentsAnalyse(
         alimentsAnalyses: List<AlimentAnalyseData>,
         alimentSelectionne: String? = null,
+        alimentsMasques: Set<String> = emptySet(),
         onAlimentSelected: (String?) -> Unit = {},
+        onToggleHidden: (String, Boolean) -> Unit = { _, _ -> },
         isCompactMode: Boolean = false, // ✨ Mode compact pour éviter les conflits de scroll
         modifier: Modifier = Modifier
 ) {
+    val hasRations = alimentsAnalyses.any { it.rationActual != null }
     Card(modifier = modifier, elevation = AppSizes.elevationMedium) {
         Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
             Text(
-                    text = "Liste des aliments",
+                    text = if (hasRations) translate("graphAliments.foodsAndRations") else translate("animalList.foodList"),
                     style = MaterialTheme.typography.h6,
                     fontWeight = FontWeight.Bold,
                     color = VetNutriColors.Primary
@@ -1754,29 +1066,25 @@ private fun ListeAlimentsAnalyse(
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                            text = "N°",
-                            modifier = Modifier.weight(0.1f),
+                            text = translate("auto.view.analysegraphiquealimentsview.n"),
+                            modifier = Modifier.width(28.dp),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
                     Text(
-                            text = "Nom",
-                            modifier = Modifier.weight(0.4f),
+                            text = translate("ration.name"),
+                            modifier = Modifier.weight(0.6f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
                     Text(
-                            text = "Gamme",
-                            modifier = Modifier.weight(0.25f),
+                            text = if (hasRations) translate("graphAliments.export.detail") else translate("food_edit.field.brand"),
+                            modifier = Modifier.weight(0.3f),
                             style = MaterialTheme.typography.caption,
                             fontWeight = FontWeight.Bold
                     )
-                    Text(
-                            text = "Marque",
-                            modifier = Modifier.weight(0.25f),
-                            style = MaterialTheme.typography.caption,
-                            fontWeight = FontWeight.Bold
-                    )
+                    // Espace pour l'icône de visibilité (pas de texte)
+                    Spacer(modifier = Modifier.width(32.dp))
                 }
 
                 Divider(modifier = Modifier.padding(vertical = AppSizes.paddingSmall))
@@ -1789,12 +1097,14 @@ private fun ListeAlimentsAnalyse(
                             AlimentRow(
                                     data = data,
                                     isSelected = data.aliment.uuid == alimentSelectionne,
-                                    onAlimentSelected = onAlimentSelected
+                                    isHidden = data.aliment.uuid in alimentsMasques,
+                                    onAlimentSelected = onAlimentSelected,
+                                    onToggleHidden = onToggleHidden
                             )
                         }
                     }
                 } else {
-                    // ✨ Mode large : LazyColumn pour performance
+                    // ✨ Mode large : LazyColumn pour performance avec scroll
                     LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall / 2),
                             modifier = Modifier.fillMaxHeight()
@@ -1803,14 +1113,16 @@ private fun ListeAlimentsAnalyse(
                             AlimentRow(
                                     data = data,
                                     isSelected = data.aliment.uuid == alimentSelectionne,
-                                    onAlimentSelected = onAlimentSelected
+                                    isHidden = data.aliment.uuid in alimentsMasques,
+                                    onAlimentSelected = onAlimentSelected,
+                                    onToggleHidden = onToggleHidden
                             )
                         }
                     }
                 }
             } else {
                 Text(
-                        text = "Aucun aliment à analyser",
+                        text = translate("chart.noFoodToAnalyze"),
                         style = MaterialTheme.typography.body1,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
                 )
@@ -1819,330 +1131,143 @@ private fun ListeAlimentsAnalyse(
     }
 }
 
-/** Graphique personnalisé pour les nutriments sélectionnés */
-@OptIn(ExperimentalKoalaPlotApi::class)
-@Composable
-private fun GraphiqueNutrimentsPersonnalise(
-        alimentsAnalyses: List<AlimentAnalyseData>,
-        nutrimentX: String?,
-        nutrimentY: String?,
-        alimentSelectionne: String? = null,
-        modifier: Modifier = Modifier
-) {
-    if (alimentsAnalyses.isEmpty()) {
-        Text(
-                text = "Aucune donnée disponible pour le graphique personnalisé",
-                style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-        )
-        return
-    }
+/**
+ * Valeurs d'analyse de chaque aliment (densité, énergie des macronutriments, nutriments pour
+ * 1000 kcal ou pour 100 g de MS), triées par densité énergétique décroissante et numérotées.
+ */
+internal suspend fun analyserAliments(
+        aliments: List<AlimentEv>,
+        referenceEv: ReferenceEv?,
+        equationRepository: EquationRepository?,
+        useDryMatterPer100g: Boolean
+): List<AlimentAnalyseData> {
+        // Hors du fil de l'interface (qui reste fluide), équations lues une fois pour toute la liste
+        val equationRepository = equationRepository?.let { EquationsMemorisees(it) }
+        val resultat = withContext(AppDispatchers.Default) {
+        val resultat = mutableListOf<AlimentAnalyseData>()
 
-    // Récupérer les informations des nutriments sélectionnés
-    val xOption = NUTRIMENT_OPTIONS.find { it.key == nutrimentX }
-    val yOption = NUTRIMENT_OPTIONS.find { it.key == nutrimentY }
+        for (aliment in aliments) {
+            try {
+                // 🔍 LOG DIAGNOSTIC : Vérifier les valeurs de base de l'aliment
 
-    // Si aucun nutriment X n'est sélectionné
-    if (nutrimentX == null) {
-        Text(
-                text = "Veuillez sélectionner au moins un nutriment pour l'axe X",
-                style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-        )
-        return
-    }
-
-    // Si Y est sélectionné (et pas "aucun") : scatter plot
-    if (nutrimentY != null && nutrimentY.isNotEmpty()) {
-        // 📈 SCATTER PLOT : X vs Y
-        val points =
-                alimentsAnalyses.map { data ->
-                    Point(
-                            x = data.getNutrimentValue(nutrimentX).toFloat(),
-                            y = data.getNutrimentValue(nutrimentY).toFloat()
-                    )
-                }
-
-        // Vérifier que nous avons des données valides
-        if (points.isEmpty() || points.all { it.x == 0f && it.y == 0f }) {
-            Text(
-                    text = "Données insuffisantes pour le graphique scatter plot",
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-            )
-            return
-        }
-
-        // Calculer les plages avec validation
-        val minX = points.minOf { it.x }.coerceAtLeast(0f)
-        val maxX = points.maxOf { it.x }
-
-        // S'assurer que minX != maxX pour éviter la division par zéro
-        val safeMinX = if (minX == maxX) minX * 0.9f else minX
-        val safeMaxX = if (minX == maxX) maxX * 1.1f else maxX
-
-        val minY = points.minOf { it.y }.coerceAtLeast(0f)
-        val maxY = points.maxOf { it.y }
-
-        // S'assurer que minY != maxY pour éviter la division par zéro
-        val safeMinY = if (minY == maxY) minY * 0.9f else minY
-        val safeMaxY = if (minY == maxY) maxY * 1.1f else maxY
-
-        val xRange =
-                (safeMinX - safeMinX * 0.05f).coerceAtLeast(0f)..(safeMaxX + safeMaxX * 0.05f)
-                                .coerceAtLeast(safeMinX + 0.1f)
-        val yRange =
-                (safeMinY - safeMinY * 0.05f).coerceAtLeast(0f)..(safeMaxY + safeMaxY * 0.05f)
-                                .coerceAtLeast(safeMinY + 0.1f)
-
-        XYGraph(
-                xAxisModel = FloatLinearAxisModel(range = xRange),
-                yAxisModel = FloatLinearAxisModel(range = yRange),
-                xAxisTitle = "${xOption?.displayName} (${xOption?.unit})",
-                yAxisTitle = "${yOption?.displayName} (${yOption?.unit})",
-                modifier = modifier
-        ) {
-            // Afficher chaque point
-            alimentsAnalyses.forEachIndexed { index, data ->
-                val point = points[index]
-                LinePlot(
-                        data = listOf(point),
-                        symbol = {
-                            val couleurPoint =
-                                    if (data.aliment.uuid == alimentSelectionne) {
-                                        Color(0xFF9C27B0) // Violet pour sélectionné
-                                    } else {
-                                        // Vérifier l'humidité pour les aliments non sélectionnés
-                                        val humidite =
-                                                data.aliment.getNutrient(NutrientMain.HUMIDITE)
-                                        if (humidite == null || humidite < 20.0) {
-                                            Color(
-                                                    0xFFFF9800
-                                            ) // Orange pour aliments sans humidité ou < 20%
-                                        } else {
-                                            VetNutriColors.Primary // Couleur normale
-                                        }
-                                    }
-
-                            androidx.compose.foundation.Canvas(modifier = Modifier.size(10.dp)) {
-                                drawCircle(color = couleurPoint, radius = 5f, center = center)
-                            }
-                        }
-                )
-            }
-
-            // Numéros superposés
-            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                alimentsAnalyses.forEachIndexed { index, data ->
-                    val point = points[index]
-                    val xPosition =
-                            ((point.x - xRange.start) / (xRange.endInclusive - xRange.start))
-                    val yPosition =
-                            1f - ((point.y - yRange.start) / (yRange.endInclusive - yRange.start))
-
-                    // Marges typiques des axes KoalaPlot (estimation)
-                    // 🔧 Marges AJUSTÉES basées sur l'observation des logs (décalage empirique)
-                    val leftAxisMargin = 10.dp // Marge pour les labels de l'axe Y (augmentée)
-                    val bottomAxisMargin = 15.dp // Marge pour les labels de l'axe X (augmentée)
-                    val topMargin = 10.dp // Marge supérieure
-                    val rightMargin = 20.dp // Marge droite
-
-                    // Zone de graphique effective
-                    val effectiveGraphWidth = maxWidth - leftAxisMargin - rightMargin
-                    val effectiveGraphHeight = maxHeight - bottomAxisMargin - topMargin
-
-                    val numeroColor =
-                            if (data.aliment.uuid == alimentSelectionne) {
-                                Color(0xFF9C27B0) // Violet pour sélectionné
-                            } else {
-                                // Vérifier l'humidité pour les aliments non sélectionnés
-                                val humidite = data.aliment.getNutrient(NutrientMain.HUMIDITE)
-                                if (humidite == null || humidite < 20.0) {
-                                    Color(0xFFFF9800) // Orange pour aliments sans humidité ou < 20%
-                                } else {
-                                    VetNutriColors.Primary // Couleur par défaut
-                                }
-                            }
-
-                    Box(
-                            modifier =
-                                    Modifier.fillMaxSize()
-                                            .wrapContentSize(Alignment.TopStart)
-                                            .offset(
-                                                    x =
-                                                            leftAxisMargin +
-                                                                    (xPosition *
-                                                                                    effectiveGraphWidth
-                                                                                            .value)
-                                                                            .dp -
-                                                                    10.dp, // Position dans la zone
-                                                    // effective + centrage
-                                                    y =
-                                                            topMargin +
-                                                                    (yPosition *
-                                                                                    effectiveGraphHeight
-                                                                                            .value)
-                                                                            .dp -
-                                                                    30.dp // Position dans la zone
-                                                    // effective + au-dessus
-                                                    // du point
-                                                    ),
-                            contentAlignment = Alignment.Center
-                    ) {
-                        androidx.compose.foundation.Canvas(modifier = Modifier.size(20.dp)) {
-                            drawCircle(color = Color.White, radius = 10.dp.toPx())
-                            drawCircle(
-                                    color = numeroColor,
-                                    radius = 10.dp.toPx(),
-                                    style = Stroke(width = 2.dp.toPx())
-                            )
-                        }
-
-                        Text(
-                                text = "${data.numero}",
-                                style =
-                                        MaterialTheme.typography.caption.copy(
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = 10.sp
-                                        ),
-                                color = numeroColor
+                // ✅ CRÉER UN ALIMENTRATION TRANSITOIRE POUR UTILISER getNutrientWithComplementary
+                val alimentRation =
+                        AlimentRation(
+                                aliment = aliment,
+                                quantite = 100.0, // 100g pour les calculs
+                                weight = 1.0
                         )
-                    }
+
+                // Utiliser getNutrientWithComplementary de manière asynchrone
+                val _proteines =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.PROTEINE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                val _lipides =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.LIPIDE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Récupération du phosphore pour le second graphique
+                val phosphore =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.PHOS,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Récupération du calcium pour le troisième graphique
+                val calcium =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMacro.CAL,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+
+                // Obtenir l'humidité pour la conversion en matière sèche
+                val humidite =
+                        alimentRation.getNutrientWithComplementary(
+                                nutrient = NutrientMain.HUMIDITE,
+                                equationRepository = equationRepository,
+                                referenceEv = referenceEv
+                        )
+                                ?: 0.0
+                val matiereSeche = 100.0 - humidite
+
+                val densiteEnergetiqueBase =
+                        calculerDensiteEnergetiqueAsync(
+                                aliment,
+                                referenceEv,
+                                equationRepository,
+                                false
+                        )
+                val densiteEnergetique = if (useDryMatterPer100g && matiereSeche > 0)
+                        densiteEnergetiqueBase * 100.0 / matiereSeche else densiteEnergetiqueBase
+                val (pourcentageProteines, pourcentageLipides) =
+                        calculerPourcentagesEnergieAlimentAsync(
+                                aliment,
+                                equationRepository,
+                                referenceEv
+                        )
+
+                // Fonction helper pour convertir en matière sèche si nécessaire
+                fun convertirEnMatiereSeche(valeurAsFed: Double): Double {
+                        return if (useDryMatterPer100g) {
+                                // /100g MS : convertir de g/100g as fed vers g/100g MS
+                                if (matiereSeche > 0) {
+                                        (valeurAsFed * 100.0) / matiereSeche
+                        } else {
+                                        valeurAsFed // Fallback si pas de matière sèche
+                                }
+                        } else {
+                                // /1000 kcal : calculer par 1000 kcal
+                        if (densiteEnergetique > 0) {
+                                        (valeurAsFed * 1000.0) / densiteEnergetique
+                        } else {
+                            0.0
+                                }
+                        }
                 }
+
+                // Valeurs pour 1000 kcal (ou pour 100 g MS)
+                val proteinePer1000Kcal = convertirEnMatiereSeche(_proteines)
+                val phosphorePer1000Kcal = convertirEnMatiereSeche(phosphore)
+                val calciumPer1000Kcal = convertirEnMatiereSeche(calcium)
+
+                val lipidePer1000Kcal = convertirEnMatiereSeche(_lipides)
+
+                resultat.add(
+                        AlimentAnalyseData(
+                                aliment = aliment,
+                                numero = 0, // Numéro temporaire, sera réassigné après le tri
+                                densiteEnergetique = densiteEnergetique,
+                                energyAsFed = densiteEnergetiqueBase,
+                                pourcentageProteines = pourcentageProteines,
+                                pourcentageLipides = pourcentageLipides,
+                                phosphorePer1000Kcal = phosphorePer1000Kcal,
+                                proteinePer1000Kcal = proteinePer1000Kcal,
+                                calciumPer1000Kcal = calciumPer1000Kcal,
+                                lipidePer1000Kcal = lipidePer1000Kcal
+                        )
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+
+                AppLog.e("AnalyseGraphiqueAlimentsView", e.message ?: "Erreur", e)
             }
         }
-    } else {
-        // 📊 HISTOGRAMME : Distribution du nutriment X
-        val valeurs = alimentsAnalyses.map { it.getNutrimentValue(nutrimentX).toFloat() }
-        val categories = alimentsAnalyses.map { "${it.numero}" }
-
-        // Vérifier que nous avons des données valides
-        if (valeurs.isEmpty() || valeurs.all { it == 0f }) {
-            Text(
-                    text = "Données insuffisantes pour l'histogramme",
-                    style = MaterialTheme.typography.body1,
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-            )
-            return
+        resultat
         }
-
-        // Calculer la plage adaptative basée sur la distribution des données
-        // Filtrer les valeurs invalides (NaN, Infinite) avant le calcul
-        val valeursValides = valeurs.filter { it.isFinite() && !it.isNaN() }
-        val yRange =
-                if (valeursValides.isNotEmpty()) {
-                    calculateAdaptiveRange(valeursValides, paddingPercent = 0.06f)
-                } else {
-                    // Valeurs par défaut si aucune valeur valide
-                    0f..1f
-                }
-
-        XYGraph(
-                xAxisModel = remember(categories) { CategoryAxisModel(categories) },
-                yAxisModel = remember(yRange) { FloatLinearAxisModel(yRange) },
-                yAxisTitle = "${xOption?.displayName} (${xOption?.unit})",
-                modifier = modifier
-        ) {
-            VerticalBarPlot(
-                    xData = categories,
-                    yData = valeurs,
-                    bar = { index ->
-                        val aliment = alimentsAnalyses[index]
-                        val couleur =
-                                if (aliment.aliment.uuid == alimentSelectionne) {
-                                    Color(0xFF9C27B0) // Violet pour sélectionné
-                                } else {
-                                    // Vérifier l'humidité pour les aliments non sélectionnés
-                                    val humidite =
-                                            aliment.aliment.getNutrient(NutrientMain.HUMIDITE)
-                                    if (humidite == null || humidite < 20.0) {
-                                        Color(
-                                                0xFFFF9800
-                                        ) // Orange pour aliments sans humidité ou < 20%
-                                    } else {
-                                        VetNutriColors.Primary // Couleur normale
-                                    }
-                                }
-                        DefaultVerticalBar(SolidColor(couleur))
-                    }
-            )
-        }
-    }
-}
-
-/** Composant graphique pour afficher un histogramme de densité énergétique */
-@OptIn(ExperimentalKoalaPlotApi::class)
-@Composable
-private fun HistogrammeEnergieAliments(
-        alimentsAnalyses: List<AlimentAnalyseData>,
-        alimentSelectionne: String? = null,
-        modifier: Modifier = Modifier
-) {
-    if (alimentsAnalyses.isEmpty()) {
-        Text(
-                text = "Aucune donnée disponible pour l'histogramme",
-                style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-        )
-        return
-    }
-
-    // Préparer les données pour l'histogramme
-    // Créer les catégories avec seulement les numéros des aliments
-    val categories = alimentsAnalyses.map { data -> "${data.numero}" }
-
-    // Données de densité énergétique
-    val densiteEnergetique = alimentsAnalyses.map { it.densiteEnergetique.toFloat() }
-
-    // Vérifier que nous avons des données valides
-    if (densiteEnergetique.isEmpty() || densiteEnergetique.all { it == 0f }) {
-        Text(
-                text = "Données insuffisantes pour l'histogramme de densité énergétique",
-                style = MaterialTheme.typography.body1,
-                color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
-        )
-        return
-    }
-
-    // Plage pour l'axe Y basée sur les données
-    // Calculer la plage adaptative basée sur la distribution des données
-    // Filtrer les valeurs invalides (NaN, Infinite) avant le calcul
-    val valeursValides = densiteEnergetique.filter { it.isFinite() && !it.isNaN() }
-    val yRange =
-            if (valeursValides.isNotEmpty()) {
-                calculateAdaptiveRange(valeursValides, paddingPercent = 0.06f)
-            } else {
-                // Valeurs par défaut si aucune valeur valide
-                0f..1f
-            }
-
-    // Créer le graphique
-    XYGraph(
-            xAxisModel = remember(categories) { CategoryAxisModel(categories) },
-            yAxisModel = remember(yRange) { FloatLinearAxisModel(yRange) },
-            yAxisTitle = "Densité énergétique (kcal/100g)",
-            modifier = modifier
-    ) {
-        VerticalBarPlot(
-                xData = categories,
-                yData = densiteEnergetique,
-                bar = { index ->
-                    // Couleur de la barre selon si l'aliment est sélectionné
-                    val aliment = alimentsAnalyses[index]
-                    val couleur =
-                            if (aliment.aliment.uuid == alimentSelectionne) {
-                                Color(0xFF9C27B0) // Violet pour l'aliment sélectionné
-                            } else {
-                                // Vérifier l'humidité pour les aliments non sélectionnés
-                                val humidite = aliment.aliment.getNutrient(NutrientMain.HUMIDITE)
-                                if (humidite == null || humidite < 20.0) {
-                                    Color(0xFFFF9800) // Orange pour aliments sans humidité ou < 20%
-                                } else {
-                                    VetNutriColors.Primary // Couleur par défaut
-                                }
-                            }
-                    DefaultVerticalBar(SolidColor(couleur))
-                }
-        )
+    return resultat.sortedByDescending { it.densiteEnergetique }.mapIndexed { index, data ->
+        data.copy(numero = index + 1)
     }
 }

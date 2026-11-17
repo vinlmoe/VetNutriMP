@@ -1,10 +1,16 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.AnimalDetail
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Reference
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
@@ -44,11 +50,13 @@ fun CalculationTabsView(
         onNavigateBack: () -> Unit,
         onEditReferenceEv: (String) -> Unit,
         onCreateReferenceEv: () -> Unit,
+        onBulkEditReferences: (List<String>) -> Unit = {},
         onEditConseil: (String) -> Unit,
         onCreateConseil: () -> Unit,
         selectedTab: Int = 0,
         onTabChanged: (Int) -> Unit = {},
         modifier: Modifier = Modifier,
+        isExamMode: Boolean = false,
         biblioRefRepository: BiblioRefRepository? = null,
         equationRepository: EquationRepository? = null,
         referenceEvRepository: DatabaseReferenceEvRepository? = null,
@@ -128,43 +136,47 @@ fun CalculationTabsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 TopAppBar(
-                        title = { Text("Gestion des données de calcul") },
+                        title = { Text(translate("calculationTabs.title")) },
                         navigationIcon = {
                                 IconButton(onClick = onNavigateBack) {
                                         Icon(
                                                 imageVector = AppIcons.ArrowBack,
-                                                contentDescription = "Retour"
+                                                contentDescription = AnimalDetail.BACK.translate()
                                         )
                                 }
                         },
-                        backgroundColor = VetNutriColors.Primary,
-                        contentColor = VetNutriColors.OnPrimary
+                        // Barre claire, comme Paramètres et les listes
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = MaterialTheme.colors.onSurface,
+                        elevation = 0.dp
                 )
 
-                TabRow(
+                AdaptiveTabRow(
                         selectedTabIndex = selectedTab,
-                        backgroundColor = VetNutriColors.Primary,
-                        contentColor = VetNutriColors.OnPrimary
+                        tabCount = 4,
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = VetNutriColors.Primary
                 ) {
                         Tab(
                                 selected = selectedTab == 0,
                                 onClick = { onTabChanged(0) },
-                                text = { Text("Équations") }
+                                text = { Text(Reference.TAB_EQUATIONS.translate()) }
                         )
                         Tab(
                                 selected = selectedTab == 1,
                                 onClick = { onTabChanged(1) },
-                                text = { Text("Références bibliographiques") }
+                                text = { Text(translate("calculationTabs.biblioRefTab")) }
                         )
                         Tab(
                                 selected = selectedTab == 2,
                                 onClick = { onTabChanged(2) },
-                                text = { Text("Systèmes de calcul") }
+                                text = { Text(translate("calculationTabs.calculationSystemsTab")) }
                         )
                         Tab(
                                 selected = selectedTab == 3,
-                                onClick = { onTabChanged(3) },
-                                text = { Text("Conseils personnalisés") }
+                                onClick = { if (!isExamMode) onTabChanged(3) },
+                                modifier = Modifier.alpha(if (isExamMode) 0.5f else 1f),
+                                text = { Text(translate("calculationTabs.customAdviceTab")) }
                         )
                 }
 
@@ -192,15 +204,25 @@ fun CalculationTabsView(
                                         onEditNutrients = { referenceEvId ->
                                                 selectedReferenceEvId = referenceEvId
                                                 isEditingReferenceEv = true
-                                        }
+                                        },
+                                        onBulkEdit = onBulkEditReferences
                                 )
                         3 ->
-                                ConseilsPersonnalisesView(
-                                        conseilRepository = conseilRepository,
-                                        onNavigateBack = onNavigateBack,
-                                        onEditConseil = onEditConseil,
-                                        onCreateConseil = onCreateConseil
-                                )
+                                if (isExamMode) {
+                                        Box(
+                                                modifier = Modifier.fillMaxSize().padding(16.dp),
+                                                contentAlignment = Alignment.Center
+                                        ) {
+                                                Text(translate("calculationTabs.customAdviceUnavailableExamMode"))
+                                        }
+                                } else {
+                                        ConseilsPersonnalisesView(
+                                                conseilRepository = conseilRepository,
+                                                onNavigateBack = onNavigateBack,
+                                                onEditConseil = onEditConseil,
+                                                onCreateConseil = onCreateConseil
+                                        )
+                                }
                 }
         }
 }
@@ -212,10 +234,10 @@ fun CalculationTabsView(
 @Composable
 fun NutrientRequirementViewTemp() {
         Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                Text("Fonctionnalité en développement", style = MaterialTheme.typography.h5)
+                Text(translate("calculationTabs.featureInDevelopment"), style = MaterialTheme.typography.h5)
 
                 Text(
-                        "Cette fonctionnalité permettra de gérer les besoins nutritionnels des animaux. Elle sera disponible dans une prochaine version.",
+                        translate("calculationTabs.featureInDevelopmentDesc"),
                         style = MaterialTheme.typography.body1,
                         modifier = Modifier.padding(horizontal = 32.dp, vertical = 16.dp)
                 )

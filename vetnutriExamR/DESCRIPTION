@@ -1,0 +1,16 @@
+Package: vetnutriExamR
+Type: Package
+Title: Correction d'Examens VetNutri a Partir de JSON
+Version: 0.1.0
+Authors@R: person(given = "VetNutri", family = "Team", role = c("aut", "cre"), email = "noreply@example.com")
+Description: Importe des exports JSON VetNutri, extrait les reponses et calcule
+    automatiquement les notes selon un bareme configurable.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    jsonlite
+Suggests:
+    testthat (>= 3.0.0)
+RoxygenNote: 7.3.2
+Config/testthat/edition: 3

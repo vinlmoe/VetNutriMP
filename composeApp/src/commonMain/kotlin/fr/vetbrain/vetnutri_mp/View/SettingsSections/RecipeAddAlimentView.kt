@@ -5,9 +5,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -20,69 +21,48 @@ import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchComponent
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchFilters
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchConfig
-import fr.vetbrain.vetnutri_mp.View.components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchComponent
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchConfig
+import fr.vetbrain.vetnutri_mp.View.Components.FoodSearchLayout
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 
 /**
  * Vue pour ajouter un aliment à une recette
  */
 @Composable
 fun RecipeAddAlimentView(
-    foodRepository: FoodRepository,
+    recipeEditViewModel: RecipeEditViewModel,
     onNavigateBack: () -> Unit,
     onAddAliment: (AlimentEv, Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // États pour les filtres de recherche
-    var searchFilters by remember { 
-        mutableStateOf(FoodSearchFilters()) 
-    }
-    
+    var searchFilters by remember { mutableStateOf(FoodSearchFilters()) }
     // État pour l'aliment sélectionné et la quantité
     var selectedFood by remember { mutableStateOf<AlimentEv?>(null) }
     var quantite by remember { mutableStateOf("100") }
     var quantiteError by remember { mutableStateOf(false) }
-    
-    // Charger les aliments
-    val allFoods = remember {
-        mutableStateListOf<AlimentEv>()
-    }
-    var isLoading by remember { mutableStateOf(true) }
-    
-    LaunchedEffect(Unit) {
-        try {
-            println("🔍 RecipeAddAlimentView: Début du chargement des aliments...")
-            kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
-                val foods = foodRepository.getAllFoods()
-                println("🔍 RecipeAddAlimentView: ${foods.size} aliments récupérés du repository")
-                kotlinx.coroutines.withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.Main) {
-                    allFoods.clear()
-                    allFoods.addAll(foods)
-                    isLoading = false
-                    println("🔍 RecipeAddAlimentView: ${allFoods.size} aliments ajoutés à la liste locale")
-                }
-            }
-        } catch (e: Exception) {
-            println("❌ RecipeAddAlimentView: Erreur lors du chargement: ${e.message}")
-            e.printStackTrace()
-            isLoading = false
-        }
-    }
+    // Aliments observés via le Flow du repository pour éviter les problèmes de chargement manuel
+    val foodsFlow = remember { recipeEditViewModel.observeAllFoods() }
+    val allFoods by foodsFlow.collectAsState(initial = emptyList())
+    val isLoading = allFoods.isEmpty()
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajouter un aliment à la recette") },
+                title = { Text(translate(LocalizationKeys.Recipe.ADD_FOOD_TITLE)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                        Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = translate(LocalizationKeys.AnimalDetail.BACK))
                     }
                 },
-                backgroundColor = VetNutriColors.Primary,
-                contentColor = VetNutriColors.OnPrimary
+                backgroundColor = MaterialTheme.colors.surface,
+                contentColor = MaterialTheme.colors.onSurface,
+                elevation = 0.dp
             )
         },
         floatingActionButton = {
@@ -110,7 +90,7 @@ fun RecipeAddAlimentView(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Ajouter l'aliment sélectionné",
+                    contentDescription = translate(LocalizationKeys.Recipe.ADD_SELECTED),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -156,7 +136,7 @@ fun RecipeAddAlimentView(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Sélectionnez un aliment\npour voir ses détails",
+                            text = translate(LocalizationKeys.Recipe.SELECT_FOOD_HINT),
                             style = MaterialTheme.typography.body1,
                             color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
@@ -202,7 +182,7 @@ private fun AlimentDetailsPanel(
     ) {
         item {
             Text(
-                text = "Détails de l'aliment",
+                text = translate(LocalizationKeys.Recipe.FOOD_DETAILS),
                 style = MaterialTheme.typography.h6,
                 color = VetNutriColors.Primary
             )
@@ -213,26 +193,26 @@ private fun AlimentDetailsPanel(
         // Informations générales
         item {
             Text(
-                text = aliment.nom ?: "Sans nom",
+                text = aliment.nom ?: translate(LocalizationKeys.Food.NO_NAME),
                 style = MaterialTheme.typography.h6,
                 fontWeight = FontWeight.Bold
             )
         }
-        
+
         if (!aliment.brand.isNullOrEmpty()) {
-            item { DetailRow("Marque", aliment.brand!!) }
+            item { DetailRow(translate(LocalizationKeys.FoodEdit.FIELD_BRAND), aliment.brand!!) }
         }
-        
+
         if (!aliment.gamme.isNullOrEmpty()) {
-            item { DetailRow("Gamme", aliment.gamme!!) }
+            item { DetailRow(translate(LocalizationKeys.FoodEdit.FIELD_GAMME), aliment.gamme!!) }
         }
-        
+
         aliment.typeAliment?.let { type ->
-            item { DetailRow("Type", type.translateEnum()) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.TYPE), type.translateEnum()) }
         }
-        
+
         aliment.group?.let { group ->
-            item { DetailRow("Groupe", group.translateEnum()) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.GROUP), group.translateEnum()) }
         }
         
         // Espèces ciblées
@@ -240,7 +220,7 @@ private fun AlimentDetailsPanel(
             .filter { it != Espece.CH }
             .map { it.translateEnum() }
         if (species.isNotEmpty()) {
-            item { DetailRow("Espèces", species.joinToString(", ")) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.SPECIES), species.joinToString(", ")) }
         }
         
         // Indications
@@ -248,11 +228,11 @@ private fun AlimentDetailsPanel(
             .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
             .map { it.translateEnum() }
         if (indications.isNotEmpty()) {
-            item { DetailRow("Indications", indications.joinToString(", ")) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.INDICATIONS), indications.joinToString(", ")) }
         }
         
         if (!aliment.ingredients.isNullOrEmpty()) {
-            item { DetailRow("Ingrédients", aliment.ingredients!!) }
+            item { DetailRow(translate(LocalizationKeys.Recipe.INGREDIENTS), aliment.ingredients!!) }
         }
         
         item { Divider() }
@@ -260,7 +240,7 @@ private fun AlimentDetailsPanel(
         // Section quantité
         item {
             Text(
-                text = "Quantité à ajouter",
+                text = translate(LocalizationKeys.Recipe.QUANTITY_ADD),
                 style = MaterialTheme.typography.subtitle1,
                 fontWeight = FontWeight.Bold
             )
@@ -270,10 +250,9 @@ private fun AlimentDetailsPanel(
             BasicAppTextField(
                 value = quantite,
                 onValueChange = onQuantiteChange,
-                placeholder = "Quantité (g)",
-                modifier = Modifier.fillMaxWidth(),
+                placeholder = translate(LocalizationKeys.Recipe.QUANTITY_PLACEHOLDER),
                 isError = quantiteError,
-                errorMessage = if (quantiteError) "Veuillez entrer une quantité valide > 0" else null
+                errorMessage = if (quantiteError) translate(LocalizationKeys.Recipe.QUANTITY_ERROR) else null
             )
         }
         
@@ -283,14 +262,19 @@ private fun AlimentDetailsPanel(
             
             item {
                 Text(
-                    text = "Composition nutritionnelle (pour 100g)",
+                    text = translate(LocalizationKeys.Recipe.NUTRITIONAL_COMPOSITION),
                     style = MaterialTheme.typography.subtitle1,
                     fontWeight = FontWeight.Bold
                 )
             }
             
             val nutrientsToShow = listOf(
-                "PROTEINE", "LIPIDE", "ENA", "CELLULOSE", "CENDRE", "HUMIDITE"
+                translate(LocalizationKeys.Chart.PROTEIN),
+                translate(LocalizationKeys.Chart.FAT),
+                translate(LocalizationKeys.Chart.ENA),
+                translate(LocalizationKeys.Chart.FIBER),
+                translate(LocalizationKeys.Chart.ASH),
+                translate(LocalizationKeys.Chart.MOISTURE)
             )
             
             nutrientsToShow.forEach { nutrientLabel ->
@@ -319,7 +303,7 @@ private fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "$label:",
+            text = "$label :",
             style = MaterialTheme.typography.body2,
             modifier = Modifier.weight(1f)
         )

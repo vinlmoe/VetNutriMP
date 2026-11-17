@@ -4,9 +4,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Functions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,6 +16,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.RationAggregator
+import fr.vetbrain.vetnutri_mp.Enumer.RationAnalysisScope
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Evolutive
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Ration as RationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
@@ -39,7 +48,11 @@ fun RationItem(
         onDelete: () -> Unit,
         onDuplicate: (() -> Unit)? = null,
         onEditCoef: ((Double) -> Unit)? = null,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        // Plan évolutif : étape rangée sous une ration (sous-titre fixe, pas de coefficient)
+        estEtape: Boolean = false,
+        onAjouterEtape: (() -> Unit)? = null,
+        onSynthesePlan: (() -> Unit)? = null
 ) {
         Card(
                 modifier =
@@ -63,26 +76,35 @@ fun RationItem(
                         ) {
                                 Text(
                                         text = ration.name,
-                                        style = MaterialTheme.typography.subtitle1,
+                                        style = MaterialTheme.typography.subtitle1.copy(fontSize = MaterialTheme.typography.subtitle1.fontSize * 0.9f),
                                         fontWeight =
                                                 if (isSelected) FontWeight.Bold
                                                 else FontWeight.Normal
                                 )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (estEtape) {
+                                        Text(
+                                                text = translate(Evolutive.STEP_SUBTITLE),
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
+                                                color = VetNutriColors.Secondary
+                                        )
+                                } else Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(
                                                 text =
-                                                        if (ration.actual) "Actuelle"
-                                                        else "Proposée",
-                                                style = MaterialTheme.typography.caption,
+                                                        if (ration.actual) translate(RationKeys.ACTUAL)
+                                                        else translate(RationKeys.PROPOSED),
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color =
-                                                        if (ration.actual) VetNutriColors.Primary
+                                                        if (ration.actual) Color(0xFFFF9800)
                                                         else VetNutriColors.Secondary
                                         )
                                         Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                                         Text(
                                                 text =
-                                                        "Coef: ${TextUtils.formatDecimal(ration.coef.toDouble(), 2)}",
-                                                style = MaterialTheme.typography.caption,
+                                                        translate(
+                                                                "ration.coefficientFormat",
+                                                                TextUtils.formatDecimal(ration.coef.toDouble(), 2)
+                                                        ),
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
                                                 color = Color.Gray,
                                                 modifier =
                                                         Modifier.clickable(
@@ -93,6 +115,30 @@ fun RationItem(
                         }
                         // Actions
                         Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
+                                if (onSynthesePlan != null) {
+                                        IconButton(
+                                                onClick = onSynthesePlan,
+                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
+                                        ) {
+                                                Icon(
+                                                        imageVector = AppIcons.Analytics,
+                                                        contentDescription = translate(Evolutive.PLAN_SUMMARY),
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
+                                }
+                                if (onAjouterEtape != null) {
+                                        IconButton(
+                                                onClick = onAjouterEtape,
+                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
+                                        ) {
+                                                Icon(
+                                                        imageVector = Icons.Filled.Add,
+                                                        contentDescription = translate(Evolutive.ADD_STEP_TO),
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
+                                }
                                 if (onDuplicate != null) {
                                         IconButton(
                                                 onClick = onDuplicate,
@@ -100,7 +146,7 @@ fun RationItem(
                                         ) {
                                                 Icon(
                                                         imageVector = Icons.Filled.ContentCopy,
-                                                        contentDescription = "Dupliquer",
+                                                        contentDescription = translate("ration.duplicateAction"),
                                                         tint = VetNutriColors.Secondary
                                                 )
                                         }
@@ -111,7 +157,7 @@ fun RationItem(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Filled.Edit,
-                                                contentDescription = "Éditer",
+                                                contentDescription = translate(General.EDIT),
                                                 tint = VetNutriColors.Secondary
                                         )
                                 }
@@ -121,8 +167,96 @@ fun RationItem(
                                 ) {
                                         Icon(
                                                 imageVector = Icons.Filled.Delete,
-                                                contentDescription = "Supprimer",
+                                                contentDescription = translate(General.DELETE),
                                                 tint = VetNutriColors.Error
+                                        )
+                                }
+                        }
+                }
+        }
+}
+
+/**
+ * Entrée de liste représentant un groupe de rations analysées comme une ration unique.
+ *
+ * Sélectionner cette entrée bascule l'analyse en mode groupé : toutes les rations du groupe
+ * (actuelles ou proposées) sont moyennées, chacune pesant son coefficient.
+ *
+ * @param scope Le périmètre d'analyse représenté (actuelles ou proposées)
+ * @param rations Les rations composant le groupe
+ * @param isSelected Indique si ce groupe est le périmètre d'analyse courant
+ * @param onClick Action à exécuter lors du clic sur le groupe
+ * @param modifier Modificateur optionnel
+ */
+@Composable
+fun RationGroupItem(
+        scope: RationAnalysisScope,
+        rations: List<Ration>,
+        isSelected: Boolean,
+        onClick: () -> Unit,
+        modifier: Modifier = Modifier
+) {
+        val sommeCoefficients = RationAggregator.sommeCoefficients(rations)
+        val groupColor =
+                if (scope.cibleRationsActuelles) Color(0xFFFF9800)
+                else VetNutriColors.Secondary
+
+        Card(
+                modifier =
+                        modifier.fillMaxWidth().clip(MaterialTheme.shapes.small).clickable {
+                                onClick()
+                        },
+                elevation = if (isSelected) AppSizes.elevationMedium else AppSizes.elevationSmall,
+                backgroundColor =
+                        if (isSelected) VetNutriColors.Primary.copy(alpha = 0.1f)
+                        else MaterialTheme.colors.surface
+        ) {
+                Row(
+                        modifier = Modifier.padding(AppSizes.paddingSmall),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                ) {
+                        Icon(
+                                imageVector = Icons.Filled.Functions,
+                                contentDescription = null,
+                                tint = groupColor,
+                                modifier = Modifier.size(AppSizes.iconSizeSmall)
+                        )
+                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                        Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXXSmall)
+                        ) {
+                                Text(
+                                        text = RationAggregator.nomGroupe(scope),
+                                        style = MaterialTheme.typography.subtitle1.copy(fontSize = MaterialTheme.typography.subtitle1.fontSize * 0.9f),
+                                        color = groupColor,
+                                        fontWeight =
+                                                if (isSelected) FontWeight.Bold
+                                                else FontWeight.Normal
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                                text =
+                                                        translate(
+                                                                RationKeys.GROUP_RATION_COUNT,
+                                                                rations.size.toString()
+                                                        ),
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
+                                                color = groupColor
+                                        )
+                                        Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                                        Text(
+                                                text =
+                                                        translate(
+                                                                RationKeys.GROUP_TOTAL_COEF,
+                                                                TextUtils.formatDecimal(
+                                                                        sommeCoefficients,
+                                                                        2
+                                                                )
+                                                        ),
+                                                style = MaterialTheme.typography.caption.copy(fontSize = MaterialTheme.typography.caption.fontSize * 0.9f),
+                                                color = Color.Gray
                                         )
                                 }
                         }

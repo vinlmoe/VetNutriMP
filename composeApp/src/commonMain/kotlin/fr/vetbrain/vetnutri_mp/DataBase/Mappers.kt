@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.*
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
@@ -8,7 +10,16 @@ import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+private val consultationPrescriptionJson = Json {
+        encodeDefaults = true
+        ignoreUnknownKeys = true
+}
 
 object Mappers {
         // Animal Mappers avec relations
@@ -24,7 +35,13 @@ object Mappers {
                                 ownerName = this.ownerName,
                                 birthdate = this.birthdate?.toString() ?: "",
                                 race = this.race,
-                                summary = this.summary
+                                summary = this.summary,
+                                jsonbinId = this.jsonbinId,
+                                exam = this.exam,
+                                examStudentId = this.examStudentId,
+                                examStudentNumber = this.examStudentNumber,
+                                examExerciseId = this.examExerciseId,
+                                herdTypesJson = TroupeauJson.typesVersJson(this.typesTroupeau)
                         )
 
                 if (includeRelations) {
@@ -56,14 +73,21 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(dateStr)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
 
                                                 null
                                         }
                                 },
                         race = this.race ?: "",
                         summary = this.summary ?: "",
+                        jsonbinId = this.jsonbinId,
+                        exam = this.exam,
+                        examStudentId = this.examStudentId,
+                        examStudentNumber = this.examStudentNumber,
+                        examExerciseId = this.examExerciseId,
                         consultations = consultations.map { it.toData() }.toMutableList(),
-                        weightHistory = weights.map { it.toData() }.toMutableList()
+                        weightHistory = weights.map { it.toData() }.toMutableList(),
+                        typesTroupeau = TroupeauJson.typesDepuisJson(this.herdTypesJson)
                 )
         }
 
@@ -100,7 +124,33 @@ object Mappers {
                                 // Nouveaux champs pour les références nutritionnelles
                                 referenceGeneraleId = this.referenceGeneraleId,
                                 referencesMaladiesJson = this.referencesMaladies.joinToString(","),
-                                coefficientAjustement = this.coefficientAjustement
+                                keywordsJson = this.keywordIds.joinToString(","),
+                                coefficientAjustement = this.coefficientAjustement,
+                                prescriptionAnamnese = this.prescriptionAnamnese.ifBlank { "" },
+                                prescriptionExamenClinique =
+                                        this.prescriptionExamenClinique.ifBlank { "" },
+                                prescriptionFacteurNutritionnelClef =
+                                        this.prescriptionFacteurNutritionnelClef.ifBlank { "" },
+                                prescriptionAdditionalText =
+                                        this.prescriptionAdditionalText.ifBlank { "" },
+                                prescriptionSelectedConseilIdsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionSelectedConseilIds
+                                        ),
+                                prescriptionLocalHtmlSectionsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionLocalHtmlSections
+                                        ),
+                                prescriptionSelectedRationIdsJson =
+                                        consultationPrescriptionJson.encodeToString(
+                                                this.prescriptionSelectedRationIds
+                                        ),
+                                typeConsultation = this.typeConsultation.name,
+                                profilEvolutif = this.profilEvolutif?.name,
+                                herdParamsJson = TroupeauJson.parametresVersJson(this.parametresTroupeau),
+                                weightForecastJson = this.selectionPrevisionPoids?.let {
+                                    consultationPrescriptionJson.encodeToString(it)
+                                }
                         )
                         .apply {
                                 if (includeRelations) {
@@ -124,6 +174,54 @@ object Mappers {
                 rations: List<RationEntity> = emptyList(),
                 suppVars: List<SupplementalVariableEntity> = emptyList()
         ): ConsultationEv {
+                val prescriptionSelectedConseilIds: MutableList<String> =
+                        try {
+                                if (!this.prescriptionSelectedConseilIdsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<String>>(
+                                                        this.prescriptionSelectedConseilIdsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
+                                mutableListOf()
+                        }
+
+                val prescriptionLocalHtmlSections: MutableList<HtmlSection> =
+                        try {
+                                if (!this.prescriptionLocalHtmlSectionsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<HtmlSection>>(
+                                                        this.prescriptionLocalHtmlSectionsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
+                                mutableListOf()
+                        }
+
+                val prescriptionSelectedRationIds: MutableList<String> =
+                        try {
+                                if (!this.prescriptionSelectedRationIdsJson.isNullOrBlank()) {
+                                        consultationPrescriptionJson
+                                                .decodeFromString<List<String>>(
+                                                        this.prescriptionSelectedRationIdsJson
+                                                )
+                                                .toMutableList()
+                                } else {
+                                        mutableListOf()
+                                }
+                        } catch (ignored: Exception) {
+                                ignored.rethrowIfCancellation()
+                                mutableListOf()
+                        }
+
                 return ConsultationEv(
                         uuid = this.uuid,
                         idAnim = this.idAnim,
@@ -132,6 +230,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
 
                                                 null
                                         }
@@ -172,7 +271,36 @@ object Mappers {
                                 } else {
                                         mutableListOf()
                                 },
-                        coefficientAjustement = this.coefficientAjustement
+                        keywordIds =
+                                if (!this.keywordsJson.isNullOrBlank()) {
+                                        this.keywordsJson.split(",").toMutableList()
+                                } else {
+                                        mutableListOf()
+                                },
+                        coefficientAjustement = this.coefficientAjustement,
+                        prescriptionAnamnese = this.prescriptionAnamnese ?: "",
+                        prescriptionExamenClinique = this.prescriptionExamenClinique ?: "",
+                        prescriptionFacteurNutritionnelClef =
+                                this.prescriptionFacteurNutritionnelClef ?: "",
+                        prescriptionAdditionalText = this.prescriptionAdditionalText ?: "",
+                        prescriptionSelectedConseilIds = prescriptionSelectedConseilIds,
+                        prescriptionLocalHtmlSections = prescriptionLocalHtmlSections,
+                        prescriptionSelectedRationIds = prescriptionSelectedRationIds,
+                        typeConsultation = TypeConsultation.fromName(this.typeConsultation),
+                        profilEvolutif = ProfilEvolutif.fromName(this.profilEvolutif),
+                        parametresTroupeau = TroupeauJson.parametresDepuisJson(this.herdParamsJson),
+                        selectionPrevisionPoids = selectionPrevisionDepuisJson(this.weightForecastJson)
+                )
+        }
+
+        fun fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword.toEntity(): ConsultationKeywordEntity {
+                return ConsultationKeywordEntity(uuid = this.uuid, label = this.label)
+        }
+
+        fun ConsultationKeywordEntity.toData(): fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword {
+                return fr.vetbrain.vetnutri_mp.Data.ConsultationKeyword(
+                        uuid = this.uuid,
+                        label = this.label
                 )
         }
 
@@ -187,7 +315,11 @@ object Mappers {
                                 number = this.number ?: 1,
                                 espece = this.espece ?: "",
                                 recette = this.recette ?: false,
-                                description = this.description ?: ""
+                                description = this.description ?: "",
+                                etapeEvolutive = this.etapeEvolutive,
+                                poids = this.poids,
+                                refRationParente = this.refRationParente,
+                                nomLibre = this.nomLibre
                         )
                         .apply {
                                 if (includeRelations) {
@@ -198,7 +330,22 @@ object Mappers {
                         }
         }
 
-        fun RationEntity.toData(aliments: List<AlimentRationEntity> = emptyList()): Ration {
+        /** Variables d'énergie propres à l'étape, prêtes à être persistées. */
+        fun Ration.toSupplementalVariableEntities(): List<RationSupplementalVariableEntity> =
+                this.suppVarp.mapNotNull { suppVar ->
+                        suppVar.variable?.let { variable ->
+                                RationSupplementalVariableEntity(
+                                        idRation = this.uuid,
+                                        variableKind = variable.uuid,
+                                        value = suppVar.varue ?: 0.0
+                                )
+                        }
+                }
+
+        fun RationEntity.toData(
+                aliments: List<AlimentRationEntity> = emptyList(),
+                suppVars: List<RationSupplementalVariableEntity> = emptyList()
+        ): Ration {
                 return Ration(
                         uuid = this.uuid,
                         idConsult = this.idConsult ?: "",
@@ -209,7 +356,12 @@ object Mappers {
                         espece = this.espece ?: "",
                         recette = this.recette ?: false,
                         description = this.description ?: "",
-                        alimentMutableList = aliments.map { it.toData() }.toMutableList()
+                        alimentMutableList = aliments.map { it.toData() }.toMutableList(),
+                        etapeEvolutive = this.etapeEvolutive,
+                        poids = this.poids,
+                        refRationParente = this.refRationParente,
+                        suppVarp = suppVars.map { it.toData() }.toMutableList(),
+                        nomLibre = this.nomLibre
                 )
         }
 
@@ -249,7 +401,7 @@ object Mappers {
         // entités de base de données.
         fun AlimentEv.toFoodEntity(): FoodEntity {
                 // Assurer que les valeurs ne sont pas nulles
-                val safeRationUUID = this.rationUUID ?: ""
+                val safeRationUUID = this.rationUUID?.takeIf { it.isNotBlank() } ?: ""
                 val safeQuantInt = this.quantInt ?: 0.0
 
                 return FoodEntity(
@@ -273,6 +425,8 @@ object Mappers {
                         RefRation = safeRationUUID,
                         name = this.nom,
                         quantite = safeQuantInt,
+                        lastUpdateDate = this.lastUpdateDate,
+                        imageRef = this.imageRef,
                         especesJson =
                                 if (this.especes.isNotEmpty()) this.especes.joinToString(",")
                                 else null,
@@ -292,7 +446,9 @@ object Mappers {
         fun FoodEntity.toAlimentEv(
                 especes: List<EspeceAlimentEntity> = emptyList(),
                 indications: List<IndicationAlimentEntity> = emptyList(),
-                nutrientValues: List<NutrientValueEntity> = emptyList()
+                nutrientValues: List<NutrientValueEntity> = emptyList(),
+                biblioRefs: List<fr.vetbrain.vetnutri_mp.Data.BiblioRef> = emptyList(),
+                energyPerSpecies: List<EnergyPerSpeciesEntity> = emptyList()
         ): AlimentEv {
                 val especesList = mutableListOf<String>()
 
@@ -327,6 +483,7 @@ object Mappers {
                                                 }
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
 
                                         // Nettoyer quand même en cas d'erreur
                                         val cleanedEspece =
@@ -365,6 +522,7 @@ object Mappers {
                                                                 else null
                                                         }
                                                 } catch (e: Exception) {
+                                                        e.rethrowIfCancellation()
                                                         // Nettoyer quand même en cas d'erreur
                                                         val cleaned =
                                                                 it.espece
@@ -396,7 +554,7 @@ object Mappers {
                                         ) {
                                                 indicatList.add(alimIndic)
                                         }
-                                } catch (e: Exception) {}
+                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("Mappers", "Exception ignorée : ${e.message}") }
                         }
                 } else {
                         indicatList.addAll(
@@ -409,6 +567,7 @@ object Mappers {
                                                 if (indication != null) {}
                                                 indication
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 null
                                         }
                                 }
@@ -422,12 +581,14 @@ object Mappers {
                                 try {
                                         this.typeAlim.let { FoodKind.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         group =
                                 try {
                                         this.groupAlim.let { GroupAlim.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         consistent = this.consistent == 1,
@@ -439,11 +600,15 @@ object Mappers {
                         gamme = this.gamme ?: "",
                         quantInt = this.quantityPres ?: 0.0,
                         dataB = this.DataB ?: "",
+                        lastUpdateDate = this.lastUpdateDate,
+                        imageRef = this.imageRef,
                         especes = especesList.toMutableList(),
                         indicat = indicatList.toMutableList(),
                         valMap = nutrientValues.toNutrientValueMap(),
                         cont = fr.vetbrain.vetnutri_mp.Enumer.ContEnum.getByName(this.cont ?: "NO"),
-                        rationUUID = this.RefRation ?: ""
+                        rationUUID = this.RefRation ?: "",
+                        biblioRefs = biblioRefs,
+                        energieParEspece = energyPerSpecies.associate { it.espece to it.value }
                 )
         }
         // FIN ZONE PROTÉGÉE
@@ -474,6 +639,7 @@ object Mappers {
                                                 }
                                         }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         val cleanedEspece =
                                                 especeStr
                                                         .replace("[", "")
@@ -501,9 +667,7 @@ object Mappers {
                                         ) {
                                                 indicatList.add(alimIndic)
                                         }
-                                } catch (e: Exception) {
-                                        // Ignorer les indications non reconnues
-                                }
+                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("Mappers", "Exception ignorée : ${e.message}") }
                         }
                 }
 
@@ -514,19 +678,22 @@ object Mappers {
                                 try {
                                         this.typeAlim.let { FoodKind.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         group =
                                 try {
                                         this.groupAlim.let { GroupAlim.entries.getOrNull(it) }
                                 } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         null
                                 },
                         brand = this.brand ?: "",
                         gamme = this.gamme ?: "",
                         especes = especesList,
                         indicat = indicatList,
-                        deprecated = this.deprecated == 1
+                        deprecated = this.deprecated == 1,
+                        dataB = this.DataB
                 )
         }
 
@@ -549,6 +716,7 @@ object Mappers {
                                         try {
                                                 LocalDate.parse(this.date)
                                         } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
 
                                                 LocalDate(
                                                         2000,
@@ -565,7 +733,7 @@ object Mappers {
 
         /**
          * Convertit une map de nutriments et valeurs en liste d'entités de valeurs de nutriments.
-         * Ne crée des entités que pour les nutriments avec des valeurs > 0.
+         * Crée des entités pour les valeurs positives ou explicitement nulles.
          */
         // DÉBUT ZONE PROTÉGÉE - NE PAS MODIFIER SANS AUTORISATION EXPRESSE
         // Description: Méthode critique pour la conversion de Map<Nutrient, NutrientQuantity> en
@@ -573,11 +741,11 @@ object Mappers {
         // Cette méthode est utilisée dans le processus d'import pour convertir les valeurs
         // nutritionnelles en entités de base de données.
         fun Map<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>.toNutrientValueEntities(
-                alimentUuid: String
+alimentUuid: String
         ): List<NutrientValueEntity> {
                 return mapNotNull { (nutrient, nutrientQuantity) ->
-                        // Ne créer des entités que pour les valeurs strictement positives
-                        if (nutrientQuantity.value > 0) {
+                        // Conserver zéro afin de distinguer une valeur explicite d'une absence.
+                        if (nutrientQuantity.value >= 0) {
                                 NutrientValueEntity(
                                         refAliment = alimentUuid,
                                         nutrientLabel = nutrient.label,
@@ -602,14 +770,12 @@ object Mappers {
                 MutableMap<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity> {
                 val result = mutableMapOf<Nutrient, fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
                 forEach { entity ->
-                        val nutrient = NutrientResolver.AllNutrientResolver(entity.nutrientLabel)
-                        if (nutrient != null) {
-                                result[nutrient] =
-                                        fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
-                                                entity.value,
-                                                entity.nutrientLabel
-                                        )
-                        }
+                        val nutrient = NutrientResolver.resolveStoredLabel(entity.nutrientLabel)
+                        result[nutrient] =
+                                fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                        entity.value,
+                                        entity.nutrientLabel
+                                )
                 }
                 return result
         }
@@ -646,7 +812,10 @@ object Mappers {
                         description = this.description ?: "",
                         equationScript = this.equationScript ?: "",
                         kind = EquationKind.valueOf(this.kind ?: EquationKind.ENERGYNEED.name),
-                        specie = this.specie?.let { Espece.valueOf(it) },
+                        specie = this.specie?.let { s ->
+                            runCatching { Espece.valueOf(s) }.getOrNull()
+                                ?: Espece.entries.firstOrNull { it.label.equals(s, ignoreCase = true) }
+                        },
                         nutrient = nutrient,
                         bib = biblioRef ?: BiblioRef(),
                         consistent = this.consistent,
@@ -687,4 +856,23 @@ object Mappers {
                         varue = this.value
                 )
         }
+
+        fun RationSupplementalVariableEntity.toData(): SupplementalvariableP {
+                return SupplementalvariableP(
+                        variable = VariableKind.getById(this.variableKind),
+                        varue = this.value
+                )
+        }
+}
+
+/** Sélection des rations de la prévision du poids ; null si absente ou illisible. */
+private fun selectionPrevisionDepuisJson(json: String?): fr.vetbrain.vetnutri_mp.Data.PoidsChien.SelectionRationsPrevision? {
+    if (json.isNullOrBlank()) return null
+    return try {
+        consultationPrescriptionJson.decodeFromString<fr.vetbrain.vetnutri_mp.Data.PoidsChien.SelectionRationsPrevision>(json)
+    } catch (e: Exception) {
+        e.rethrowIfCancellation()
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.w("Mappers", "Sélection de prévision du poids illisible : ${e.message}")
+        null
+    }
 }

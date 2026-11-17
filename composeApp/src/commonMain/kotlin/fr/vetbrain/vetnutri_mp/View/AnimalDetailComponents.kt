@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,12 +20,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -44,12 +50,20 @@ fun InfoRow(label: String, value: String) {
                 modifier = Modifier.fillMaxWidth().padding(vertical = AppSizes.paddingXSmall),
                 horizontalArrangement = Arrangement.Start
         ) {
+                // Étiquette atténuée et décollée de la valeur, même pour « Date de naissance »
                 Text(
                         text = "$label :",
                         style = MaterialTheme.typography.subtitle1,
-                        modifier = Modifier.width(AppSizes.textFieldHeight.times(2.7f))
+                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f),
+                        // Largeur minimale commune pour aligner les valeurs ; une étiquette plus longue
+                        // élargit sa colonne au lieu de toucher la valeur.
+                        modifier = Modifier.widthIn(min = 180.dp).padding(end = AppSizes.paddingMedium)
                 )
-                Text(text = value, style = MaterialTheme.typography.body1)
+                Text(
+                        text = value,
+                        style = MaterialTheme.typography.body1,
+                        modifier = Modifier.weight(1f)
+                )
         }
 }
 
@@ -70,6 +84,7 @@ fun ConsultationCard(
         isSelected: Boolean,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
+        onDuplicate: () -> Unit = {},
         isDeleteEnabled: Boolean = true,
         onClick: () -> Unit = {},
         modifier: Modifier = Modifier
@@ -100,15 +115,13 @@ fun ConsultationCard(
                                         Color.LightGray.copy(alpha = 0.5f)
                                 )
         ) {
+                // Toute la carte est cliquable : l'effet de survol couvre la carte entière
                 Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                         Column(
-                                modifier =
-                                        Modifier.weight(1f)
-                                                .clickable(onClick = onClick)
-                                                .padding(AppSizes.paddingMedium),
+                                modifier = Modifier.weight(1f).padding(AppSizes.paddingMedium),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 // Date de la consultation
@@ -124,8 +137,8 @@ fun ConsultationCard(
                                                 modifier = Modifier.size(AppSizes.iconSizeSmall)
                                         )
                                         Text(
-                                                text = consultation.date?.toString()
-                                                                ?: "Date inconnue",
+                                                text = consultation.date?.enTexte()
+                                                                ?: translate(LocalizationKeys.AnimalDetail.UNKNOWN_DATE),
                                                 style = MaterialTheme.typography.subtitle1,
                                                 color = VetNutriColors.Primary
                                         )
@@ -148,7 +161,7 @@ fun ConsultationCard(
                                                                 )
                                                 )
                                                 Text(
-                                                        text = "$weight kg",
+                                                        text = translate(LocalizationKeys.AnimalDetail.WEIGHT_KG_FORMAT, weight.toString()),
                                                         style = MaterialTheme.typography.caption,
                                                         color = Color.Gray
                                                 )
@@ -164,8 +177,8 @@ fun ConsultationCard(
                                         thickness = AppSizes.dividerHeight.times(0.5f)
                                 )
 
-                                // Motif de la consultation
-                                Row(
+                                // Motif de la consultation (rien quand il n'est pas saisi : l'icône seule ne dit rien)
+                                if (consultation.objectConsult.isNotBlank()) Row(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall),
                                         verticalAlignment = Alignment.Top
@@ -228,7 +241,7 @@ fun ConsultationCard(
                                                 )
                                                 Text(
                                                         text =
-                                                                "Rations: ${consultation.rations.size}",
+                                                                translate(LocalizationKeys.AnimalDetail.RATIONS_COUNT_FORMAT, consultation.rations.size.toString()),
                                                         style = MaterialTheme.typography.caption,
                                                         color = VetNutriColors.Secondary
                                                 )
@@ -245,33 +258,40 @@ fun ConsultationCard(
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 // Bouton d'édition
-                                IconButton(
+                                IconButtonWithTooltip(
                                         onClick = onEdit,
-                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                ) {
-                                        Icon(
-                                                imageVector = AppIcons.Edit,
-                                                contentDescription = "Modifier la consultation",
-                                                tint = VetNutriColors.Primary,
-                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
-                                        )
-                                }
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium),
+                                        imageVector = AppIcons.Edit,
+                                        contentDescription = translate(LocalizationKeys.Consultation.EDIT_CONSULTATION),
+                                        tooltip = translate(LocalizationKeys.Consultation.EDIT_CONSULTATION),
+                                        tint = VetNutriColors.Primary,
+                                        iconModifier = Modifier.size(AppSizes.iconSizeSmall)
+                                )
+
+                                // Bouton de duplication
+                                IconButtonWithTooltip(
+                                        onClick = onDuplicate,
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium),
+                                        imageVector = AppIcons.ContentCopy,
+                                        contentDescription = translate(LocalizationKeys.Consultation.DUPLICATE_CONSULTATION),
+                                        tooltip = translate(LocalizationKeys.Consultation.DUPLICATE_CONSULTATION),
+                                        tint = VetNutriColors.Primary,
+                                        iconModifier = Modifier.size(AppSizes.iconSizeSmall)
+                                )
 
                                 // Bouton de suppression
-                                IconButton(
+                                IconButtonWithTooltip(
                                         onClick = onDelete,
                                         enabled = isDeleteEnabled,
-                                        modifier = Modifier.size(AppSizes.iconSizeMedium)
-                                ) {
-                                        Icon(
-                                                imageVector = AppIcons.Delete,
-                                                contentDescription = "Supprimer la consultation",
-                                                tint =
-                                                        if (isDeleteEnabled) Color.Red
-                                                        else Color.Gray.copy(alpha = 0.5f),
-                                                modifier = Modifier.size(AppSizes.iconSizeSmall)
-                                        )
-                                }
+                                        modifier = Modifier.size(AppSizes.iconSizeMedium),
+                                        imageVector = AppIcons.Delete,
+                                        contentDescription = translate(LocalizationKeys.Consultation.DELETE_CONSULTATION),
+                                        tooltip = translate(LocalizationKeys.Consultation.DELETE_CONSULTATION),
+                                        tint =
+                                                if (isDeleteEnabled) VetNutriColors.Error
+                                                else Color.Gray.copy(alpha = 0.5f),
+                                        iconModifier = Modifier.size(AppSizes.iconSizeSmall)
+                                )
                         }
                 }
         }
@@ -333,14 +353,14 @@ fun RationItem(
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = if (ration.actual) "Proposée" else "Actuelle",
+                                        text = if (ration.actual) translate(LocalizationKeys.Ration.PROPOSED) else translate(LocalizationKeys.Ration.ACTUAL),
                                         style = MaterialTheme.typography.caption,
                                         color =
                                                 if (ration.actual) VetNutriColors.Primary
                                                 else Color.Gray
                                 )
                                 Text(
-                                        text = "Coef: ${ration.coef}",
+                                        text = translate(LocalizationKeys.Ration.COEF_FORMAT, ration.coef.toString()),
                                         style = MaterialTheme.typography.caption,
                                         color = Color.Gray
                                 )
@@ -352,41 +372,35 @@ fun RationItem(
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
                         verticalAlignment = Alignment.CenterVertically
                 ) {
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = { onEdit() },
-                                modifier = Modifier.size(AppSizes.iconSizeLarge)
-                        ) {
-                                Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "Modifier",
-                                        tint = VetNutriColors.Primary.copy(alpha = 0.8f)
-                                )
-                        }
+                                modifier = Modifier.size(AppSizes.iconSizeLarge),
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = translate(LocalizationKeys.Ration.EDIT_ACTION),
+                                tooltip = translate(LocalizationKeys.Ration.EDIT_ACTION),
+                                tint = VetNutriColors.Primary.copy(alpha = 0.8f)
+                        )
 
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = { onDuplicate() },
-                                modifier = Modifier.size(AppSizes.iconSizeLarge)
-                        ) {
-                                Icon(
-                                        AppIcons.ContentCopy,
-                                        contentDescription = "Dupliquer",
-                                        tint = VetNutriColors.Primary.copy(alpha = 0.8f)
-                                )
-                        }
+                                modifier = Modifier.size(AppSizes.iconSizeLarge),
+                                imageVector = AppIcons.ContentCopy,
+                                contentDescription = translate(LocalizationKeys.Ration.DUPLICATE_ACTION),
+                                tooltip = translate(LocalizationKeys.Ration.DUPLICATE_ACTION),
+                                tint = VetNutriColors.Primary.copy(alpha = 0.8f)
+                        )
 
-                        IconButton(
+                        IconButtonWithTooltip(
                                 onClick = { onDelete() },
                                 modifier = Modifier.size(AppSizes.iconSizeLarge),
-                                enabled = isDeleteEnabled
-                        ) {
-                                Icon(
-                                        AppIcons.Delete,
-                                        contentDescription = "Supprimer",
-                                        tint =
-                                                if (isDeleteEnabled) Color.Red.copy(alpha = 0.8f)
-                                                else Color.Gray.copy(alpha = 0.5f)
-                                )
-                        }
+                                enabled = isDeleteEnabled,
+                                imageVector = AppIcons.Delete,
+                                contentDescription = translate(LocalizationKeys.General.DELETE),
+                                tooltip = translate(LocalizationKeys.General.DELETE),
+                                tint =
+                                        if (isDeleteEnabled) VetNutriColors.Error
+                                        else Color.Gray.copy(alpha = 0.5f)
+                        )
                 }
         }
 }
@@ -422,7 +436,9 @@ fun AlimentItem(
 
         // Fonction de validation de la quantité
         val validateQuantity = {
-                val newQuantity = quantityText.toDoubleOrNull() ?: aliment.quantity
+                // Normaliser la virgule en point pour la conversion
+                val texteNormalise = quantityText.replace(',', '.')
+                val newQuantity = texteNormalise.toDoubleOrNull() ?: aliment.quantity
                 onQuantityChange(newQuantity)
         }
 
@@ -440,7 +456,7 @@ fun AlimentItem(
                                 style = MaterialTheme.typography.subtitle1
                         )
                         Text(
-                                text = "Catégorie: ${aliment.category}",
+                                text = translate(LocalizationKeys.AnimalDetail.CATEGORY_LABEL, aliment.category.toString()),
                                 style = MaterialTheme.typography.caption,
                                 color = Color.Gray
                         )
@@ -455,29 +471,46 @@ fun AlimentItem(
                         ) {
                                 OutlinedTextField(
                                         value = quantityText,
-                                        onValueChange = { quantityText = it },
-                                        label = { Text("Quantité") },
+                                        onValueChange = { newValue ->
+                                                // Filtrer pour n'accepter que les chiffres, point et virgule
+                                                val texteFiltre =
+                                                        newValue.filter { char ->
+                                                                char.isDigit() ||
+                                                                        char == '.' ||
+                                                                        char == ','
+                                                        }
+                                                // S'assurer qu'il n'y a qu'un seul séparateur décimal
+                                                val pointCount = texteFiltre.count { it == '.' }
+                                                val virguleCount = texteFiltre.count { it == ',' }
+                                                if (pointCount <= 1 &&
+                                                                virguleCount <= 1 &&
+                                                                pointCount + virguleCount <= 1
+                                                ) {
+                                                        quantityText = texteFiltre
+                                                }
+                                        },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_QUANTITY)) },
                                         keyboardOptions =
-                                                KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                         singleLine = true,
                                         modifier =
                                                 Modifier.width(AppSizes.textFieldHeight.times(2.2f))
                                 )
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
-                                IconButton(onClick = validateQuantity) {
-                                        Icon(
-                                                AppIcons.Check,
-                                                contentDescription = "Valider",
-                                                tint = Color.Green
-                                        )
-                                }
-                                IconButton(onClick = cancelEdit) {
-                                        Icon(
-                                                AppIcons.Close,
-                                                contentDescription = "Annuler",
-                                                tint = Color.Red.copy(alpha = 0.8f)
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = validateQuantity,
+                                        imageVector = AppIcons.Check,
+                                        contentDescription = translate(LocalizationKeys.General.VALIDATE),
+                                        tooltip = translate(LocalizationKeys.General.VALIDATE),
+                                        tint = Color.Green
+                                )
+                                IconButtonWithTooltip(
+                                        onClick = cancelEdit,
+                                        imageVector = AppIcons.Close,
+                                        contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                        tooltip = translate(LocalizationKeys.General.CANCEL),
+                                        tint = VetNutriColors.Error
+                                )
                         }
                 } else {
                         // Mode affichage de la quantité
@@ -486,25 +519,25 @@ fun AlimentItem(
                                 horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                         ) {
                                 Text(
-                                        text = "${aliment.quantity} g",
+                                        text = translate(LocalizationKeys.Ration.QUANTITY_GRAMS_FORMAT, aliment.quantity.toString()),
                                         style = MaterialTheme.typography.body1,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.clickable(onClick = onStartEditing)
                                 )
-                                IconButton(onClick = onStartEditing) {
-                                        Icon(
-                                                AppIcons.Edit,
-                                                contentDescription = "Modifier la quantité",
-                                                tint = VetNutriColors.Primary
-                                        )
-                                }
-                                IconButton(onClick = onDelete) {
-                                        Icon(
-                                                AppIcons.Delete,
-                                                contentDescription = "Supprimer",
-                                                tint = Color.Red.copy(alpha = 0.8f)
-                                        )
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = onStartEditing,
+                                        imageVector = AppIcons.Edit,
+                                        contentDescription = translate(LocalizationKeys.Ration.EDIT_QUANTITY_TOOLTIP),
+                                        tooltip = translate(LocalizationKeys.Ration.EDIT_QUANTITY_TOOLTIP),
+                                        tint = VetNutriColors.Primary
+                                )
+                                IconButtonWithTooltip(
+                                        onClick = onDelete,
+                                        imageVector = AppIcons.Delete,
+                                        contentDescription = translate(LocalizationKeys.General.DELETE),
+                                        tooltip = translate(LocalizationKeys.General.DELETE),
+                                        tint = VetNutriColors.Error
+                                )
                         }
                 }
         }

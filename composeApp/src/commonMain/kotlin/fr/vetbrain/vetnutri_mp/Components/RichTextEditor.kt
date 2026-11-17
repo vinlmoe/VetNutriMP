@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Components
 
+import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.FormatAlignLeft
+import androidx.compose.material.icons.automirrored.filled.FormatAlignRight
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,6 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Export.*
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Éditeur de texte enrichi pour créer des sections HTML réutilisables */
 @Composable
@@ -67,7 +74,7 @@ fun RichTextEditor(
                     val newBlock =
                             TextBlock.TableBlock(
                                     id = generateBlockId(),
-                                    headers = listOf("Colonne 1", "Colonne 2"),
+                                    headers = listOf(translate("richTextEditor.columnName", "1"), translate("richTextEditor.columnName", "2")),
                                     rows = listOf(listOf("", ""))
                             )
                     content = content.copy(blocks = content.blocks + newBlock)
@@ -108,7 +115,7 @@ fun RichTextEditor(
             if (content.blocks.isEmpty()) {
                 item {
                     Text(
-                            text = "Cliquez sur un bouton ci-dessus pour commencer à écrire...",
+                            text = translate("richTextEditor.clickToStart"),
                             color = Color.Gray,
                             style = MaterialTheme.typography.body2,
                             modifier = Modifier.padding(16.dp)
@@ -185,7 +192,7 @@ private fun EditorToolbar(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // Bouton paragraphe
-        IconButton(onClick = onAddParagraph) { Icon(Icons.Default.TextFields, "Paragraphe") }
+        IconButton(onClick = onAddParagraph) { Icon(Icons.Default.TextFields, translate("richTextEditor.paragraph")) }
 
         // Boutons titres
         IconButton(onClick = { onAddHeading(1) }) {
@@ -199,13 +206,13 @@ private fun EditorToolbar(
         }
 
         // Boutons listes
-        IconButton(onClick = { onAddList(false) }) { Icon(Icons.Default.List, "Liste") }
+        IconButton(onClick = { onAddList(false) }) { Icon(Icons.AutoMirrored.Default.List, translate("richTextEditor.list")) }
         IconButton(onClick = { onAddList(true) }) {
-            Icon(Icons.Default.FormatListNumbered, "Liste numérotée")
+            Icon(Icons.Default.FormatListNumbered, translate("richTextEditor.orderedList"))
         }
 
         // Bouton tableau
-        IconButton(onClick = onAddTable) { Icon(Icons.Default.TableChart, "Tableau") }
+        IconButton(onClick = onAddTable) { Icon(Icons.Default.TableChart, translate("richTextEditor.table")) }
     }
 }
 
@@ -224,7 +231,7 @@ private fun FormattingToolbar(
         IconButton(onClick = { onFormattingChange(formatting.copy(isBold = !formatting.isBold)) }) {
             Icon(
                     Icons.Default.FormatBold,
-                    "Gras",
+                    translate("richTextEditor.bold"),
                     tint = if (formatting.isBold) Color.Blue else Color.Gray
             )
         }
@@ -235,7 +242,7 @@ private fun FormattingToolbar(
         ) {
             Icon(
                     Icons.Default.FormatItalic,
-                    "Italique",
+                    translate("richTextEditor.italic"),
                     tint = if (formatting.isItalic) Color.Blue else Color.Gray
             )
         }
@@ -248,7 +255,7 @@ private fun FormattingToolbar(
         ) {
             Icon(
                     Icons.Default.FormatUnderlined,
-                    "Souligné",
+                    translate("richTextEditor.underline"),
                     tint = if (formatting.isUnderline) Color.Blue else Color.Gray
             )
         }
@@ -263,7 +270,7 @@ private fun FormattingToolbar(
         ) {
             Icon(
                     Icons.Default.FormatStrikethrough,
-                    "Barré",
+                    translate("richTextEditor.strikethrough"),
                     tint = if (formatting.isStrikethrough) Color.Blue else Color.Gray
             )
         }
@@ -276,8 +283,8 @@ private fun FormattingToolbar(
                 onClick = { onFormattingChange(formatting.copy(alignment = TextAlignment.LEFT)) }
         ) {
             Icon(
-                    Icons.Default.FormatAlignLeft,
-                    "Aligner à gauche",
+                    Icons.AutoMirrored.Default.FormatAlignLeft,
+                    translate("richTextEditor.alignLeft"),
                     tint =
                             if (formatting.alignment == TextAlignment.LEFT) Color.Blue
                             else Color.Gray
@@ -289,7 +296,7 @@ private fun FormattingToolbar(
         ) {
             Icon(
                     Icons.Default.FormatAlignCenter,
-                    "Centrer",
+                    translate("richTextEditor.alignCenter"),
                     tint =
                             if (formatting.alignment == TextAlignment.CENTER) Color.Blue
                             else Color.Gray
@@ -300,8 +307,8 @@ private fun FormattingToolbar(
                 onClick = { onFormattingChange(formatting.copy(alignment = TextAlignment.RIGHT)) }
         ) {
             Icon(
-                    Icons.Default.FormatAlignRight,
-                    "Aligner à droite",
+                    Icons.AutoMirrored.Default.FormatAlignRight,
+                    translate("richTextEditor.alignRight"),
                     tint =
                             if (formatting.alignment == TextAlignment.RIGHT) Color.Blue
                             else Color.Gray
@@ -349,19 +356,26 @@ private fun ColorPickerButton(currentColor: String?, onColorSelected: (String?) 
         IconButton(onClick = { expanded = true }) {
             Icon(
                     Icons.Default.ColorLens,
-                    "Couleur",
+                    translate("richTextEditor.color"),
                     tint = if (currentColor != null) Color.Blue else Color.Gray
             )
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false
+                    }
+                }
+        ) {
             // Option pour aucune couleur
             DropdownMenuItem(
                     onClick = {
                         onColorSelected(null)
                         expanded = false
                     }
-            ) { Text("Aucune couleur", color = Color.Gray) }
+            ) { Text(translate("richTextEditor.noColor"), color = Color.Gray) }
 
             // Palette de couleurs
             colors.forEach { colorHex ->
@@ -401,14 +415,21 @@ private fun FontSizeSelector(currentSize: Int?, onSizeSelected: (Int?) -> Unit) 
             )
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = {
+                    if (!isIosPlatform) {
+                        expanded = false
+                    }
+                }
+        ) {
             // Option taille par défaut
             DropdownMenuItem(
                     onClick = {
                         onSizeSelected(null)
                         expanded = false
                     }
-            ) { Text("Taille par défaut", color = Color.Gray) }
+            ) { Text(translate("richTextEditor.defaultSize"), color = Color.Gray) }
 
             // Tailles disponibles
             fontSizes.forEach { size ->
@@ -417,7 +438,7 @@ private fun FontSizeSelector(currentSize: Int?, onSizeSelected: (Int?) -> Unit) 
                             onSizeSelected(size)
                             expanded = false
                         }
-                ) { Text("${size}pt", fontSize = size.sp) }
+                ) { Text(translate("auto.components.richtexteditor.arg_pt", (size).toString()), fontSize = size.sp) }
             }
         }
     }
@@ -453,6 +474,9 @@ private fun EditableBlock(
             is TextBlock.Heading -> HeadingBlockEditor(block, onBlockChange)
             is TextBlock.ListBlock -> ListBlockEditor(block, onBlockChange)
             is TextBlock.TableBlock -> TableBlockEditor(block, onBlockChange)
+            is TextBlock.RawHtml -> {
+                Text(translate("richTextEditor.rawHtmlBlock"), color = Color.Gray, style = MaterialTheme.typography.caption)
+            }
         }
 
         // Boutons d'action quand sélectionné
@@ -467,7 +491,7 @@ private fun EditableBlock(
                         IconButton(onClick = moveUp) {
                             Icon(
                                     Icons.Default.KeyboardArrowUp,
-                                    "Déplacer vers le haut",
+                                    translate("richTextEditor.moveUp"),
                                     tint = Color.Blue
                             )
                         }
@@ -476,7 +500,7 @@ private fun EditableBlock(
                         IconButton(onClick = moveDown) {
                             Icon(
                                     Icons.Default.KeyboardArrowDown,
-                                    "Déplacer vers le bas",
+                                    translate("richTextEditor.moveDown"),
                                     tint = Color.Blue
                             )
                         }
@@ -485,7 +509,7 @@ private fun EditableBlock(
 
                 // Bouton de suppression
                 IconButton(onClick = onBlockDelete) {
-                    Icon(Icons.Default.Delete, "Supprimer", tint = Color.Red)
+                    Icon(Icons.Default.Delete, translate(LocalizationKeys.General.DELETE), tint = VetNutriColors.Error)
                 }
             }
         }
@@ -507,7 +531,7 @@ private fun ParagraphBlockEditor(block: TextBlock.Paragraph, onBlockChange: (Tex
             textStyle = TextStyle(fontSize = 14.sp),
             decorationBox = { innerTextField ->
                 if (text.isEmpty()) {
-                    Text("Tapez votre paragraphe ici...", color = Color.Gray)
+                    Text(translate("richTextEditor.paragraphPlaceholder"), color = Color.Gray)
                 }
                 innerTextField()
             }
@@ -520,7 +544,7 @@ private fun HeadingBlockEditor(block: TextBlock.Heading, onBlockChange: (TextBlo
     var text by remember(block.text) { mutableStateOf(block.text) }
 
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text("H${block.level}", fontWeight = FontWeight.Bold)
+        Text(translate("auto.components.richtexteditor.h_arg", (block.level).toString()), fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.width(8.dp))
         BasicTextField(
                 value = text,
@@ -542,7 +566,7 @@ private fun HeadingBlockEditor(block: TextBlock.Heading, onBlockChange: (TextBlo
                         ),
                 decorationBox = { innerTextField ->
                     if (text.isEmpty()) {
-                        Text("Titre H${block.level}", color = Color.Gray)
+                        Text(translate("richTextEditor.headingPlaceholder", block.level.toString()), color = Color.Gray)
                     }
                     innerTextField()
                 }
@@ -557,7 +581,7 @@ private fun ListBlockEditor(block: TextBlock.ListBlock, onBlockChange: (TextBloc
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-                if (block.isOrdered) "Liste numérotée" else "Liste à puces",
+                if (block.isOrdered) translate("richTextEditor.orderedList") else translate("richTextEditor.bulletList"),
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -578,7 +602,7 @@ private fun ListBlockEditor(block: TextBlock.ListBlock, onBlockChange: (TextBloc
                         textStyle = TextStyle(fontSize = 14.sp),
                         decorationBox = { innerTextField ->
                             if (item.isEmpty()) {
-                                Text("Élément de liste", color = Color.Gray)
+                                Text(translate("richTextEditor.listItemPlaceholder"), color = Color.Gray)
                             }
                             innerTextField()
                         }
@@ -591,7 +615,7 @@ private fun ListBlockEditor(block: TextBlock.ListBlock, onBlockChange: (TextBloc
                                 onBlockChange(block.copy(items = items))
                             },
                             modifier = Modifier.size(24.dp)
-                    ) { Icon(Icons.Default.Close, "Supprimer", tint = Color.Red) }
+                    ) { Icon(Icons.Default.Close, translate(LocalizationKeys.General.DELETE), tint = VetNutriColors.Error) }
                 }
             }
         }
@@ -604,9 +628,9 @@ private fun ListBlockEditor(block: TextBlock.ListBlock, onBlockChange: (TextBloc
                 },
                 modifier = Modifier.padding(top = 8.dp)
         ) {
-            Icon(Icons.Default.Add, "Ajouter")
+            Icon(Icons.Default.Add, translate(LocalizationKeys.General.ADD))
             Spacer(modifier = Modifier.width(4.dp))
-            Text("Ajouter un élément")
+            Text(translate("richTextEditor.addItem"))
         }
     }
 }
@@ -621,7 +645,7 @@ private fun TableBlockEditor(block: TextBlock.TableBlock, onBlockChange: (TextBl
             }
 
     Column(modifier = Modifier.fillMaxWidth()) {
-        Text("Tableau", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+        Text(translate("richTextEditor.table"), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
 
         // Édition des en-têtes
         Row(modifier = Modifier.fillMaxWidth()) {
@@ -636,7 +660,7 @@ private fun TableBlockEditor(block: TextBlock.TableBlock, onBlockChange: (TextBl
                         textStyle = TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold),
                         decorationBox = { innerTextField ->
                             if (header.isEmpty()) {
-                                Text("En-tête", color = Color.Gray, fontSize = 12.sp)
+                                Text(translate("richTextEditor.header"), color = Color.Gray, fontSize = 12.sp)
                             }
                             innerTextField()
                         }
@@ -659,7 +683,7 @@ private fun TableBlockEditor(block: TextBlock.TableBlock, onBlockChange: (TextBl
                             textStyle = TextStyle(fontSize = 12.sp),
                             decorationBox = { innerTextField ->
                                 if (cell.isEmpty()) {
-                                    Text("Cellule", color = Color.Gray, fontSize = 12.sp)
+                                    Text(translate("richTextEditor.cell"), color = Color.Gray, fontSize = 12.sp)
                                 }
                                 innerTextField()
                             }
@@ -675,13 +699,13 @@ private fun TableBlockEditor(block: TextBlock.TableBlock, onBlockChange: (TextBl
         ) {
             TextButton(
                     onClick = {
-                        headers.add("Colonne ${headers.size + 1}")
+                        headers.add(translate("richTextEditor.columnName", (headers.size + 1).toString()))
                         rows.forEach { it.add("") }
                         onBlockChange(block.copy(headers = headers, rows = rows))
                     }
             ) {
-                Icon(Icons.Default.Add, "Ajouter colonne")
-                Text("Colonne")
+                Icon(Icons.Default.Add, translate("richTextEditor.addColumn"))
+                Text(translate("richTextEditor.column"))
             }
 
             TextButton(
@@ -690,8 +714,8 @@ private fun TableBlockEditor(block: TextBlock.TableBlock, onBlockChange: (TextBl
                         onBlockChange(block.copy(rows = rows))
                     }
             ) {
-                Icon(Icons.Default.Add, "Ajouter ligne")
-                Text("Ligne")
+                Icon(Icons.Default.Add, translate("richTextEditor.addRow"))
+                Text(translate("richTextEditor.row"))
             }
         }
     }

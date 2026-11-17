@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvLight
@@ -10,11 +13,14 @@ import fr.vetbrain.vetnutri_mp.DataBase.Mappers.toFoodEntity
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.datetime.Instant
+import kotlinx.datetime.LocalDate
 
 /** Implémentation du FoodRepository utilisant Room Database. */
 class LocalAlimentDataSource(
@@ -22,7 +28,8 @@ class LocalAlimentDataSource(
         private val nutrientValueDao: NutrientValueDao
 ) : FoodRepository {
     private val _foodsFlow = MutableStateFlow<List<AlimentEv>>(emptyList())
-    private val coroutineScope = CoroutineScope(Dispatchers.Default)
+    private val job = SupervisorJob()
+    private val coroutineScope = CoroutineScope(AppDispatchers.IO + job)
 
     init {
         // Initialiser le flow au démarrage
@@ -72,8 +79,39 @@ class LocalAlimentDataSource(
         return _foodsFlow.asStateFlow()
     }
 
+    private fun parseDateToInstantOrNull(rawDate: String?): Instant? {
+        val date = rawDate?.trim().orEmpty()
+        if (date.isEmpty()) return null
+        return try {
+            Instant.parse(date)
+        } catch (ignored: Exception) {
+            ignored.rethrowIfCancellation()
+            val datePart = if (date.length >= 10) date.substring(0, 10) else date
+            try {
+                Instant.parse("${LocalDate.parse(datePart)}T00:00:00Z")
+            } catch (ignored: Exception) {
+                ignored.rethrowIfCancellation()
+                null
+            }
+        }
+    }
+
+    private fun shouldUpdateFood(
+            existing: AlimentEv,
+            incomingDate: String?,
+            importOnlyIfNewer: Boolean
+    ): Boolean {
+        if (!importOnlyIfNewer) return true
+        val incomingInstant = parseDateToInstantOrNull(incomingDate)
+        val existingInstant = parseDateToInstantOrNull(existing.lastUpdateDate)
+        if (incomingInstant == null || existingInstant == null) return true
+        return incomingInstant > existingInstant
+    }
+
     override suspend fun importFoods(
-            foods: List<AlimentEvJson>
+            foods: List<AlimentEvJson>,
+            mergeNutrients: Boolean,
+            importOnlyIfNewer: Boolean
     ): fr.vetbrain.vetnutri_mp.Repository.FoodImportResult {
         var count = 0
         var updated = 0
@@ -99,6 +137,9 @@ class LocalAlimentDataSource(
                 // Vérifier si l'aliment existe déjà
                 val existingFood = getFood(alimentEv.uuid)
                 if (existingFood != null) {
+                    if (!shouldUpdateFood(existingFood, alimentEv.lastUpdateDate, importOnlyIfNewer)) {
+                        return@forEach
+                    }
                     // Mettre à jour l'aliment existant
                     updateFood(alimentEv)
                     updated++
@@ -109,7 +150,8 @@ class LocalAlimentDataSource(
                 }
                 count++
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("LocalAlimentDataSource", e.message ?: "Erreur", e)
                 errors++
             }
         }
@@ -227,5 +269,14 @@ class LocalAlimentDataSource(
         refreshFoodsFlow()
 
         return count
+    }
+
+    override suspend fun getFoodsCount(): Int = foodDao.getFoodsCount()
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        nutrientValueDao.getDistinctNutrientLabels()
+
+    fun clear() {
+        coroutineScope.cancel()
     }
 }

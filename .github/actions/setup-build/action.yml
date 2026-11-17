@@ -1,0 +1,53 @@
+name: Setup build VetNutriMP
+description: >
+  Installe le JDK, configure Gradle (cache + validation du wrapper) et adapte
+  la mémoire JVM aux runners GitHub. À utiliser après actions/checkout.
+
+inputs:
+  java-version:
+    description: Version du JDK Temurin à installer.
+    required: false
+    default: '21'
+  cache-read-only:
+    description: >
+      Si true, le job lit le cache Gradle sans l'écrire. À laisser à true
+      partout sauf sur la branche par défaut, sinon chaque PR pousse son
+      propre cache et sature le quota du dépôt.
+    required: false
+    default: 'true'
+
+runs:
+  using: composite
+  steps:
+    - name: Installer le JDK ${{ inputs.java-version }}
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Configurer Gradle (cache + validation du wrapper)
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-read-only: ${{ inputs.cache-read-only }}
+        # Vérifie le checksum de gradle-wrapper.jar : empêche qu'un wrapper
+        # modifié exécute du code arbitraire sur le runner.
+        validate-wrappers: true
+
+    - name: Adapter la mémoire JVM au runner
+      shell: bash
+      run: |
+        # gradle.properties du projet réclame 8 Go pour Gradle + 8 Go pour le
+        # daemon Kotlin : calibré pour un poste de dev, pas pour un runner
+        # GitHub (4 vCPU / 16 Go), où la somme des deux provoque un OOM kill.
+        # Les propriétés de GRADLE_USER_HOME priment sur celles du projet.
+        gradle_home="${GRADLE_USER_HOME:-$HOME/.gradle}"
+        mkdir -p "$gradle_home"
+        cat >> "$gradle_home/gradle.properties" <<'PROPS'
+
+        # --- Surcharges CI (.github/actions/setup-build) ---
+        org.gradle.jvmargs=-Xmx4g -XX:MaxMetaspaceSize=1g -XX:+UseG1GC -Dfile.encoding=UTF-8
+        kotlin.daemon.jvmargs=-Xmx3g -XX:+UseG1GC
+        org.gradle.workers.max=4
+        PROPS
+        echo "Configuration Gradle effective ($gradle_home/gradle.properties) :"
+        cat "$gradle_home/gradle.properties"

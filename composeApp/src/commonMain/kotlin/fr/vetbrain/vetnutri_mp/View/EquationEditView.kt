@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,11 +24,13 @@ import fr.vetbrain.vetnutri_mp.Enumer.EquationKind
 import fr.vetbrain.vetnutri_mp.Enumer.EquationType
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.ExpressionEvaluator
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue pour éditer une équation avec onglets d'édition et de test
@@ -78,11 +82,24 @@ fun EquationEditView(
 
         if (message != null) {
             if (saveSuccessful) {
-                // Naviguer directement sans afficher de dialogue
+                // Remettre l'état à zéro avant de naviguer : sinon ce
+                // "saveSuccessful=true" reste dans le ViewModel (singleton) et,
+                // à la prochaine ouverture de cet écran (autre équation), les
+                // LaunchedEffect ci-dessous le liraient encore à `true` dès le
+                // montage et renaviguerait aussitôt vers la liste.
+                viewModel.clearOperationMessage()
                 onNavigateBack()
             } else if (message.isNotEmpty()) {
                 showErrorAlert = true
             }
+        }
+    }
+
+    // Navigation explicite sur succès même sans message
+    LaunchedEffect(saveSuccessful) {
+        if (saveSuccessful) {
+            viewModel.clearOperationMessage()
+            onNavigateBack()
         }
     }
 
@@ -94,21 +111,22 @@ fun EquationEditView(
         Box(modifier = modifier.fillMaxSize().padding(paddingValues)) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Onglets
-                TabRow(
+                AdaptiveTabRow(
                         selectedTabIndex = selectedTabIndex,
+                        tabCount = 4,
                         backgroundColor = VetNutriColors.Surface,
                         contentColor = VetNutriColors.Primary
                 ) {
                     Tab(
                             selected = selectedTabIndex == 0,
                             onClick = { selectedTabIndex = 0 },
-                            text = { Text("Édition") },
+                            text = { Text(translate("auto.view.equationeditview.edition")) },
                             icon = { Icon(Icons.Default.Edit, contentDescription = null) }
                     )
                     Tab(
                             selected = selectedTabIndex == 1,
                             onClick = { selectedTabIndex = 1 },
-                            text = { Text("Test") },
+                            text = { Text(translate("auto.view.equationeditview.test")) },
                             icon = { Icon(Icons.Default.PlayArrow, contentDescription = null) }
                     )
                 }
@@ -135,7 +153,7 @@ fun EquationEditView(
                             showErrorAlert = false
                             viewModel.clearOperationMessage()
                         },
-                        title = { Text("Erreur") },
+                        title = { Text(translate("general.error")) },
                         text = {
                             val message = operationMessage
                             Text(message ?: "")
@@ -146,7 +164,7 @@ fun EquationEditView(
                                         showErrorAlert = false
                                         viewModel.clearOperationMessage()
                                     }
-                            ) { Text("OK") }
+                            ) { Text(translate("general.ok")) }
                         }
                 )
             }
@@ -158,7 +176,7 @@ fun EquationEditView(
                         modifier = Modifier.align(Alignment.BottomCenter),
                         action = {
                             TextButton(onClick = { viewModel.clearOperationMessage() }) {
-                                Text("Fermer")
+                                Text(translate("settings.close"))
                             }
                         }
                 ) { Text(message) }
@@ -178,7 +196,7 @@ private fun EquationEditTab(
         OutlinedTextField(
                 value = currentEquation.name,
                 onValueChange = { viewModel.updateName(it) },
-                label = { Text("Nom de l'équation") },
+                label = { Text(translate("auto.view.equationeditview.nom_de_l_equation")) },
                 modifier = Modifier.fillMaxWidth()
         )
 
@@ -188,7 +206,7 @@ private fun EquationEditTab(
         OutlinedTextField(
                 value = currentEquation.description,
                 onValueChange = { viewModel.updateDescription(it) },
-                label = { Text("Description") },
+                label = { Text(translate("new_reference.field.description")) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3
         )
@@ -197,7 +215,7 @@ private fun EquationEditTab(
 
         // Type d'équation (dropdown)
         DropdownField(
-                label = "Type d'équation",
+                label = translate("auto.view.equationeditview.type_d_equation"),
                 selectedValue =
                         currentEquation.kind.let { kind ->
                             when (kind) {
@@ -210,6 +228,8 @@ private fun EquationEditTab(
                                         EquationType.INDICATOR
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED ->
                                         EquationType.NEED
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERCOMP ->
+                                    EquationType.ENERCOMP
                                 fr.vetbrain.vetnutri_mp.Enumer.EquationKind
                                         .COMPLEMENTARY_NUTRIENT ->
                                         EquationType.COMPLEMENTARY_NUTRIENT
@@ -217,7 +237,7 @@ private fun EquationEditTab(
                         },
                 options = EquationType.values().toList(),
                 onValueChange = { viewModel.updateKind(it.toEquationKind()) },
-                valueToString = { it.toString() }
+                valueToString = { it.translateEnum() }
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -231,7 +251,7 @@ private fun EquationEditTab(
                 valueToString = { espece ->
                     when (espece) {
                         fr.vetbrain.vetnutri_mp.Enumer.Espece.CH -> "enum.Espece.ALL".translate()
-                        else -> "${espece.translateEnum()} (${espece.name})"
+                        else -> espece.translateEnum()
                     }
                 }
         )
@@ -250,12 +270,20 @@ private fun EquationEditTab(
                     } else null
 
             DropdownField(
-                    label = "Nutriment associé",
+                    label = translate("auto.view.equationeditview.nutriment_associe"),
                     selectedValue = selectedNutrient,
                     options = listOf(null) + allNutrients,
                     onValueChange = { viewModel.updateNutrient(it) },
                     valueToString = { nutrient ->
-                        nutrient?.translateEnum() ?: "Aucun nutriment sélectionné"
+                        if (nutrient != null) {
+                            val translated = nutrient.translateEnum()
+                            // Debug temporaire pour DM
+                            if (nutrient.label == "DM") {
+                            }
+                            translated
+                        } else {
+                            "Aucun nutriment sélectionné"
+                        }
                     }
             )
 
@@ -268,7 +296,7 @@ private fun EquationEditTab(
         OutlinedTextField(
                 value = currentEquation.equationScript,
                 onValueChange = { newValue -> viewModel.updateEquationScript(newValue) },
-                label = { Text("Script de l'équation") },
+                label = { Text(translate("auto.view.equationeditview.script_de_l_equation")) },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Code, contentDescription = null) }
         )
@@ -282,7 +310,7 @@ private fun EquationEditTab(
                     onCheckedChange = { checked -> viewModel.updateRatio(checked) }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Équation de type ratio (utiliser les nutriments de la ration)")
+            Text(translate("auto.view.equationeditview.equation_de_type_ratio_utiliser_les_nutriments_d"))
         }
 
         // Légende des codes couleur
@@ -344,8 +372,9 @@ private fun EquationEditTab(
                     }
             val nutrientsMain =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries.map {
-                        "${it.translateEnum()} - ${it.nameToString()}" to it.label
+                        "${it.translateEnum()} - ${it.label}" to it.label
                     }
+                  
             val nutrientsLipides =
                     fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries.map {
                         "${it.translateEnum()} - ${it.label}" to it.label
@@ -374,6 +403,10 @@ private fun EquationEditTab(
                     fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries.map {
                         "${it.translateEnum()} - ${it.label}" to it.label
                     }
+            val customNutrients =
+                    fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry.all().map {
+                        "${it.nameToString()} - ${it.label}" to it.label
+                    }
 
             // Variables système
             val systemVariables =
@@ -389,7 +422,7 @@ private fun EquationEditTab(
                     )
 
             // Combiner toutes les variables et les trier par nom d'affichage
-            (variableKindList +
+            val allVariables = (variableKindList +
                             nutrientsMain +
                             nutrientsLipides +
                             nutrientsVitamines +
@@ -398,8 +431,17 @@ private fun EquationEditTab(
                             nutrientsOther +
                             acideAmines +
                             nutrientsAnalysis +
+                            customNutrients +
                             systemVariables)
                     .sortedBy { it.first }
+            
+            // Debug temporaire pour voir si DM est dans la liste finale
+            val dmInList = allVariables.find { it.second == "DM" }
+            if (dmInList != null) {
+            } else {
+            }
+            
+            allVariables
         }
 
         Box {
@@ -412,12 +454,16 @@ private fun EquationEditTab(
                         verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.AddCircle, contentDescription = null)
-                    Text("Ajouter une variable au script")
+                    Text(translate("auto.view.equationeditview.ajouter_une_variable_au_script"))
                 }
             }
             DropdownMenu(
                     expanded = expandedVariables,
-                    onDismissRequest = { expandedVariables = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            expandedVariables = false 
+                        }
+                    }
             ) {
                 allAvailableVariables.forEach { (displayName, variableCode) ->
                     DropdownMenuItem(
@@ -444,7 +490,7 @@ private fun EquationEditTab(
         OutlinedTextField(
                 value = currentEquation.bib.comments,
                 onValueChange = { viewModel.updateBibNote(it) },
-                label = { Text("Note bibliographique") },
+                label = { Text(translate("auto.view.equationeditview.note_bibliographique")) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2
         )
@@ -460,14 +506,14 @@ private fun EquationEditTab(
                     value = currentEquation.bib.completeRef,
                     onValueChange = { /* Lecture seule, modification via le sélecteur uniquement */
                     },
-                    label = { Text("Référence bibliographique") },
+                    label = { Text(translate("graph.refBiblio")) },
                     modifier = Modifier.fillMaxWidth(),
                     readOnly = true,
                     trailingIcon = {
                         IconButton(onClick = { expandedBiblioRefs = true }) {
                             Icon(
                                     imageVector = Icons.Default.AddCircle,
-                                    contentDescription = "Sélectionner une référence"
+                                    contentDescription = translate("consultation.edit.ref.select_tooltip")
                             )
                         }
                     }
@@ -475,11 +521,15 @@ private fun EquationEditTab(
 
             DropdownMenu(
                     expanded = expandedBiblioRefs,
-                    onDismissRequest = { expandedBiblioRefs = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            expandedBiblioRefs = false 
+                        }
+                    }
             ) {
                 if (biblioRefs.isEmpty()) {
                     DropdownMenuItem(onClick = { expandedBiblioRefs = false }) {
-                        Text("Aucune référence disponible")
+                        Text(translate("reference.none_available"))
                     }
                 } else {
                     biblioRefs.forEach { biblioRef ->
@@ -498,6 +548,62 @@ private fun EquationEditTab(
             }
         }
 
+        // Section multi-références (uniquement pour COMPLEMENTARY_NUTRIENT)
+        if (currentEquation.kind == EquationKind.COMPLEMENTARY_NUTRIENT) {
+            val allReferences by viewModel.allReferences.collectAsState()
+            val equations by viewModel.equations.collectAsState()
+            val pendingReferenceUuids by viewModel.pendingReferenceUuids.collectAsState()
+            val isSaved = equations.any { it.uuid == currentEquation.uuid }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                    translate("auto.view.equationeditview.assigner_aux_references"),
+                    style = MaterialTheme.typography.subtitle1,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            if (!isSaved) {
+                Text(
+                        "Les associations seront appliquées à l'enregistrement de l'équation.",
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Gray
+                )
+            }
+            if (allReferences.isEmpty()) {
+                Text(
+                        translate("auto.view.equationeditview.aucune_reference_disponible"),
+                        style = MaterialTheme.typography.caption,
+                        color = Color.Gray
+                )
+            } else {
+                allReferences.forEach { reference ->
+                    val isAssociated =
+                            if (isSaved) {
+                                reference.equationsNut.any { it.uuid == currentEquation.uuid }
+                            } else {
+                                reference.uuid in pendingReferenceUuids
+                            }
+                    Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)
+                    ) {
+                        Checkbox(
+                                checked = isAssociated,
+                                onCheckedChange = {
+                                    if (isSaved) {
+                                        viewModel.toggleEquationForReference(currentEquation, reference)
+                                    } else {
+                                        viewModel.togglePendingReferenceAssociation(reference.uuid)
+                                    }
+                                }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(reference.nom)
+                    }
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         // Bouton d'enregistrement
@@ -509,7 +615,7 @@ private fun EquationEditTab(
                         // succès
                     },
                     modifier = Modifier.padding(8.dp)
-            ) { Text("Enregistrer") }
+            ) { Text(translate("auto.view.settingsview.enregistrer")) }
         }
     }
 }
@@ -608,7 +714,7 @@ private fun EquationTestTab(
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(
-                text = "Test de l'équation",
+                text = translate("auto.view.equationeditview.test_de_l_equation"),
                 style = MaterialTheme.typography.h6,
                 modifier = Modifier.padding(bottom = 16.dp)
         )
@@ -625,13 +731,13 @@ private fun EquationTestTab(
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                            text = "Aucune expression à tester",
+                            text = translate("auto.view.equationeditview.aucune_expression_a_tester"),
                             style = MaterialTheme.typography.body1,
                             color = Color(0xFFE65100) // Couleur ambre foncée
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                            text = "Veuillez d'abord saisir une expression dans l'onglet Édition.",
+                            text = translate("auto.view.equationeditview.veuillez_d_abord_saisir_une_expression_dans_l_on"),
                             style = MaterialTheme.typography.body2,
                             color = Color(0xFFE65100)
                     )
@@ -650,7 +756,7 @@ private fun EquationTestTab(
                         horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                            text = "Test impossible",
+                            text = translate("auto.view.equationeditview.test_impossible"),
                             style = MaterialTheme.typography.body1,
                             color = Color(0xFFE65100) // Couleur orange foncée
                     )
@@ -664,7 +770,7 @@ private fun EquationTestTab(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                             text =
-                                    "Veuillez corriger l'expression ou définir ces variables dans l'onglet Édition.",
+                                    translate("auto.view.equationeditview.veuillez_corriger_l_expression_ou_definir_ces_va"),
                             style = MaterialTheme.typography.body2,
                             color = Color(0xFFE65100)
                     )
@@ -673,13 +779,13 @@ private fun EquationTestTab(
         } else if (variablesInExpression.isNotEmpty()) {
             // Interface de test avec variables reconnues
             Text(
-                    text = "Expression : ${currentEquation.equationScript}",
+                    text = translate("equation.expression", currentEquation.equationScript),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Text(
-                    text = "Variables détectées :",
+                    text = translate("auto.view.equationeditview.variables_detectees"),
                     style = MaterialTheme.typography.subtitle1,
                     modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -709,7 +815,7 @@ private fun EquationTestTab(
                                                     this[variable] = newValue
                                                 }
                                     },
-                                    label = { Text("Valeur") },
+                                    label = { Text(translate("nutrientComponents.columnValue")) },
                                     modifier = Modifier.width(120.dp),
                                     singleLine = true
                             )
@@ -735,7 +841,7 @@ private fun EquationTestTab(
                                     variablesMap[variable] = doubleValue
                                 } else {
                                     hasError = true
-                                    errorMessage = "Valeur invalide pour $variable: '$value'"
+                                    errorMessage = "Valeur invalide pour $variable : '$value'"
                                 }
                             }
 
@@ -757,12 +863,13 @@ private fun EquationTestTab(
                                 testError = errorMessage
                             }
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             testResult = null
-                            testError = "Erreur: ${e.message}"
+                            testError = "Erreur : ${e.message}"
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
-            ) { Text("Tester l'expression") }
+            ) { Text(translate("auto.view.equationeditview.tester_l_expression")) }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -775,7 +882,7 @@ private fun EquationTestTab(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                                text = "Résultat :",
+                                text = translate("auto.view.equationeditview.resultat"),
                                 style = MaterialTheme.typography.subtitle1,
                                 color = Color(0xFF2E7D32) // Vert foncé
                         )
@@ -797,7 +904,7 @@ private fun EquationTestTab(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                                text = "Erreur :",
+                                text = translate("auto.view.equationeditview.erreur"),
                                 style = MaterialTheme.typography.subtitle1,
                                 color = Color(0xFFC62828) // Rouge foncé
                         )
@@ -812,13 +919,13 @@ private fun EquationTestTab(
         } else {
             // Cas où l'expression ne contient aucune variable
             Text(
-                    text = "Expression : ${currentEquation.equationScript}",
+                    text = translate("equation.expression", currentEquation.equationScript),
                     style = MaterialTheme.typography.body1,
                     modifier = Modifier.padding(bottom = 16.dp)
             )
 
             Text(
-                    text = "Cette expression ne contient aucune variable.",
+                    text = translate("auto.view.equationeditview.cette_expression_ne_contient_aucune_variable"),
                     style = MaterialTheme.typography.body2,
                     modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -840,12 +947,13 @@ private fun EquationTestTab(
                                         null
                                     }
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             testResult = null
-                            testError = "Erreur: ${e.message}"
+                            testError = "Erreur : ${e.message}"
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
-            ) { Text("Tester l'expression") }
+            ) { Text(translate("auto.view.equationeditview.tester_l_expression")) }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -858,7 +966,7 @@ private fun EquationTestTab(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                                text = "Résultat :",
+                                text = translate("auto.view.equationeditview.resultat"),
                                 style = MaterialTheme.typography.subtitle1,
                                 color = Color(0xFF2E7D32) // Vert foncé
                         )
@@ -880,7 +988,7 @@ private fun EquationTestTab(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text(
-                                text = "Erreur :",
+                                text = translate("auto.view.equationeditview.erreur"),
                                 style = MaterialTheme.typography.subtitle1,
                                 color = Color(0xFFC62828) // Rouge foncé
                         )

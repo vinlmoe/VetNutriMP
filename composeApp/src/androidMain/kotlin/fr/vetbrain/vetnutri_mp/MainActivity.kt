@@ -4,17 +4,28 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import fr.vetbrain.vetnutri_mp.DataBase.getDatabaseBuilder
+import fr.vetbrain.vetnutri_mp.DataBase.getDatabasePath
 import fr.vetbrain.vetnutri_mp.DataBase.getRoomDatabase
+import fr.vetbrain.vetnutri_mp.ExcelPlatform.ExcelFileOperationsBridge
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationManager
+import fr.vetbrain.vetnutri_mp.Utils.FullscreenManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?): Unit {
         super.onCreate(savedInstanceState)
 
+        // Configuration plein écran
+        FullscreenManager.enableFullscreen(this)
+
         // Initialisation du contexte Android
         AndroidContext.appContext = applicationContext
         AndroidContext.setCurrentActivity(this)
+
+        // Enregistrement des ActivityResultLauncher pour l'import/export CSV
+        // (doit se faire avant STARTED, donc ici plutôt que depuis un composable)
+        ExcelFileOperationsBridge.register(this)
+        JsonFileOperationsBridge.register(this)
 
         // Initialisation de la localisation avec détection de la langue du système
         val systemLocale = resources.configuration.locales[0].language
@@ -24,10 +35,13 @@ class MainActivity : ComponentActivity() {
         
         LocalizationManager.initialize(primaryLanguage)
 
-        // Initialisation de la base de données
-        val appDatabase = getRoomDatabase(getDatabaseBuilder(this))
+        val context = applicationContext
+        setContent { AppWithDatabase { getRoomDatabase(getDatabaseBuilder(context), getDatabasePath(context)) } }
+    }
 
-        setContent { App(appDatabase) }
+    override fun onDestroy() {
+        JsonFileOperationsBridge.unregister(isChangingConfigurations)
+        super.onDestroy()
     }
 
     override fun onResume(): Unit {

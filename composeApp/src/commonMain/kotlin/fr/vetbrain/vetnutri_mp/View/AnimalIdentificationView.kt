@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -11,8 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.especeDuGroupe
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.General
 import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
@@ -33,7 +38,9 @@ fun AnimalIdentificationView(
         animal: AnimalEv,
         onEdit: () -> Unit,
         onDelete: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        /** Copie consultée en lecture seule : ni modification ni suppression proposées. */
+        lectureSeule: Boolean = false
 ) {
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // En-tête avec boutons d'action
@@ -42,20 +49,20 @@ fun AnimalIdentificationView(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Identification de l'animal", style = MaterialTheme.typography.h6)
-            Row {
+            Text(text = translate(Animal.IDENTIFICATION_TITLE), style = MaterialTheme.typography.h6)
+            if (!lectureSeule) Row {
                 IconButton(onClick = onEdit) {
                     Icon(
                             imageVector = Icons.Default.Edit,
-                            contentDescription = "Modifier",
+                            contentDescription = translate(General.EDIT),
                             tint = VetNutriColors.Primary
                     )
                 }
                 IconButton(onClick = onDelete) {
                     Icon(
                             imageVector = Icons.Default.Delete,
-                            contentDescription = "Supprimer",
-                            tint = Color.Red
+                            contentDescription = translate(General.DELETE),
+                            tint = VetNutriColors.Error
                     )
                 }
             }
@@ -70,10 +77,26 @@ fun AnimalIdentificationView(
         ) {
             // Nom et race
             InfoRow(label = Animal.NAME.translate(), value = animal.nom)
-            InfoRow(label = Animal.BREED.translate(), value = animal.race)
+            // Troupeau : pas d'espèce, race ni sexe propres ; ceux de chaque groupe d'individus
+            animal.typesTroupeau?.let { types ->
+                InfoRow(label = translate("troupeau.colTroupeau"), value = translate("troupeau.nbAnimaux", animal.effectifTroupeau.toString()))
+                types.forEach { type ->
+                    val details =
+                            listOfNotNull(
+                                    animal.especeDuGroupe(type).translateEnum(),
+                                    type.race.takeIf { it.isNotBlank() }?.let { traduireRace(it, animal.especeDuGroupe(type)) },
+                                    type.sexe()?.translateEnum()
+                            ).joinToString(", ")
+                    InfoRow(
+                            label = "  ${type.nom.ifBlank { translate("troupeau.groupeSansNom") }}",
+                            value = "${type.nombre} × ${formaterNombreTroupeau(type.poids)} kg — $details"
+                    )
+                }
+            }
+            if (!animal.estTroupeau) InfoRow(label = Animal.BREED.translate(), value = traduireRace(animal.race, animal.getEspece()))
 
-            // Sexe
-            InfoRow(
+            // Sexe (sans objet pour un troupeau)
+            if (!animal.estTroupeau) InfoRow(
                     label = Animal.SEX.translate(),
                     value = Sex.fromId(animal.sexId).translateEnum()
             )
@@ -92,8 +115,8 @@ fun AnimalIdentificationView(
                                         1
                                 else 0)
 
-                InfoRow(label = Animal.BIRTH_DATE.translate(), value = birthdate.toString())
-                InfoRow(label = Animal.AGE.translate(), value = "$age ans")
+                InfoRow(label = Animal.BIRTH_DATE.translate(), value = birthdate.enTexte())
+                InfoRow(label = Animal.AGE.translate(), value = translate(Animal.AGE_YEARS_VALUE, age.toString()))
             }
 
             // Propriétaire
@@ -102,7 +125,10 @@ fun AnimalIdentificationView(
             }
 
             // Statut (vivant/décédé)
-            InfoRow(label = "Statut", value = if (animal.dead) "Décédé" else "Vivant")
+            InfoRow(
+                    label = translate(Animal.STATUS),
+                    value = if (animal.dead) translate(Animal.STATUS_DEAD) else translate(Animal.STATUS_ALIVE)
+            )
 
             // Résumé
             if (animal.summary.isNotEmpty()) {
@@ -116,7 +142,7 @@ fun AnimalIdentificationView(
                 lastWeight?.let { weight ->
                     InfoRow(
                             label = Animal.WEIGHT.translate(),
-                            value = "${weight.value} kg (${weight.date})"
+                            value = translate(Animal.WEIGHT_VALUE_WITH_DATE, weight.value.toString(), weight.date.enTexte())
                     )
                 }
             }

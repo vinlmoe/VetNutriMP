@@ -1,11 +1,10 @@
 package fr.vetbrain.vetnutri_mp.View
 
-// Import délégué via SettingsViewModel.importApiFromFileUI()
+import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
@@ -14,28 +13,45 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import fr.vetbrain.vetnutri_mp.Components.Section
+import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Repository.ExportImportRepository
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
-import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsHeader
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.Equation
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.Recette
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Export.HtmlSection
+import fr.vetbrain.vetnutri_mp.Export.SectionCategory
 import fr.vetbrain.vetnutri_mp.View.SettingsComponents.SettingsTabs
-import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
-import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.AdministrationSettings
 import fr.vetbrain.vetnutri_mp.View.SettingsSections.InterfaceSettings
+import fr.vetbrain.vetnutri_mp.View.SettingsSections.RecipeEditView
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeEditViewModel
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
 import fr.vetbrain.vetnutri_mp.ViewModel.SettingsViewModel
+import fr.vetbrain.vetnutri_mp.Service.ExcelFoodService
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Settings
+import fr.vetbrain.vetnutri_mp.Localization.translate
+
+// Import délégué via SettingsViewModel.importApiFromFileUI()
+
+internal data class FilterOption<T>(val label: String, val value: T?)
 
 /**
  * Dialogue simple pour les paramètres d'affichage
@@ -44,22 +60,22 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun SettingsDialog(
-    viewModel: SettingsViewModel, 
-    onDismiss: () -> Unit,
-    onBackupClick: () -> Unit = {}
+        viewModel: SettingsViewModel,
+        onDismiss: () -> Unit,
+        onBackupClick: () -> Unit = {}
 ) {
         val uiScale by viewModel.uiScale.collectAsState()
 
         AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("Paramètres d'affichage", style = MaterialTheme.typography.h6) },
+                title = { Text(translate(Settings.DISPLAY_SETTINGS), style = MaterialTheme.typography.h6) },
                 text = {
                         Column(
                                 modifier = Modifier.padding(AppSizes.paddingMedium),
                                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
                         ) {
                                 Text(
-                                        "Taille de l'interface",
+                                        translate(Settings.UI_SCALE),
                                         style = MaterialTheme.typography.subtitle1
                                 )
 
@@ -95,12 +111,17 @@ fun SettingsDialog(
                                                 backgroundColor = VetNutriColors.Primary,
                                                 contentColor = Color.White
                                         )
-                        ) { Text("Fermer") }
+                        ) { Text(translate(Settings.CLOSE)) }
                 },
                 backgroundColor = MaterialTheme.colors.surface
         )
 }
 
+/**
+ * Écran des paramètres.
+ * - Regroupe les onglets Interface, Préférences et Import/Export.
+ * - S'appuie sur `SettingsViewModel` pour l'état UI et `ImportViewModel` pour les imports.
+ */
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SettingsView(
@@ -112,7 +133,10 @@ fun SettingsView(
         onFoodListRefresh: () -> Unit,
         modifier: Modifier = Modifier,
         onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {},
-        onBackupClick: () -> Unit = {}
+        onBackupClick: () -> Unit = {},
+        onLegacyMigrationClick: () -> Unit = {},
+        onBulkBiblioClick: () -> Unit = {},
+        isExamMode: Boolean = false
 ) {
 
         // État pour le dialogue d'alerte d'importation des références nutritionnelles
@@ -124,14 +148,13 @@ fun SettingsView(
 
         // État pour l'onglet actuel
         var selectedTab by remember { mutableStateOf(0) }
-        
+
         // État pour le nombre de conseils
         var conseilsCount by remember { mutableStateOf(0) }
 
         // Observer le message d'importation des références nutritionnelles
-        val nutritionalRequirementMessage by remember {
-                derivedStateOf { importViewModel.nutritionalRequirementImportResultMessage }
-        }
+        val nutritionalRequirementMessage by
+                importViewModel.nutritionalRequirementImportResultMessage.collectAsState()
 
         // Afficher le dialogue d'alerte quand l'importation est terminée
         LaunchedEffect(nutritionalRequirementMessage) {
@@ -152,9 +175,11 @@ fun SettingsView(
         // Charger le nombre de conseils au démarrage
         LaunchedEffect(Unit) {
                 try {
-                        val count = viewModel.conseilRepository?.getConseilsCount()?.getOrThrow() ?: 0
+                        val count =
+                                viewModel.getAdviceCount()
                         conseilsCount = count
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // En cas d'erreur, garder 0
                         conseilsCount = 0
                 }
@@ -162,709 +187,1099 @@ fun SettingsView(
 
         Column(modifier = modifier.fillMaxSize()) {
                 // En-tête avec bouton retour
-              
 
                 // Navigation par onglets
-                SettingsTabs(selectedTab = selectedTab, onTabSelected = { selectedTab = it })
+                SettingsTabs(
+                        selectedTab = selectedTab,
+                        onTabSelected = { selectedTab = it },
+                        isExamMode = isExamMode
+                )
 
                 // Contenu de l'onglet sélectionné
                 Box(modifier = Modifier.fillMaxSize().padding(AppSizes.paddingMedium)) {
                         when (selectedTab) {
                                 0 -> { // Interface
-                                        InterfaceSettings(
-                                                viewModel = viewModel,
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement =
+                                                        Arrangement.spacedBy(AppSizes.paddingSmall)
+                                        ) {
+                                                InterfaceSettings(
+                                                        viewModel = viewModel,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
                                 }
                                 1 -> { // Préférences
                                         PreferencesSection(
+                                                viewModel = viewModel,
                                                 modifier = Modifier.fillMaxWidth(),
                                                 onSpeciesClick = onSpeciesClick
                                         )
                                 }
                                 2 -> { // Importation
-                                                // Affichage du nombre de conseils
-                                                Card(
-                                                        modifier = Modifier.fillMaxWidth()
+                                        // Affichage du nombre de conseils
+                                        Card(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
                                                                 .padding(bottom = 8.dp),
-                                                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f)
+                                                backgroundColor =
+                                                        VetNutriColors.Primary.copy(alpha = 0.1f)
+                                        ) {
+                                                Row(
+                                                        modifier = Modifier.padding(12.dp),
+                                                        verticalAlignment =
+                                                                Alignment.CenterVertically
                                                 ) {
-                                                        Row(
-                                                                modifier = Modifier.padding(12.dp),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                                Icon(
-                                                                        imageVector = Icons.Default.Info,
-                                                                        contentDescription = "Conseils",
-                                                                        tint = VetNutriColors.Primary
+                                                        Icon(
+                                                                imageVector = Icons.Default.Info,
+                                                                contentDescription = translate("database.stat.conseils"),
+                                                                tint = VetNutriColors.Primary
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                                text =
+                                                                        "${translate(Settings.CONSEILS_COUNT)}$conseilsCount",
+                                                                style =
+                                                                        MaterialTheme.typography
+                                                                                .body2,
+                                                                color = VetNutriColors.Primary,
+                                                                fontWeight = FontWeight.Medium
+                                                        )
+                                                }
+                                        }
+                                        Column(
+                                                modifier =
+                                                        Modifier.fillMaxWidth()
+                                                                .verticalScroll(
+                                                                        rememberScrollState()
+                                                                ),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                // Sélection export avancée
+                                                val selectedAnimalIdsState = remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedAnimalIds by selectedAnimalIdsState
+                                                val selectedFoodIdsState = remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedFoodIds by selectedFoodIdsState
+                                                val selectedEquationIdsState = remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedEquationIds by selectedEquationIdsState
+                                                val selectedReferenceIdsState = remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedReferenceIds by selectedReferenceIdsState
+                                                val selectedRecipeIdsState = remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedRecipeIds by selectedRecipeIdsState
+                                                val selectedConseilIdsState = remember {
+                                                        mutableStateOf(setOf<String>())
+                                                }
+                                                var selectedConseilIds by selectedConseilIdsState
+
+                                                val showAnimalSelectionDialogState = remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showAnimalSelectionDialog by showAnimalSelectionDialogState
+                                                val showFoodSelectionDialogState = remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showFoodSelectionDialog by showFoodSelectionDialogState
+                                                val showEquationSelectionDialogState = remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showEquationSelectionDialog by showEquationSelectionDialogState
+                                                val showReferenceSelectionDialogState = remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showReferenceSelectionDialog by showReferenceSelectionDialogState
+                                                val showRecipeSelectionDialogState = remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showRecipeSelectionDialog by showRecipeSelectionDialogState
+                                                val showConseilSelectionDialogState = remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var showConseilSelectionDialog by showConseilSelectionDialogState
+
+                                                var availableAnimals by remember {
+                                                        mutableStateOf<List<AnimalEv>>(emptyList())
+                                                }
+                                                var availableFoods by remember {
+                                                        mutableStateOf<List<AlimentEv>>(emptyList())
+                                                }
+                                                var availableEquations by remember {
+                                                        mutableStateOf<List<Equation>>(emptyList())
+                                                }
+                                                var availableReferences by remember {
+                                                        mutableStateOf<List<ReferenceEv>>(emptyList())
+                                                }
+                                                var availableRecipes by remember {
+                                                        mutableStateOf<List<Recette>>(emptyList())
+                                                }
+                                                var availableConseils by remember {
+                                                        mutableStateOf<List<HtmlSection>>(emptyList())
+                                                }
+
+                                                var isLoadingAnimals by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingFoods by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingEquations by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingReferences by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingRecipes by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var isLoadingConseils by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                val selectionLoadErrorState = remember {
+                                                        mutableStateOf<String?>(null)
+                                                }
+                                                var selectionLoadError by selectionLoadErrorState
+
+                                                val foodSelectionFiltersState = remember {
+                                                        mutableStateOf(FoodSearchFilters())
+                                                }
+                                                var foodSelectionFilters by foodSelectionFiltersState
+                                                val animalFilterEspeceState = remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = translate("crossConsultation.speciesAll"),
+                                                                        value = null
                                                                 )
-                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                        )
+                                                }
+                                                var animalFilterEspece by animalFilterEspeceState
+                                                val equationFilterEspeceState = remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = translate("crossConsultation.speciesAll"),
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var equationFilterEspece by equationFilterEspeceState
+                                                val equationFilterKindState = remember {
+                                                        mutableStateOf(
+                                                                FilterOption<EquationKind>(
+                                                                        label = translate("crossConsultation.keywordsAll"),
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var equationFilterKind by equationFilterKindState
+                                                val referenceFilterEspeceState = remember {
+                                                        mutableStateOf(
+                                                                FilterOption<Espece>(
+                                                                        label = translate("crossConsultation.speciesAll"),
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var referenceFilterEspece by referenceFilterEspeceState
+                                                val conseilFilterCategoryState = remember {
+                                                        mutableStateOf(
+                                                                FilterOption<SectionCategory>(
+                                                                        label = translate("crossConsultation.speciesAll"),
+                                                                        value = null
+                                                                )
+                                                        )
+                                                }
+                                                var conseilFilterCategory by conseilFilterCategoryState
+
+                                                var showAdvancedSelection by remember {
+                                                        mutableStateOf(false)
+                                                }
+
+                                                Card(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        backgroundColor = MaterialTheme.colors.surface
+                                                ) {
+                                                        Column(modifier = Modifier.padding(12.dp)) {
                                                                 Text(
-                                                                        text = "Conseils dans la base : $conseilsCount",
-                                                                        style = MaterialTheme.typography.body2,
-                                                                        color = VetNutriColors.Primary,
+                                                                        translate("auto.view.settingsview.export_api"),
+                                                                        style = MaterialTheme.typography.subtitle1,
                                                                         fontWeight = FontWeight.Medium
                                                                 )
+                                                                Spacer(modifier = Modifier.height(6.dp))
+                                                                Text(
+                                                                        "Sélection avancée : animaux ${selectedAnimalIds.size}, aliments ${selectedFoodIds.size}, recettes ${selectedRecipeIds.size}, équations ${selectedEquationIds.size}, références ${selectedReferenceIds.size}, conseils ${selectedConseilIds.size}",
+                                                                        style = MaterialTheme.typography.body2,
+                                                                        color = Color.Gray
+                                                                )
+                                                                Spacer(modifier = Modifier.height(8.dp))
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                showAdvancedSelection =
+                                                                                        !showAdvancedSelection
+                                                                        }
+                                                                ) {
+                                                                        Text(
+                                                                                if (showAdvancedSelection)
+                                                                                        "Masquer la sélection avancée"
+                                                                                else "Afficher la sélection avancée"
+                                                                        )
+                                                                }
                                                         }
                                                 }
-                                                Column(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .verticalScroll(
-                                                                                rememberScrollState()
-                                                                        ),
-                                                        verticalArrangement =
-                                                                Arrangement.spacedBy(8.dp)
+
+                                                if (showAdvancedSelection) {
+                                                // Boutons: sélectionner les éléments à exporter
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showAnimalSelectionDialog = true
+                                                                if (availableAnimals.isEmpty() &&
+                                                                                !isLoadingAnimals
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingAnimals = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableAnimals =
+                                                                                                viewModel.getAllAnimals()
+                                                                                } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement animaux : ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingAnimals = false
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
                                                 ) {
-                                                        // Sélection export avancée
-                                                        var includeAnimals by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeFoods by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeEquations by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeRations by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeRecipes by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var includeConseils by remember {
-                                                                mutableStateOf(true)
-                                                        }
-                                                        var selectedAnimalIds by remember {
-                                                                mutableStateOf(setOf<String>())
-                                                        }
-                                                        var selectedFoodIds by remember {
-                                                                mutableStateOf(setOf<String>())
-                                                        }
+                                                        Text(
+                                                                "${translate(Settings.SELECT_ANIMALS)} (${selectedAnimalIds.size})"
+                                                        )
+                                                }
 
-                                                        // Bouton: choisir animaux à exporter (ouvre
-                                                        // un simple sélecteur basique)
-                                                        OutlinedButton(
-                                                                onClick = {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showFoodSelectionDialog = true
+                                                                if (availableFoods.isEmpty() &&
+                                                                                !isLoadingFoods
+                                                                ) {
                                                                         coroutineScope.launch {
+                                                                                isLoadingFoods = true
+                                                                                selectionLoadError = null
                                                                                 try {
-                                                                                        val animals =
-                                                                                                viewModel
-                                                                                                        .animalRepository
-                                                                                                        .getAllAnimals()
-                                                                                        // Simple
-                                                                                        // sélection: toggle tout si vide
-                                                                                        selectedAnimalIds =
-                                                                                                if (selectedAnimalIds
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        animals
-                                                                                                                .map {
-                                                                                                                        it.uuid
-                                                                                                                }
-                                                                                                                .toSet()
-                                                                                                else
-                                                                                                        emptySet()
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {}
+                                                                                        availableFoods =
+                                                                                                viewModel.getAllFoods()
+                                                                                } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement aliments : ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingFoods = false
+                                                                                }
                                                                         }
                                                                 }
-                                                        ) {
-                                                                Text(
-                                                                        "Sélectionner animaux (toggle tout)"
-                                                                )
                                                         }
+                                                ) {
+                                                        Text(
+                                                                "${translate(Settings.SELECT_FOODS)} (${selectedFoodIds.size})"
+                                                        )
+                                                }
 
-                                                        // Bouton: choisir aliments à exporter
-                                                        // (toggle tout)
-                                                        OutlinedButton(
-                                                                onClick = {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showRecipeSelectionDialog = true
+                                                                if (availableRecipes.isEmpty() &&
+                                                                                !isLoadingRecipes
+                                                                ) {
                                                                         coroutineScope.launch {
+                                                                                isLoadingRecipes = true
+                                                                                selectionLoadError = null
                                                                                 try {
-                                                                                        val foods =
-                                                                                                viewModel
-                                                                                                        .foodRepository
-                                                                                                        .getAllFoods()
-                                                                                        selectedFoodIds =
-                                                                                                if (selectedFoodIds
-                                                                                                                .isEmpty()
-                                                                                                )
-                                                                                                        foods
-                                                                                                                .map {
-                                                                                                                        it.uuid
-                                                                                                                }
-                                                                                                                .toSet()
-                                                                                                else
-                                                                                                        emptySet()
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {}
+                                                                                        availableRecipes =
+                                                                                                viewModel.getAllRecipes()
+                                                                                } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement recettes : ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingRecipes = false
+                                                                                }
                                                                         }
                                                                 }
-                                                        ) {
-                                                                Text(
-                                                                        "Sélectionner aliments (toggle tout)"
-                                                                )
                                                         }
+                                                ) { Text(translate("auto.view.settingsview.selectionner_recettes_arg", (selectedRecipeIds.size).toString())) }
 
-                                                        // Cases à cocher d’inclusion
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeAnimals,
-                                                                        onCheckedChange = {
-                                                                                includeAnimals = it
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showEquationSelectionDialog = true
+                                                                if (availableEquations.isEmpty() &&
+                                                                                !isLoadingEquations
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingEquations = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableEquations =
+                                                                                                viewModel.getAllEquations()
+                                                                                } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement equations : ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingEquations = false
+                                                                                }
                                                                         }
-                                                                )
-                                                                Text("Inclure animaux")
+                                                                }
                                                         }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeFoods,
-                                                                        onCheckedChange = {
-                                                                                includeFoods = it
+                                                ) { Text(translate("auto.view.settingsview.selectionner_equations_arg", (selectedEquationIds.size).toString())) }
+
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showReferenceSelectionDialog = true
+                                                                if (availableReferences.isEmpty() &&
+                                                                                !isLoadingReferences
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingReferences = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableReferences =
+                                                                                                viewModel.getAllReferences()
+                                                                                } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement references : ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingReferences = false
+                                                                                }
                                                                         }
-                                                                )
-                                                                Text("Inclure aliments")
+                                                                }
                                                         }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeEquations,
-                                                                        onCheckedChange = {
-                                                                                includeEquations =
-                                                                                        it
+                                                ) { Text(translate("auto.view.settingsview.selectionner_references_arg", (selectedReferenceIds.size).toString())) }
+
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                showConseilSelectionDialog = true
+                                                                if (availableConseils.isEmpty() &&
+                                                                                !isLoadingConseils
+                                                                ) {
+                                                                        coroutineScope.launch {
+                                                                                isLoadingConseils = true
+                                                                                selectionLoadError = null
+                                                                                try {
+                                                                                        availableConseils =
+                                                                                                viewModel.getActiveAdvices()
+                                                                                } catch (e: Exception) {
+                                                                                        e.rethrowIfCancellation()
+                                                                                        selectionLoadError =
+                                                                                                "Erreur chargement conseils : ${e.message}"
+                                                                                } finally {
+                                                                                        isLoadingConseils = false
+                                                                                }
                                                                         }
-                                                                )
-                                                                Text("Inclure équations")
+                                                                }
                                                         }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
+                                                ) { Text(translate("auto.view.settingsview.selectionner_conseils_arg", (selectedConseilIds.size).toString())) }
+
+                                                // Cases à cocher d’inclusion
+
+                                                SelectionAnimauxExport(
+                                                        availableAnimals = availableAnimals,
+                                                        isLoadingAnimals = isLoadingAnimals,
+                                                        selection = selectedAnimalIdsState,
+                                                        filtreEspece = animalFilterEspeceState,
+                                                        erreur = selectionLoadErrorState,
+                                                        visible = showAnimalSelectionDialogState
+                                                )
+
+                                                SelectionAlimentsExport(
+                                                        availableFoods = availableFoods,
+                                                        isLoadingFoods = isLoadingFoods,
+                                                        selection = selectedFoodIdsState,
+                                                        filtres = foodSelectionFiltersState,
+                                                        erreur = selectionLoadErrorState,
+                                                        visible = showFoodSelectionDialogState
+                                                )
+
+                                                SelectionEquationsExport(
+                                                        availableEquations = availableEquations,
+                                                        isLoadingEquations = isLoadingEquations,
+                                                        selection = selectedEquationIdsState,
+                                                        filtreEspece = equationFilterEspeceState,
+                                                        filtreType = equationFilterKindState,
+                                                        erreur = selectionLoadErrorState,
+                                                        visible = showEquationSelectionDialogState
+                                                )
+
+                                                SelectionReferencesExport(
+                                                        availableReferences = availableReferences,
+                                                        isLoadingReferences = isLoadingReferences,
+                                                        selection = selectedReferenceIdsState,
+                                                        filtreEspece = referenceFilterEspeceState,
+                                                        erreur = selectionLoadErrorState,
+                                                        visible = showReferenceSelectionDialogState
+                                                )
+
+                                                SelectionConseilsExport(
+                                                        availableConseils = availableConseils,
+                                                        isLoadingConseils = isLoadingConseils,
+                                                        selection = selectedConseilIdsState,
+                                                        filtreCategorie = conseilFilterCategoryState,
+                                                        erreur = selectionLoadErrorState,
+                                                        visible = showConseilSelectionDialogState
+                                                )
+
+                                                SelectionRecettesExport(
+                                                        availableRecipes = availableRecipes,
+                                                        isLoadingRecipes = isLoadingRecipes,
+                                                        selection = selectedRecipeIdsState,
+                                                        erreur = selectionLoadErrorState,
+                                                        visible = showRecipeSelectionDialogState
+                                                )
+                                                }
+                                                // Affichage du message de résultat
+                                                // d'importation des références
+                                                // nutritionnelles
+                                                nutritionalRequirementMessage?.let { message ->
+                                                        Card(
+                                                                modifier =
+                                                                        Modifier.fillMaxWidth()
+                                                                                .padding(
+                                                                                        bottom =
+                                                                                                8.dp
+                                                                                ),
+                                                                backgroundColor =
+                                                                        if (message.startsWith("✅"))
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                                        else if (message.startsWith(
+                                                                                        "❌"
+                                                                                )
+                                                                        )
+                                                                                VetNutriColors.Error
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
+                                                                        else
+                                                                                VetNutriColors
+                                                                                        .Secondary
+                                                                                        .copy(
+                                                                                                alpha =
+                                                                                                        0.1f
+                                                                                        )
                                                         ) {
-                                                                Checkbox(
-                                                                        checked = includeRations,
-                                                                        onCheckedChange = {
-                                                                                includeRations = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure rations (sommaire)")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeRecipes,
-                                                                        onCheckedChange = {
-                                                                                includeRecipes = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure recettes")
-                                                        }
-                                                        Row(
-                                                                verticalAlignment =
-                                                                        Alignment.CenterVertically
-                                                        ) {
-                                                                Checkbox(
-                                                                        checked = includeConseils,
-                                                                        onCheckedChange = {
-                                                                                includeConseils = it
-                                                                        }
-                                                                )
-                                                                Text("Inclure conseils")
-                                                        }
-                                                        // Affichage du message de résultat
-                                                        // d'importation des références
-                                                        // nutritionnelles
-                                                        nutritionalRequirementMessage?.let { message
-                                                                ->
-                                                                Card(
+                                                                Row(
                                                                         modifier =
                                                                                 Modifier.fillMaxWidth()
                                                                                         .padding(
-                                                                                                bottom =
-                                                                                                        8.dp
+                                                                                                12.dp
                                                                                         ),
-                                                                        backgroundColor =
-                                                                                if (message.startsWith(
-                                                                                                "✅"
-                                                                                        )
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
-                                                                                else if (message.startsWith(
-                                                                                                "❌"
-                                                                                        )
-                                                                                )
-                                                                                        VetNutriColors
-                                                                                                .Error
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
-                                                                                else
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                                                .copy(
-                                                                                                        alpha =
-                                                                                                                0.1f
-                                                                                                )
+                                                                        horizontalArrangement =
+                                                                                Arrangement
+                                                                                        .SpaceBetween,
+                                                                        verticalAlignment =
+                                                                                Alignment
+                                                                                        .CenterVertically
                                                                 ) {
-                                                                        Row(
-                                                                                modifier =
-                                                                                        Modifier.fillMaxWidth()
-                                                                                                .padding(
-                                                                                                        12.dp
-                                                                                                ),
-                                                                                horizontalArrangement =
-                                                                                        Arrangement
-                                                                                                .SpaceBetween,
-                                                                                verticalAlignment =
-                                                                                        Alignment
-                                                                                                .CenterVertically
-                                                                        ) {
-                                                                                Text(
-                                                                                        message,
-                                                                                        style =
-                                                                                                MaterialTheme
-                                                                                                        .typography
-                                                                                                        .body2,
-                                                                                        color =
-                                                                                                if (message.startsWith(
-                                                                                                                "✅"
-                                                                                                        )
+                                                                        Text(
+                                                                                message,
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .body2,
+                                                                                color =
+                                                                                        if (message.startsWith(
+                                                                                                        "✅"
                                                                                                 )
-                                                                                                        VetNutriColors
-                                                                                                                .Primary
-                                                                                                else if (message.startsWith(
-                                                                                                                "❌"
-                                                                                                        )
-                                                                                                )
-                                                                                                        VetNutriColors
-                                                                                                                .Error
-                                                                                                else
-                                                                                                        Color.DarkGray,
-                                                                                        modifier =
-                                                                                                Modifier.weight(
-                                                                                                        1f
-                                                                                                )
-                                                                                )
-                                                                                IconButton(
-                                                                                        onClick = {
-                                                                                                importViewModel
-                                                                                                        .resetImportResult()
-                                                                                        }
-                                                                                ) {
-                                                                                        Icon(
-                                                                                                Icons.Default
-                                                                                                        .Close,
-                                                                                                contentDescription =
-                                                                                                        "Fermer",
-                                                                                                tint =
-                                                                                                        Color.Gray
                                                                                         )
-                                                                                }
-                                                                        }
+                                                                                                VetNutriColors
+                                                                                                        .Primary
+                                                                                        else if (message.startsWith(
+                                                                                                        "❌"
+                                                                                                )
+                                                                                        )
+                                                                                                VetNutriColors
+                                                                                                        .Error
+                                                                                        else
+                                                                                                Color.DarkGray,
+                                                                                modifier =
+                                                                                        Modifier.weight(
+                                                                                                1f
+                                                                                        )
+                                                                        )
+                                                                        IconButtonWithTooltip(
+                                                                                onClick = {
+                                                                                        importViewModel
+                                                                                                .resetImportResult()
+                                                                                },
+                                                                                imageVector = Icons.Default.Close,
+                                                                                contentDescription = translate("settings.close"),
+                                                                                tooltip = translate("settings.close"),
+                                                                                tint = Color.Gray
+                                                                        )
                                                                 }
                                                         }
+                                                }
 
-                                                        Button(
-                                                                onClick = onImportAnimals,
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des animaux",
-                                                                        color = Color.White
-                                                                )
-                                                        }
-
-                                                        // Export (nouveau format API)
-                                                        Button(
-                                                                onClick = {
-                                                                        coroutineScope.launch {
-                                                                                try {
-                                                                                        val exportRepo =
-                                                                                                ExportImportRepository(
-                                                                                                        animalRepository =
-                                                                                                                viewModel
-                                                                                                                        .animalRepository,
-                                                                                                        foodRepository =
-                                                                                                                viewModel
-                                                                                                                        .foodRepository,
-                                                                                                        equationRepository =
-                                                                                                                viewModel
-                                                                                                                        .equationRepository,
-                                                                                                        referenceRepository =
-                                                                                                                viewModel
-                                                                                                                        .referenceEvRepository,
-                                                                                                        biblioRepository =
-                                                                                                                viewModel
-                                                                                                                        .biblioRefRepository,
-                                                                                                        consultationRepository =
-                                                                                                                viewModel
-                                                                                                                        .consultationRepository,
-                                                                                                        recipeRepository =
-                                                                                                                viewModel
-                                                                                                                        .recipeRepository,
-                                                                                                        conseilRepository =
-                                                                                                                viewModel
-                                                                                                                        .conseilRepository
+                                                // Export (nouveau format API)
+                                                Button(
+                                                        onClick = {
+                                                                coroutineScope.launch {
+                                                                        try {
+                                                                                val exportRepo =
+                                                                                        ExportImportRepository(
+                                                                                                animalRepository =
+                                                                                                        viewModel
+                                                                                                                .animalRepository,
+                                                                                                foodRepository =
+                                                                                                        viewModel
+                                                                                                                .foodRepository,
+                                                                                                equationRepository =
+                                                                                                        viewModel
+                                                                                                                .equationRepository,
+                                                                                                referenceRepository =
+                                                                                                        viewModel
+                                                                                                                .referenceEvRepository,
+                                                                                                biblioRepository =
+                                                                                                        viewModel
+                                                                                                                .biblioRefRepository,
+                                                                                                consultationRepository =
+                                                                                                        viewModel
+                                                                                                                .consultationRepository,
+                                                                                                recipeRepository =
+                                                                                                        viewModel
+                                                                                                                .recipeRepository,
+                                                                                                conseilRepository =
+                                                                                                        viewModel
+                                                                                                                .conseilRepository
+                                                                                        )
+                                                                                val exportOptions =
+                                                                                        ExportImportRepository
+                                                                                                .ExportSelectionOptions(
+                                                                                                        includeAnimals =
+                                                                                                                false,
+                                                                                                        includeFoods =
+                                                                                                                false,
+                                                                                                        includeRations =
+                                                                                                                false,
+                                                                                                        includeRecipes =
+                                                                                                                false,
+                                                                                                        includeEquations =
+                                                                                                                false,
+                                                                                                        includeConseils =
+                                                                                                                false,
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true,
+                                                                                                        animalIds =
+                                                                                                                selectedAnimalIds,
+                                                                                                        foodIds =
+                                                                                                                selectedFoodIds,
+                                                                                                        referenceIds =
+                                                                                                                selectedReferenceIds,
+                                                                                                        recipeIds =
+                                                                                                                selectedRecipeIds,
+                                                                                                        equationIds =
+                                                                                                                selectedEquationIds,
+                                                                                                        conseilIds =
+                                                                                                                selectedConseilIds
                                                                                                 )
-                                                                                        val json =
-                                                                                                exportRepo
-                                                                                                        .exportWithSelection(
-                                                                                                                ExportImportRepository
-                                                                                                                        .ExportSelectionOptions(
-                                                                                                                                includeAnimals =
-                                                                                                                                        includeAnimals,
-                                                                                                                                includeFoods =
-                                                                                                                                        includeFoods,
-                                                                                                                                includeRations =
-                                                                                                                                        includeRations,
-                                                                                                                                includeRecipes =
-                                                                                                                                        includeRecipes,
-                                                                                                                                includeEquations =
-                                                                                                                                        includeEquations,
-                                                                                                                                includeConseils =
-                                                                                                                                        includeConseils,
-                                                                                                                                animalIds =
-                                                                                                                                        selectedAnimalIds,
-                                                                                                                                foodIds =
-                                                                                                                                        selectedFoodIds
-                                                                                                                        )
-                                                                                                        )
-                                                                                        val ok =
+                                                                                val hasNoSelection =
+                                                                                        selectedAnimalIds.isEmpty() &&
+                                                                                                selectedFoodIds.isEmpty() &&
+                                                                                                selectedRecipeIds.isEmpty() &&
+                                                                                                selectedReferenceIds.isEmpty() &&
+                                                                                                selectedEquationIds.isEmpty() &&
+                                                                                                selectedConseilIds.isEmpty()
+                                                                                val effectiveOptions =
+                                                                                        if (hasNoSelection) {
+                                                                                                exportOptions.copy(
+                                                                                                        includeAnimals =
+                                                                                                                true,
+                                                                                                        includeFoods =
+                                                                                                                true,
+                                                                                                        includeRations =
+                                                                                                                true,
+                                                                                                        includeRecipes =
+                                                                                                                true,
+                                                                                                        includeEquations =
+                                                                                                                true,
+                                                                                                        includeConseils =
+                                                                                                                true,
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true
+                                                                                                )
+                                                                                        } else {
+                                                                                                exportOptions.copy(
+                                                                                                        includeAnimals =
+                                                                                                                selectedAnimalIds.isNotEmpty(),
+                                                                                                        includeFoods =
+                                                                                                                selectedFoodIds.isNotEmpty(),
+                                                                                                        includeRecipes =
+                                                                                                                selectedRecipeIds.isNotEmpty(),
+                                                                                                        includeEquations =
+                                                                                                                selectedEquationIds.isNotEmpty(),
+                                                                                                        includeConseils =
+                                                                                                                selectedConseilIds.isNotEmpty(),
+                                                                                                        includeLinkedFromAnimals =
+                                                                                                                true
+                                                                                                )
+                                                                                        }
+                                                                                val ok =
+                                                                                        withContext(
+                                                                                                AppDispatchers.IO
+                                                                                        ) {
+                                                                                                val envelope =
+                                                                                                        exportRepo
+                                                                                                                .exportWithSelectionEnvelope(
+                                                                                                                        effectiveOptions
+                                                                                                                )
                                                                                                 fr.vetbrain
                                                                                                         .vetnutri_mp
-                                                                                                        .exportJsonToFile(
-                                                                                                                content =
-                                                                                                                        json,
+                                                                                                        .exportApiEnvelopeToFile(
+                                                                                                                envelope =
+                                                                                                                        envelope,
                                                                                                                 defaultFileName =
                                                                                                                         "vetnutri_export.json"
                                                                                                         )
-                                                                                        // Export
-                                                                                        // terminé,
-                                                                                        // résultat
-                                                                                        // : $ok
-                                                                                } catch (
-                                                                                        e:
-                                                                                                Exception) {
-                                                                                        // Erreur
-                                                                                        // d'export
-                                                                                        // gérée
-                                                                                }
-                                                                        }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Exporter (nouveau format API)",
-                                                                        color = Color.White
-                                                                )
-                                                        }
-
-                                                        // Import (nouveau format API) – aligné sur
-                                                        // import animaux
-                                                        Button(
-                                                                onClick = {
-                                                                        viewModel
-                                                                                .importApiFromFileUI()
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer (nouveau format API)",
-                                                                        color = Color.White
-                                                                )
-                                                        }
-
-                                                        // Dialog de résultat pour l'import API
-                                                        val apiImportResult =
-                                                                viewModel.importResult
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiImporting =
-                                                                viewModel.isApiImporting
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiProgress =
-                                                                viewModel.apiImportProgress
-                                                                        .collectAsState()
-                                                                        .value
-                                                        val apiLogs =
-                                                                viewModel.apiImportLogs
-                                                                        .collectAsState()
-                                                                        .value
-                                                        if (apiImporting) {
-                                                                AlertDialog(
-                                                                        onDismissRequest = {},
-                                                                        title = {
-                                                                                Text(
-                                                                                        "Import API en cours…"
+                                                                                        }
+                                                                                // Export
+                                                                                // terminé,
+                                                                                // résultat
+                                                                                // : $ok
+                                                                        } catch (e: Exception) {
+                                                                                e.rethrowIfCancellation()
+                                                                                fr.vetbrain.vetnutri_mp.Utils.UserErrors.report(
+                                                                                        "Export impossible : ${e.message ?: "erreur de lecture des données"}", e
                                                                                 )
-                                                                        },
-                                                                        text = {
-                                                                                Column(
-                                                                                        verticalArrangement =
-                                                                                                Arrangement
-                                                                                                        .spacedBy(
+                                                                        }
+                                                                }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.EXPORT_API),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Import (nouveau format API) – aligné sur
+                                                // import animaux
+                                                Button(
+                                                        onClick = {
+                                                                viewModel.importApiFromFileUI()
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.IMPORT_API),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Dialog de résultat pour l'import API
+                                                val apiImportResult =
+                                                        viewModel.importResult.collectAsState()
+                                                                .value
+                                                val apiImporting =
+                                                        viewModel.isApiImporting.collectAsState()
+                                                                .value
+                                                val apiProgress =
+                                                        viewModel.apiImportProgress.collectAsState()
+                                                                .value
+                                                val apiLogs =
+                                                        viewModel.apiImportLogs.collectAsState()
+                                                                .value
+                                                if (apiImporting) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {},
+                                                                title = {
+                                                                         Text(translate(Settings.IMPORT_RUNNING))
+                                                                },
+                                                                text = {
+                                                                        Column(
+                                                                                verticalArrangement =
+                                                                                        Arrangement
+                                                                                                .spacedBy(
+                                                                                                        8.dp
+                                                                                                )
+                                                                        ) {
+                                                                                LinearProgressIndicator(
+                                                                                        progress =
+                                                                                                apiProgress
+                                                                                                        .toFloat()
+                                                                                )
+                                                                                Box(
+                                                                                        modifier =
+                                                                                                Modifier.fillMaxWidth()
+                                                                                                        .height(
+                                                                                                                120.dp
+                                                                                                        )
+                                                                                                        .background(
+                                                                                                                Color(
+                                                                                                                        0xFFF5F5F5
+                                                                                                                )
+                                                                                                        )
+                                                                                ) {
+                                                                                        // Affichage
+                                                                                        // simple
+                                                                                        // des logs
+                                                                                        // (limités)
+                                                                                        Column(
+                                                                                                modifier =
+                                                                                                        Modifier.padding(
                                                                                                                 8.dp
                                                                                                         )
-                                                                                ) {
-                                                                                        LinearProgressIndicator(
-                                                                                                progress =
-                                                                                                        apiProgress
-                                                                                                                .toFloat()
-                                                                                        )
-                                                                                        Box(
-                                                                                                modifier =
-                                                                                                        Modifier.fillMaxWidth()
-                                                                                                                .height(
-                                                                                                                        120.dp
-                                                                                                                )
-                                                                                                                .background(
-                                                                                                                        Color(
-                                                                                                                                0xFFF5F5F5
-                                                                                                                        )
-                                                                                                                )
                                                                                         ) {
-                                                                                                // Affichage simple des logs (limités)
-                                                                                                Column(
-                                                                                                        modifier =
-                                                                                                                Modifier.padding(
-                                                                                                                        8.dp
-                                                                                                                )
-                                                                                                ) {
-                                                                                                        apiLogs.takeLast(
-                                                                                                                        10
-                                                                                                                )
-                                                                                                                .forEach {
+                                                                                                apiLogs.takeLast(
+                                                                                                                10
+                                                                                                        )
+                                                                                                        .forEach {
+                                                                                                                line
+                                                                                                                ->
+                                                                                                                Text(
                                                                                                                         line
-                                                                                                                        ->
-                                                                                                                        Text(
-                                                                                                                                line
-                                                                                                                        )
-                                                                                                                }
-                                                                                                }
+                                                                                                                )
+                                                                                                        }
                                                                                         }
                                                                                 }
-                                                                        },
-                                                                        confirmButton = {}
-                                                                )
-                                                        }
-                                                        var showApiImportDialog by remember {
-                                                                mutableStateOf(false)
-                                                        }
-                                                        LaunchedEffect(apiImportResult) {
-                                                                if (apiImportResult != null)
-                                                                        showApiImportDialog = true
-                                                        }
-                                                        if (showApiImportDialog) {
-                                                                AlertDialog(
-                                                                        onDismissRequest = {
-                                                                                showApiImportDialog =
-                                                                                        false
-                                                                                viewModel
-                                                                                        .resetImportResult()
-                                                                        },
-                                                                        title = {
-                                                                                Text(
-                                                                                        "Résultat de l'import API"
-                                                                                )
-                                                                        },
-                                                                        text = {
-                                                                                when (val r =
-                                                                                                apiImportResult
-                                                                                ) {
-                                                                                        is SettingsViewModel.ImportResult.Success -> {
-                                                                                                Column {
-                                                                                                        Text(
-                                                                                                                "Total pris en compte: ${r.count}"
-                                                                                                        )
-                                                                                                        Text(
-                                                                                                                "Importés: ${r.importedCount}"
-                                                                                                        )
-                                                                                                        if (r.updatedCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Mises à jour: ${r.updatedCount}"
-                                                                                                                )
-                                                                                                        if (r.deletedCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Supprimés: ${r.deletedCount}"
-                                                                                                                )
-                                                                                                        if (r.errorCount >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Erreurs: ${r.errorCount}",
-                                                                                                                        color =
-                                                                                                                                MaterialTheme
-                                                                                                                                        .colors
-                                                                                                                                        .error
-                                                                                                                )
-                                                                                                        if (r.conseils >
-                                                                                                                        0
-                                                                                                        )
-                                                                                                                Text(
-                                                                                                                        "Conseils: ${r.conseils}"
-                                                                                                                )
-                                                                                                }
-                                                                                        }
-                                                                                        is SettingsViewModel.ImportResult.Error -> {
+                                                                        }
+                                                                },
+                                                                confirmButton = {}
+                                                        )
+                                                }
+                                                var showApiImportDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                LaunchedEffect(apiImportResult) {
+                                                        if (apiImportResult != null)
+                                                                showApiImportDialog = true
+                                                }
+                                                if (showApiImportDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showApiImportDialog = false
+                                                                        viewModel
+                                                                                .resetImportResult()
+                                                                },
+                                                                title = {
+                                                                        Text(
+                                                                                translate("auto.view.settingsview.resultat_de_l_import_api")
+                                                                        )
+                                                                },
+                                                                text = {
+                                                                        when (val r =
+                                                                                        apiImportResult
+                                                                        ) {
+                                                                                is SettingsViewModel.ImportResult.Success -> {
+                                                                                        Column {
                                                                                                 Text(
-                                                                                                        "Erreur: ${r.message}",
-                                                                                                        color =
-                                                                                                                MaterialTheme
-                                                                                                                        .colors
-                                                                                                                        .error
+                                                                                                        "Total pris en compte : ${r.count}"
                                                                                                 )
-                                                                                        }
-                                                                                        null ->
                                                                                                 Text(
-                                                                                                        "Aucun résultat."
+                                                                                                        "Importés : ${r.importedCount}"
                                                                                                 )
+                                                                                                if (r.updatedCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Mises à jour : ${r.updatedCount}"
+                                                                                                        )
+                                                                                                if (r.deletedCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Supprimés : ${r.deletedCount}"
+                                                                                                        )
+                                                                                                if (r.errorCount >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Erreurs : ${r.errorCount}",
+                                                                                                                color =
+                                                                                                                        MaterialTheme
+                                                                                                                                .colors
+                                                                                                                                .error
+                                                                                                        )
+                                                                                                if (r.conseils >
+                                                                                                                0
+                                                                                                )
+                                                                                                        Text(
+                                                                                                                "Conseils : ${r.conseils}"
+                                                                                                        )
+                                                                                        }
                                                                                 }
-                                                                        },
-                                                                        confirmButton = {
-                                                                                Button(
-                                                                                        onClick = {
-                                                                                                showApiImportDialog =
-                                                                                                        false
-                                                                                                viewModel
-                                                                                                        .resetImportResult()
-                                                                                                // rafraîchit la liste des animaux si l'import a concerné des animaux
-                                                                                                onAnimalListRefresh()
-                                                                                        }
-                                                                                ) { Text("OK") }
-                                                                        }
-                                                                )
-                                                        }
-
-                                                        // Bouton pour importer des aliments
-                                                        Button(
-                                                                onClick = {
-                                                                        try {
-                                                                                // Utilisons la
-                                                                                // méthode du
-                                                                                // ViewModel qui
-                                                                                // encapsule l'appel
-                                                                                // à
-                                                                                // importFoodsFromFile
-                                                                                viewModel
-                                                                                        .importFoodsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                // Les erreurs sont
-                                                                                // gérées par le
-                                                                                // ViewModel
+                                                                                is SettingsViewModel.ImportResult.Error -> {
+                                                                                        Text(
+                                                                                                "Erreur : ${r.message}",
+                                                                                                color =
+                                                                                                        MaterialTheme
+                                                                                                                .colors
+                                                                                                                .error
+                                                                                        )
+                                                                                }
+                                                                                null ->
+                                                                                        Text(
+                                                                                                translate("auto.view.settingsview.aucun_resultat")
+                                                                                        )
                                                                         }
                                                                 },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Primary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des aliments",
-                                                                        color = Color.White
-                                                                )
-                                                        }
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showApiImportDialog =
+                                                                                                false
+                                                                                        viewModel
+                                                                                                .resetImportResult()
+                                                                                        // rafraîchit la liste des animaux si l'import a concerné des animaux
+                                                                                        onAnimalListRefresh()
+                                                                                }
+                                                                        ) { Text(translate("general.ok")) }
+                                                                }
+                                                        )
+                                                }
 
-                                                        // Bouton pour importer des références
-                                                        // nutritionnelles
-                                                        Button(
-                                                                onClick = {
-                                                                        try {
-                                                                                // Utilisons la
-                                                                                // méthode du
-                                                                                // ImportViewModel
-                                                                                // pour
-                                                                                // importer les
-                                                                                // références
-                                                                                // nutritionnelles
-                                                                                importViewModel
-                                                                                        .importNutritionalRequirementsFromFileUI()
-                                                                        } catch (e: Exception) {
-                                                                                // Les erreurs sont
-                                                                                // gérées par le
-                                                                                // ViewModel
-                                                                        }
-                                                                },
-                                                                colors =
-                                                                        ButtonDefaults.buttonColors(
-                                                                                backgroundColor =
-                                                                                        VetNutriColors
-                                                                                                .Secondary
-                                                                        ),
-                                                                modifier = Modifier.fillMaxWidth()
-                                                        ) {
-                                                                Text(
-                                                                        "Importer des références nutritionnelles (.vbnr.json)",
-                                                                        color = Color.White
-                                                                )
+                                                var showFoodImportOptionsDialog by remember {
+                                                        mutableStateOf(false)
+                                                }
+                                                var mergeNutrients by remember {
+                                                        mutableStateOf(viewModel.importMergeNutrients)
+                                                }
+                                                var importOnlyIfNewer by remember {
+                                                        mutableStateOf(viewModel.importOnlyIfNewer)
+                                                }
+                                                LaunchedEffect(showFoodImportOptionsDialog) {
+                                                        if (showFoodImportOptionsDialog) {
+                                                                mergeNutrients =
+                                                                        viewModel.importMergeNutrients
+                                                                importOnlyIfNewer =
+                                                                        viewModel.importOnlyIfNewer
                                                         }
                                                 }
+
+                                                // Bouton pour importer des aliments
+                                                Button(
+                                                        onClick = {
+                                                                showFoodImportOptionsDialog = true
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate("auto.view.settingsview.importer_des_aliments"),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                if (showFoodImportOptionsDialog) {
+                                                        AlertDialog(
+                                                                onDismissRequest = {
+                                                                        showFoodImportOptionsDialog =
+                                                                                false
+                                                                },
+                                                                title = {
+                                                                        Text(
+                                                                                translate("auto.view.settingsview.options_d_import_des_aliments")
+                                                                        )
+                                                                },
+                                                                text = {
+                                                                        Column {
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        mergeNutrients,
+                                                                                                onCheckedChange = {
+                                                                                                        mergeNutrients =
+                                                                                                                it
+                                                                                                }
+                                                                                        )
+                                                                                        Text(
+                                                                                                translate("auto.view.excelimportexportcomponents.fusionner_les_nutriments_ne_pas_supprimer_ceux_a")
+                                                                                        )
+                                                                                }
+                                                                                Spacer(
+                                                                                        modifier =
+                                                                                                Modifier
+                                                                                                        .height(
+                                                                                                                8.dp
+                                                                                                        )
+                                                                                )
+                                                                                Row(
+                                                                                        verticalAlignment =
+                                                                                                Alignment
+                                                                                                        .CenterVertically
+                                                                                ) {
+                                                                                        Checkbox(
+                                                                                                checked =
+                                                                                                        importOnlyIfNewer,
+                                                                                                onCheckedChange = {
+                                                                                                        importOnlyIfNewer =
+                                                                                                                it
+                                                                                                }
+                                                                                        )
+                                                                                        Text(
+                                                                                                translate("auto.view.excelimportexportcomponents.n_importer_que_si_la_date_de_derniere_mise_a_jou")
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                },
+                                                                confirmButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showFoodImportOptionsDialog =
+                                                                                                false
+                                                                                        viewModel.importMergeNutrients =
+                                                                                                mergeNutrients
+                                                                                        viewModel.importOnlyIfNewer =
+                                                                                                importOnlyIfNewer
+                                                                                        try {
+                                                                                                viewModel
+                                                                                                        .importFoodsFromFileUI()
+                                                                                        } catch (
+                                                                                                e: Exception
+                                                                                        ) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") }
+                                                                                }
+                                                                        ) { Text(translate("startup.continue")) }
+                                                                },
+                                                                dismissButton = {
+                                                                        Button(
+                                                                                onClick = {
+                                                                                        showFoodImportOptionsDialog =
+                                                                                                false
+                                                                                }
+                                                                        ) { Text(translate("general.cancel")) }
+                                                                }
+                                                        )
+                                                }
+
+                                                Button(
+                                                        onClick = onImportAnimals,
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate(Settings.IMPORT_ANIMALS),
+                                                                color = Color.White
+                                                        )
+                                                }
+
+                                                // Bouton pour importer des références
+                                                // nutritionnelles
+                                                Button(
+                                                        onClick = {
+                                                                try {
+                                                                        // Utilisons la
+                                                                        // méthode du
+                                                                        // ImportViewModel
+                                                                        // pour
+                                                                        // importer les
+                                                                        // références
+                                                                        // nutritionnelles
+                                                                        importViewModel
+                                                                                .importNutritionalRequirementsFromFileUI()
+                                                                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("SettingsView", "Exception ignorée : ${e.message}") }
+                                                        },
+                                                        colors =
+                                                                ButtonDefaults.buttonColors(
+                                                                        backgroundColor =
+                                                                                VetNutriColors
+                                                                                        .Primary
+                                                                ),
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Text(
+                                                                translate("auto.view.settingsview.importer_des_references_nutritionnelles_vbnr_jso"),
+                                                                color = Color.White
+                                                        )
+                                                }
+                                        }
                                 }
                                 3 -> { // Excel Import/Export
+                                        val excelFoodService = remember {
+                                                viewModel.foodRepository?.let { foodRepo ->
+                                                        viewModel.biblioRefRepository?.let { biblioRepo ->
+                                                                ExcelFoodService(foodRepo, biblioRepo)
+                                                        }
+                                                }
+                                        }
                                         ExcelImportExportSection(
-                                                modifier = Modifier.fillMaxWidth()
+                                                modifier = Modifier.fillMaxWidth(),
+                                                excelFoodService = excelFoodService,
+                                                loadFoods = viewModel::getAllFoods
                                         )
                                 }
                                 4 -> { // Recettes
-                                        RecipeEditView(
-                                                viewModel = RecipeEditViewModel(
-                                                        recipeRepository = viewModel.recipeRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "RecipeRepository not available"
-                                                                ),
-                                                        foodRepository = viewModel.foodRepository
-                                                                ?: throw IllegalStateException(
-                                                                        "FoodRepository not available"
-                                                                )
-                                                ),
-                                                foodRepository = viewModel.foodRepository
-                                                        ?: throw IllegalStateException(
-                                                                "FoodRepository not available"
-                                                        ),
-                                                modifier = Modifier.fillMaxWidth()
-                                        )
+                                        if (isExamMode) {
+                                                Box(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        contentAlignment = Alignment.Center
+                                                ) {
+                                                        Text(
+                                                                translate("auto.view.settingsview.recettes_indisponibles_en_mode_examen")
+                                                        )
+                                                }
+                                        } else {
+                                                val recipeEditViewModel = rememberViewModel(
+                                                        viewModel.recipeRepository,
+                                                        viewModel.foodRepository
+                                                ) {
+                                                        RecipeEditViewModel(
+                                                                recipeRepository =
+                                                                        viewModel.recipeRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "RecipeRepository not available"
+                                                                                ),
+                                                                foodRepository =
+                                                                        viewModel.foodRepository
+                                                                                ?: throw IllegalStateException(
+                                                                                        "FoodRepository not available"
+                                                                                )
+                                                        )
+                                                }
+                                                RecipeEditView(
+                                                        viewModel = recipeEditViewModel,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                )
+                                        }
                                 }
                                 5 -> { // Administration
                                         AdministrationSettings(
@@ -872,6 +1287,8 @@ fun SettingsView(
                                                 onAnimalListRefresh = onAnimalListRefresh,
                                                 onFoodListRefresh = onFoodListRefresh,
                                                 onBackupClick = { onBackupClick() },
+                                                onLegacyMigrationClick = { onLegacyMigrationClick() },
+                                                onBulkBiblioClick = { onBulkBiblioClick() },
                                                 modifier = Modifier.fillMaxWidth()
                                         )
                                 }
@@ -888,7 +1305,7 @@ fun SettingsView(
                         },
                         title = {
                                 Text(
-                                        "Résultat de l'importation",
+                                        translate("dialog.resultImportAnimals.title"),
                                         style = MaterialTheme.typography.h6,
                                         color =
                                                 if (importDialogMessage.startsWith("✅"))
@@ -910,7 +1327,7 @@ fun SettingsView(
                                                         backgroundColor = VetNutriColors.Primary,
                                                         contentColor = Color.White
                                                 )
-                                ) { Text("OK") }
+                                ) { Text(translate("general.ok")) }
                         },
                         backgroundColor = MaterialTheme.colors.surface
                 )
@@ -925,515 +1342,4 @@ enum class SettingsSection(val title: String) {
         EXCEL("Import/Export Excel"),
         RECIPES("Recettes"),
         ADMINISTRATION("Administration")
-}
-
-/** Composant pour la section des préférences */
-@Composable
-private fun PreferencesSection(
-        modifier: Modifier = Modifier,
-        onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
-) {
-        // Créer l'instance PreferencesStorage pour Desktop
-        val preferencesStorage = remember {
-                try {
-                        // Utiliser la fonction helper createPreferencesStorage
-                        fr.vetbrain.vetnutri_mp.Utils.createPreferencesStorage()
-                } catch (e: Exception) {
-                        null
-                }
-        }
-
-        if (preferencesStorage != null) {
-                // Créer le repository des préférences
-                val preferencesRepository = remember {
-                        fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository(preferencesStorage)
-                }
-
-                // Utiliser le vrai système de persistance
-                PreferencesContentWithPersistence(
-                        preferencesRepository = preferencesRepository,
-                        modifier = modifier,
-                        onSpeciesClick = onSpeciesClick
-                )
-        } else {
-                // Fallback temporaire si PreferencesStorage n'est pas disponible
-                PreferencesContentSimplified(modifier = modifier)
-        }
-}
-
-/** Contenu des préférences avec persistance réelle */
-@Composable
-private fun PreferencesContentWithPersistence(
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository,
-        modifier: Modifier = Modifier,
-        onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit = {}
-) {
-        // État pour les préférences chargées
-        var preferencesLoaded by remember { mutableStateOf(false) }
-        var currentPreferences by remember {
-                mutableStateOf<fr.vetbrain.vetnutri_mp.Data.PreferencesApplication?>(null)
-        }
-        var isLoading by remember { mutableStateOf(false) }
-
-        // Charger les préférences au démarrage
-        LaunchedEffect(Unit) {
-                try {
-                        isLoading = true
-                        preferencesRepository.loadPreferences()
-                        currentPreferences = preferencesRepository.preferences
-                        preferencesLoaded = true
-                } catch (e: Exception) {
-                        // Utiliser des préférences par défaut
-                        currentPreferences = fr.vetbrain.vetnutri_mp.Data.PreferencesApplication()
-                        preferencesLoaded = true
-                } finally {
-                        isLoading = false
-                }
-        }
-
-        if (isLoading) {
-                // Indicateur de chargement
-                Box(
-                        modifier = modifier.fillMaxWidth().padding(32.dp),
-                        contentAlignment = Alignment.Center
-                ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                CircularProgressIndicator(color = VetNutriColors.Primary)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text("Chargement des préférences...")
-                        }
-                }
-        } else if (preferencesLoaded && currentPreferences != null) {
-                Column(
-                        modifier = modifier.fillMaxWidth().padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                        Text(
-                                text = "Expression des besoins par espèce",
-                                style = MaterialTheme.typography.h6,
-                                color = VetNutriColors.Primary
-                        )
-
-                        Text(
-                                text =
-                                        "Définissez pour chaque espèce comment exprimer les besoins nutritionnels (sauvegarde automatique)",
-                                style = MaterialTheme.typography.body2,
-                                color = Color.Gray
-                        )
-
-                        // Afficher les préférences pour chaque espèce (sauf CH qui est "ALL")
-                        LazyColumn(
-                                modifier = Modifier.height(300.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                                items(
-                                        fr.vetbrain.vetnutri_mp.Enumer.Espece.valuesExcept(
-                                                fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
-                                        )
-                                ) { espece ->
-                                        SpeciesPreferenceCardWithPersistence(
-                                                species = espece,
-                                                preferencesRepository = preferencesRepository,
-                                                currentPreferences = currentPreferences!!,
-                                                onPreferencesChanged = { newPreferences ->
-                                                        currentPreferences = newPreferences
-                                                },
-                                                onSpeciesClick = onSpeciesClick
-                                        )
-                                }
-                        }
-
-                        // Informations sur la persistance
-                        Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
-                                elevation = 1.dp
-                        ) {
-                                Column(modifier = Modifier.padding(16.dp)) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Icon(
-                                                        imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = "Persistance active",
-                                                        tint = VetNutriColors.Primary
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                        text = "Persistance active",
-                                                        style = MaterialTheme.typography.subtitle2,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = VetNutriColors.Primary
-                                                )
-                                        }
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                                text =
-                                                        "Vos préférences sont automatiquement sauvegardées et seront restaurées au prochain démarrage.",
-                                                style = MaterialTheme.typography.body2,
-                                                color = Color.Gray
-                                        )
-                                }
-                        }
-                }
-        }
-}
-
-/** Card de préférences avec persistance pour une espèce */
-@Composable
-private fun SpeciesPreferenceCardWithPersistence(
-        species: fr.vetbrain.vetnutri_mp.Enumer.Espece,
-        preferencesRepository: fr.vetbrain.vetnutri_mp.Repository.PreferencesRepository,
-        currentPreferences: fr.vetbrain.vetnutri_mp.Data.PreferencesApplication,
-        onPreferencesChanged: (fr.vetbrain.vetnutri_mp.Data.PreferencesApplication) -> Unit,
-        onSpeciesClick: (fr.vetbrain.vetnutri_mp.Enumer.Espece) -> Unit
-) {
-        var expanded by remember { mutableStateOf(false) }
-        var isSaving by remember { mutableStateOf(false) }
-
-        val speciesPreferences = currentPreferences.getPreferencesEspece(species)
-        val currentExpressionType = speciesPreferences.getTypeExpressionBesoinEnum()
-
-        Card(
-                modifier = Modifier.fillMaxWidth().clickable { onSpeciesClick(species) },
-                backgroundColor = Color.White,
-                elevation = 2.dp
-        ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                        // En-tête avec nom de l'espèce
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Column {
-                                        Text(
-                                                text = species.label,
-                                                style = MaterialTheme.typography.subtitle1,
-                                                fontWeight = FontWeight.Bold
-                                        )
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                        text =
-                                                                "Expression: ${currentExpressionType.displayName}",
-                                                        style = MaterialTheme.typography.body2,
-                                                        color = VetNutriColors.Primary
-                                                )
-                                                if (isSaving) {
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        CircularProgressIndicator(
-                                                                modifier = Modifier.size(16.dp),
-                                                                color = VetNutriColors.Primary,
-                                                                strokeWidth = 2.dp
-                                                        )
-                                                }
-                                        }
-                                }
-
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
-                                        )
-                                }
-                        }
-
-                        // Contenu développable
-                        if (expanded) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Divider()
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Text(
-                                        text = "Type d'expression des besoins:",
-                                        style = MaterialTheme.typography.subtitle2,
-                                        fontWeight = FontWeight.Medium
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Options de type d'expression
-                                fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin.values()
-                                        .forEach { type ->
-                                                Row(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .clickable(
-                                                                                enabled = !isSaving
-                                                                        ) {
-                                                                                // Sauvegarder avec
-                                                                                // persistance
-                                                                                kotlinx.coroutines
-                                                                                        .GlobalScope
-                                                                                        .launch {
-                                                                                                try {
-                                                                                                        isSaving =
-                                                                                                                true
-
-                                                                                                        // Mettre à jour les préférences
-                                                                                                        val updatedSpeciesPrefs =
-                                                                                                                speciesPreferences
-                                                                                                                        .copy(
-                                                                                                                                typeExpressionBesoinId =
-                                                                                                                                        type.id
-                                                                                                                        )
-
-                                                                                                        val updatedPrefs =
-                                                                                                                currentPreferences
-                                                                                                                        .updatePreferencesEspece(
-                                                                                                                                updatedSpeciesPrefs
-                                                                                                                        )
-
-                                                                                                        // Sauvegarder dans PreferencesStorage
-                                                                                                        preferencesRepository
-                                                                                                                .savePreferences(
-                                                                                                                        updatedPrefs
-                                                                                                                )
-
-                                                                                                        // Mettre à jour l'UI
-                                                                                                        onPreferencesChanged(
-                                                                                                                updatedPrefs
-                                                                                                        )
-                                                                                                } catch (
-                                                                                                        e:
-                                                                                                                Exception) {} finally {
-                                                                                                        isSaving =
-                                                                                                                false
-                                                                                                }
-                                                                                        }
-                                                                        }
-                                                                        .padding(vertical = 4.dp),
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        RadioButton(
-                                                                selected =
-                                                                        currentExpressionType ==
-                                                                                type,
-                                                                onClick = null, // Géré par le
-                                                                // clickable du Row
-                                                                enabled = !isSaving
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Column(modifier = Modifier.weight(1f)) {
-                                                                Text(
-                                                                        text = type.displayName,
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .body1,
-                                                                        color =
-                                                                                if (isSaving)
-                                                                                        Color.Gray
-                                                                                else Color.Black
-                                                                )
-                                                                Text(
-                                                                        text =
-                                                                                type.unitReqEnum
-                                                                                        .label,
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .body2,
-                                                                        color = Color.Gray
-                                                                )
-                                                        }
-                                                }
-                                        }
-                        }
-                }
-        }
-}
-
-/** Contenu simplifié des préférences qui fonctionne sans PreferencesStorage */
-@Composable
-private fun PreferencesContentSimplified(modifier: Modifier = Modifier) {
-        // État local pour simuler les préférences (sera remplacé par le vrai système)
-        val speciesExpressionTypes = remember {
-                mutableStateMapOf<
-                        fr.vetbrain.vetnutri_mp.Enumer.Espece,
-                        fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin>()
-        }
-
-        Column(
-                modifier = modifier.fillMaxWidth().padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-                Text(
-                        text = "Expression des besoins par espèce",
-                        style = MaterialTheme.typography.h6,
-                        color = VetNutriColors.Primary
-                )
-
-                Text(
-                        text =
-                                "Définissez pour chaque espèce comment exprimer les besoins nutritionnels",
-                        style = MaterialTheme.typography.body2,
-                        color = Color.Gray
-                )
-
-                // Afficher les préférences pour chaque espèce (sauf CH qui est "ALL")
-                fr.vetbrain.vetnutri_mp.Enumer.Espece.valuesExcept(
-                                fr.vetbrain.vetnutri_mp.Enumer.Espece.CH
-                        )
-                        .forEach { espece ->
-                                SpeciesPreferenceCardSimplified(
-                                        species = espece,
-                                        currentExpressionType = speciesExpressionTypes[espece]
-                                                        ?: fr.vetbrain.vetnutri_mp.Enumer
-                                                                .TypeExpressionBesoin.DEFAULT,
-                                        onExpressionTypeChanged = { newType ->
-                                                speciesExpressionTypes[espece] = newType
-                                                // TODO: Sauvegarder dans PreferencesStorage
-                                        }
-                                )
-                        }
-
-                // Note d'information
-                Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        backgroundColor = VetNutriColors.Primary.copy(alpha = 0.1f),
-                        elevation = 1.dp
-                ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(
-                                                imageVector = Icons.Default.Info,
-                                                contentDescription = "Information",
-                                                tint = VetNutriColors.Primary
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                                text = "Persistance des données",
-                                                style = MaterialTheme.typography.subtitle2,
-                                                fontWeight = FontWeight.Bold,
-                                                color = VetNutriColors.Primary
-                                        )
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                        text =
-                                                "Les préférences sont actuellement stockées temporairement. Le système de persistance multiplateforme sera intégré dans une prochaine version.",
-                                        style = MaterialTheme.typography.body2,
-                                        color = Color.Gray
-                                )
-                        }
-                }
-        }
-}
-
-/** Card de préférences simplifiée pour une espèce */
-@Composable
-private fun SpeciesPreferenceCardSimplified(
-        species: fr.vetbrain.vetnutri_mp.Enumer.Espece,
-        currentExpressionType: fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin,
-        onExpressionTypeChanged: (fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin) -> Unit
-) {
-        var expanded by remember { mutableStateOf(false) }
-
-        Card(
-                modifier =
-                        Modifier.fillMaxWidth().clickable {
-                                onExpressionTypeChanged(currentExpressionType)
-                        },
-                backgroundColor = Color.White,
-                elevation = 2.dp
-        ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                        // En-tête avec nom de l'espèce
-                        Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Column {
-                                        Text(
-                                                text = species.label,
-                                                style = MaterialTheme.typography.subtitle1,
-                                                fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                                text =
-                                                        "Expression: ${currentExpressionType.displayName}",
-                                                style = MaterialTheme.typography.body2,
-                                                color = VetNutriColors.Primary
-                                        )
-                                }
-
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(
-                                                imageVector =
-                                                        if (expanded) Icons.Default.ExpandLess
-                                                        else Icons.Default.ExpandMore,
-                                                contentDescription =
-                                                        if (expanded) "Réduire" else "Développer"
-                                        )
-                                }
-                        }
-
-                        // Contenu développable
-                        if (expanded) {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Divider()
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Text(
-                                        text = "Type d'expression des besoins:",
-                                        style = MaterialTheme.typography.subtitle2,
-                                        fontWeight = FontWeight.Medium
-                                )
-
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                // Options de type d'expression
-                                fr.vetbrain.vetnutri_mp.Enumer.TypeExpressionBesoin.values()
-                                        .forEach { type ->
-                                                Row(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .clickable {
-                                                                                onExpressionTypeChanged(
-                                                                                        type
-                                                                                )
-                                                                        }
-                                                                        .padding(vertical = 4.dp),
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
-                                                ) {
-                                                        RadioButton(
-                                                                selected =
-                                                                        currentExpressionType ==
-                                                                                type,
-                                                                onClick = {
-                                                                        onExpressionTypeChanged(
-                                                                                type
-                                                                        )
-                                                                }
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Column {
-                                                                Text(
-                                                                        text = type.displayName,
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .body1
-                                                                )
-                                                                Text(
-                                                                        text =
-                                                                                type.unitReqEnum
-                                                                                        .label,
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .body2,
-                                                                        color = Color.Gray
-                                                                )
-                                                        }
-                                                }
-                                        }
-                        }
-                }
-        }
 }

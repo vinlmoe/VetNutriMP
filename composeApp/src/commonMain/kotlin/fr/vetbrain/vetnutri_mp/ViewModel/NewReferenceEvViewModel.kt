@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
@@ -13,7 +16,11 @@ import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
 import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,7 +38,7 @@ class NewReferenceEvViewModel(
         private val repository: DatabaseReferenceEvRepository,
         private val equationRepository: EquationRepository? = null,
         private val biblioRefRepository: BiblioRefRepository? = null
-) {
+) : ViewModel() {
 
     // État pour la référence en cours d'édition
     private val _currentReference = MutableStateFlow(ReferenceEv())
@@ -52,8 +59,6 @@ class NewReferenceEvViewModel(
     // État pour les nutriments définis
     private val _definedNutrients =
             MutableStateFlow<Map<Nutrient, Map<Reflevel, Double>>>(emptyMap())
-    val definedNutrients: StateFlow<Map<Nutrient, Map<Reflevel, Double>>> =
-            _definedNutrients.asStateFlow()
 
     // État pour les erreurs
     private val _errorMessage = MutableStateFlow<String?>(null)
@@ -74,10 +79,6 @@ class NewReferenceEvViewModel(
     // État pour les équations
     private val _equations = MutableStateFlow<List<Equation>>(emptyList())
     val equations: StateFlow<List<Equation>> = _equations.asStateFlow()
-
-    // État pour les erreurs de chargement des équations
-    private val _equationsError = MutableStateFlow<String?>(null)
-    val equationsError: StateFlow<String?> = _equationsError.asStateFlow()
 
     // Exposer la référence courante en tant qu'équations courantes pour l'onglet équations
     val currentEquations: StateFlow<ReferenceEv> = _currentReference.asStateFlow()
@@ -113,7 +114,8 @@ class NewReferenceEvViewModel(
     val groupNames: StateFlow<List<String>> = _groupNames.asStateFlow()
 
     // Scope pour les coroutines
-    private val coroutineScope = CoroutineScope(AppDispatchers.Main)
+    private val job = SupervisorJob()
+    private val coroutineScope = CoroutineScope(AppDispatchers.Main + job)
 
     /** Initialise le ViewModel pour une nouvelle référence */
     fun initForNew() {
@@ -148,7 +150,7 @@ class NewReferenceEvViewModel(
                 // Charger les équations associées depuis la base de données
                 loadEquationsForReference(reference)
             } else {
-                _errorMessage.value = "Référence non trouvée"
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_REFERENCE_NOT_FOUND)
                 _currentReference.value = ReferenceEv()
                 _isEditMode.value = false
                 syncCoefficientsFromReference()
@@ -162,12 +164,15 @@ class NewReferenceEvViewModel(
     private fun syncCoefficientsFromReference() {
         val reference = _currentReference.value
 
+        // Assainir les doublons éventuels (même nom et même valeur)
+        reference.deduplicateCoefficients()
+
         // Synchroniser les listes de coefficients
-        _coefficientsK1.value = reference.getModk1().toList()
-        _coefficientsK2.value = reference.getModk2().toList()
-        _coefficientsK3.value = reference.getModk3().toList()
-        _coefficientsK4.value = reference.getModk4().toList()
-        _coefficientsK5.value = reference.getModk5().toList()
+        _coefficientsK1.value = reference.modk1.toList()
+        _coefficientsK2.value = reference.modk2.toList()
+        _coefficientsK3.value = reference.modk3.toList()
+        _coefficientsK4.value = reference.modk4.toList()
+        _coefficientsK5.value = reference.modk5.toList()
 
         // Synchroniser les noms des groupes
         _groupNames.value =
@@ -195,6 +200,7 @@ class NewReferenceEvViewModel(
                     _availableEquations.value = equations
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _equations.value = emptyList()
                 _availableEquations.value = emptyList()
             } finally {
@@ -214,6 +220,7 @@ class NewReferenceEvViewModel(
                 }
                         ?: run { _availableBiblioRefs.value = emptyList() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _availableBiblioRefs.value = emptyList()
             }
         }
@@ -267,16 +274,16 @@ class NewReferenceEvViewModel(
         updatedRef.equationsNut = currentRef.equationsNut
 
         // Copier les coefficients (MutableList)
-        updatedRef.getModk1().clear()
-        updatedRef.getModk1().addAll(currentRef.getModk1())
-        updatedRef.getModk2().clear()
-        updatedRef.getModk2().addAll(currentRef.getModk2())
-        updatedRef.getModk3().clear()
-        updatedRef.getModk3().addAll(currentRef.getModk3())
-        updatedRef.getModk4().clear()
-        updatedRef.getModk4().addAll(currentRef.getModk4())
-        updatedRef.getModk5().clear()
-        updatedRef.getModk5().addAll(currentRef.getModk5())
+        updatedRef.modk1.clear()
+        updatedRef.modk1.addAll(currentRef.modk1)
+        updatedRef.modk2.clear()
+        updatedRef.modk2.addAll(currentRef.modk2)
+        updatedRef.modk3.clear()
+        updatedRef.modk3.addAll(currentRef.modk3)
+        updatedRef.modk4.clear()
+        updatedRef.modk4.addAll(currentRef.modk4)
+        updatedRef.modk5.clear()
+        updatedRef.modk5.addAll(currentRef.modk5)
 
         // Copier les noms des coefficients
         updatedRef.nomk1 = currentRef.nomk1
@@ -370,7 +377,7 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
 
         if (reference.nom.isBlank()) {
-            _errorMessage.value = "Le nom de la référence est requis"
+            _errorMessage.value = translate(LocalizationKeys.Reference.VM_NAME_REQUIRED)
             return
         }
 
@@ -387,11 +394,12 @@ class NewReferenceEvViewModel(
                     _operationSuccess.value = true
                     _errorMessage.value = null
                 } else {
-                    _errorMessage.value = "Erreur lors de la sauvegarde"
+                    _errorMessage.value = translate(LocalizationKeys.Reference.VM_SAVE_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_SAVE_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             }
         }
@@ -412,9 +420,7 @@ class NewReferenceEvViewModel(
                     repository.create(reference)
                 }
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation automatique
-            } catch (e: Exception) {
-                // Log silencieux de l'erreur
-            }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("NewReferenceEvViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -425,24 +431,6 @@ class NewReferenceEvViewModel(
                 reference.description.isNotBlank() ||
                 reference.nomEnergie.isNotBlank() ||
                 reference.nomMaladie.isNotBlank()
-    }
-
-    /**
-     * Associe une équation à la référence
-     *
-     * @param equation L'équation à associer
-     * @param type Le type d'équation (BEE, BW, DEcom, DEraw)
-     */
-    fun setEquation(equation: Equation, type: String) {
-        val reference = _currentReference.value
-        when (type) {
-            "BEE" -> reference.equationBEE = equation
-            "BW" -> reference.equationBW = equation
-            "DEcom" -> reference.equationDEcom = equation
-            "DEraw" -> reference.equationDEraw = equation
-            else -> reference.equationsNut.add(equation)
-        }
-        _currentReference.value = reference
     }
 
     /**
@@ -463,11 +451,12 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation de poids corporel"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_BW_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -493,11 +482,12 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation de besoin énergétique basal"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_BEE_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -523,11 +513,12 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation d'énergie digestible pour aliments composés"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_DECOM_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -553,11 +544,12 @@ class NewReferenceEvViewModel(
                     _errorMessage.value = null
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour de l'équation d'énergie digestible pour aliments bruts"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_DERAW_ERROR)
                     _operationSuccess.value = false
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
                 _operationSuccess.value = false
             } finally {
                 _isLoading.value = false
@@ -581,7 +573,8 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -601,7 +594,8 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -620,7 +614,8 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -639,7 +634,8 @@ class NewReferenceEvViewModel(
                 _currentReference.value = reference
                 // Pas de mise à jour de _operationSuccess pour éviter la navigation
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
     }
@@ -657,11 +653,6 @@ class NewReferenceEvViewModel(
         }
     }
 
-    /** Indique si une équation complémentaire est déjà sélectionnée sur la référence. */
-    fun isComplementaryEquationSelected(equation: Equation): Boolean {
-        return _currentReference.value.equationsNut.any { it.uuid == equation.uuid }
-    }
-
     /** Ajoute/retire une équation complémentaire à la référence et persiste. */
     fun toggleComplementaryEquation(equation: Equation) {
         coroutineScope.launch {
@@ -670,9 +661,9 @@ class NewReferenceEvViewModel(
                 val already = current.equationsNut.any { it.uuid == equation.uuid }
                 if (already) {
                     current.equationsNut =
-                            ArrayList(current.equationsNut.filter { it.uuid != equation.uuid })
+                            current.equationsNut.filter { it.uuid != equation.uuid }.toMutableList()
                 } else {
-                    val newList = ArrayList(current.equationsNut)
+                    val newList = current.equationsNut.toMutableList()
                     newList.add(equation)
                     current.equationsNut = newList
                 }
@@ -690,17 +681,13 @@ class NewReferenceEvViewModel(
                     }
                 } else {
                     _errorMessage.value =
-                            "Erreur lors de la mise à jour des équations complémentaires"
+                            translate(LocalizationKeys.Reference.VM_UPDATE_COMPLEMENTARY_ERROR)
                 }
             } catch (e: Exception) {
-                _errorMessage.value = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                _errorMessage.value = translate(LocalizationKeys.Reference.VM_GENERIC_ERROR_FORMAT, e.message ?: "")
             }
         }
-    }
-
-    /** Efface les messages d'erreur */
-    fun clearErrorMessage() {
-        _errorMessage.value = null
     }
 
     /** Réinitialise l'état de succès de l'opération */
@@ -744,7 +731,7 @@ class NewReferenceEvViewModel(
 
             // Mettre à jour la référence avec les équations chargées
             _currentReference.value = reference
-        } catch (e: Exception) {}
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("NewReferenceEvViewModel", "Exception ignorée : ${e.message}") }
     }
 
     // ==================== MÉTHODES POUR LA GESTION DES COEFFICIENTS ====================
@@ -813,16 +800,6 @@ class NewReferenceEvViewModel(
     }
 
     /**
-     * Récupère le nom d'un groupe de coefficients
-     *
-     * @param groupIndex Index du groupe (0-4 pour k1-k5)
-     * @return Nom du groupe
-     */
-    fun getCoefficientGroupName(groupIndex: Int): String {
-        return _groupNames.value.getOrElse(groupIndex) { "" }
-    }
-
-    /**
      * Ajoute un nouveau coefficient à un groupe
      *
      * @param groupIndex Index du groupe (0-4 pour k1-k5)
@@ -838,13 +815,13 @@ class NewReferenceEvViewModel(
                         groupUUID = groupIndex
                 )
 
-        // Ajouter dans l'ArrayList de ReferenceEv
+        // Ajouter dans la MutableList de ReferenceEv
         when (groupIndex) {
-            0 -> reference.getModk1().add(newCoef)
-            1 -> reference.getModk2().add(newCoef)
-            2 -> reference.getModk3().add(newCoef)
-            3 -> reference.getModk4().add(newCoef)
-            4 -> reference.getModk5().add(newCoef)
+            0 -> reference.modk1.add(newCoef)
+            1 -> reference.modk2.add(newCoef)
+            2 -> reference.modk3.add(newCoef)
+            3 -> reference.modk4.add(newCoef)
+            4 -> reference.modk5.add(newCoef)
         }
 
         // Mettre à jour le StateFlow correspondant avec une nouvelle liste
@@ -863,11 +840,11 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
         val group =
                 when (groupIndex) {
-                    0 -> reference.getModk1()
-                    1 -> reference.getModk2()
-                    2 -> reference.getModk3()
-                    3 -> reference.getModk4()
-                    4 -> reference.getModk5()
+                    0 -> reference.modk1
+                    1 -> reference.modk2
+                    2 -> reference.modk3
+                    3 -> reference.modk4
+                    4 -> reference.modk5
                     else -> return
                 }
 
@@ -898,11 +875,11 @@ class NewReferenceEvViewModel(
         val reference = _currentReference.value
         val group =
                 when (groupIndex) {
-                    0 -> reference.getModk1()
-                    1 -> reference.getModk2()
-                    2 -> reference.getModk3()
-                    3 -> reference.getModk4()
-                    4 -> reference.getModk5()
+                    0 -> reference.modk1
+                    1 -> reference.modk2
+                    2 -> reference.modk3
+                    3 -> reference.modk4
+                    4 -> reference.modk5
                     else -> return
                 }
 
@@ -926,11 +903,17 @@ class NewReferenceEvViewModel(
      */
     private fun updateCoefficientStateFlow(groupIndex: Int, reference: ReferenceEv) {
         when (groupIndex) {
-            0 -> _coefficientsK1.value = reference.getModk1().toList()
-            1 -> _coefficientsK2.value = reference.getModk2().toList()
-            2 -> _coefficientsK3.value = reference.getModk3().toList()
-            3 -> _coefficientsK4.value = reference.getModk4().toList()
-            4 -> _coefficientsK5.value = reference.getModk5().toList()
+            0 -> _coefficientsK1.value = reference.modk1.toList()
+            1 -> _coefficientsK2.value = reference.modk2.toList()
+            2 -> _coefficientsK3.value = reference.modk3.toList()
+            3 -> _coefficientsK4.value = reference.modk4.toList()
+            4 -> _coefficientsK5.value = reference.modk5.toList()
         }
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
+        coroutineScope.cancel()
     }
 }

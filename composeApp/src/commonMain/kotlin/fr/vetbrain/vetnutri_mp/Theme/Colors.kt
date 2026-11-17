@@ -5,16 +5,40 @@ import androidx.compose.ui.graphics.Color
 object VetNutriColors {
     val Primary = Color(0xFF008B8B) // Turquoise foncé
     val PrimaryVariant = Color(0xFF006666) // Turquoise très foncé
-    val Secondary = Color(0xFF80A9A9) // Gris turquoise
+    // Gris turquoise soutenu : l'ancien 0xFF80A9A9 avec texte noir faisait paraître les boutons
+    // secondaires (Retour, Partager, Import rapide…) désactivés. Contraste avec le blanc ≈ 4,7:1.
+    val Secondary = Color(0xFF4E7D7D) // Gris turquoise
     val Background = Color(0xFFF5FDFF) // Turquoise extrêmement clair
     val Surface = Color(0xFFF5FDFF) // Turquoise extrêmement clair
     val Error = Color(0xFFB00020) // Rouge erreur
 
     val OnPrimary = Color(0xFFFFFFFF) // Blanc
-    val OnSecondary = Color(0xFF000000) // Noir
+    val OnSecondary = Color(0xFFFFFFFF) // Blanc
     val OnBackground = Color(0xFF000000) // Noir
     val OnSurface = Color(0xFF000000) // Noir
     val OnError = Color(0xFFFFFFFF) // Blanc
+
+    // Analyse des aliments : teintes distinctes du turquoise et de l'orange des rations.
+    val FoodAnalysisDry = Color(0xFF527A3A) // Vert sauge soutenu (humidité < 20 % ou inconnue)
+    val FoodAnalysisWet = Color(0xFF356A9A) // Bleu ardoise (humidité ≥ 20 %)
+
+    // Palette de couleurs pour les aliments dans les graphiques
+    val FeedColors = listOf(
+        Color(0xFF2E7D32), // Vert
+        Color(0xFF1565C0), // Bleu
+        Color(0xFFEF6C00), // Orange
+        Color(0xFFAD1457), // Rose/Magenta
+        Color(0xFF6A1B9A), // Violet
+        Color(0xFF00838F), // Cyan
+        Color(0xFFD84315), // Orange foncé
+        Color(0xFF4527A0), // Violet foncé
+        Color(0xFF37474F), // Gris bleu
+        Color(0xFFC2185B)  // Rose moyen
+    )
+
+    fun getFeedColor(index: Int): Color {
+        return FeedColors[index % FeedColors.size]
+    }
 
     // Couleurs spécifiques pour le code
     object CodeColors {

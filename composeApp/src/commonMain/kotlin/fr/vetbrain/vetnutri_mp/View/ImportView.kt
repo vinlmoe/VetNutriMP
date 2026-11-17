@@ -1,29 +1,32 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.ViewModel.ImportViewModel
-import fr.vetbrain.vetnutri_mp.ViewModel.rememberViewModel
 
+/**
+ * Vue d'import (animaux + références nutritionnelles).
+ * - Déclenche les imports plateforme via `ImportViewModel`.
+ * - Affiche les messages de résultat et confirmations (vider DB, import réf. .vbnr.json).
+ */
 @Composable
-fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack: () -> Unit) {
+fun ImportView(viewModel: ImportViewModel, onNavigateBack: () -> Unit) {
     var showImportDialog by remember { mutableStateOf(false) }
     var showClearAndImportDialog by remember { mutableStateOf(false) }
     var showNutritionalRequirementImportDialog by remember { mutableStateOf(false) }
 
-    val isImporting by remember { derivedStateOf { viewModel.isImporting } }
-    val isImportingNutritionalRequirements by remember {
-        derivedStateOf { viewModel.isImportingNutritionalRequirements }
-    }
-    val nutritionalRequirementImportResult by remember {
-        derivedStateOf { viewModel.nutritionalRequirementImportResultMessage }
-    }
+    val isImporting by viewModel.isImporting.collectAsState()
+    val isImportingNutritionalRequirements by
+            viewModel.isImportingNutritionalRequirements.collectAsState()
+    val nutritionalRequirementImportResult by
+            viewModel.nutritionalRequirementImportResultMessage.collectAsState()
 
     // Effet pour gérer l'importation lorsque showImportDialog devient true
     LaunchedEffect(showImportDialog) {
@@ -47,12 +50,15 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
     Scaffold(
             topBar = {
                 TopAppBar(
-                        title = { Text("Importer des données") },
+                        title = { Text(translate("auto.view.importview.importer_des_donnees")) },
                         navigationIcon = {
                             IconButton(onClick = onNavigateBack) {
-                                Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
+                                Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = translate("graph.back"))
                             }
-                        }
+                        },
+                        backgroundColor = MaterialTheme.colors.surface,
+                        contentColor = MaterialTheme.colors.onSurface,
+                        elevation = 0.dp
                 )
             }
     ) { paddingValues ->
@@ -88,7 +94,7 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
 
             // Section Importation d'animaux
             Text(
-                    "Importation d'animaux",
+                    translate("auto.view.importview.importation_d_animaux"),
                     style = MaterialTheme.typography.h6,
                     modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -115,7 +121,7 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text("Importer animaux")
+                    Text(translate("auto.view.importview.importer_animaux"))
                 }
 
                 // Bouton pour vider la base et importer
@@ -126,12 +132,12 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                                 ButtonDefaults.buttonColors(
                                         backgroundColor = MaterialTheme.colors.error
                                 )
-                ) { Text("Vider DB et importer") }
+                ) { Text(translate("auto.view.importview.vider_db_et_importer")) }
             }
 
             // Section Importation des références nutritionnelles
             Text(
-                    "Importation des références nutritionnelles",
+                    translate("auto.view.importview.importation_des_references_nutritionnelles"),
                     style = MaterialTheme.typography.h6,
                     modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -153,7 +159,7 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text("Importer références (.vbnr.json)")
+                Text(translate("auto.view.importview.importer_references_vbnr_json"))
             }
 
             // Informations sur les formats de fichiers
@@ -163,12 +169,12 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                            "Formats de fichiers supportés",
+                            translate("auto.view.importview.formats_de_fichiers_supportes"),
                             style = MaterialTheme.typography.subtitle1,
                             modifier = Modifier.padding(bottom = 8.dp)
                     )
-                    Text("• Animaux: .json (format standard)")
-                    Text("• Références nutritionnelles: .vbnr.json")
+                    Text(translate("auto.view.importview.animaux_json_format_standard"))
+                    Text(translate("auto.view.importview.references_nutritionnelles_vbnr_json"))
                 }
             }
         }
@@ -177,10 +183,10 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
         if (showClearAndImportDialog) {
             AlertDialog(
                     onDismissRequest = { showClearAndImportDialog = false },
-                    title = { Text("Attention") },
+                    title = { Text(translate("auto.view.importview.attention")) },
                     text = {
                         Text(
-                                "Cette action va supprimer tous les aliments existants dans la base de données avant d'importer le fichier. Êtes-vous sûr de vouloir continuer?"
+                                translate("auto.view.importview.cette_action_va_supprimer_tous_les_aliments_exis")
                         )
                     },
                     confirmButton = {
@@ -197,10 +203,10 @@ fun ImportView(viewModel: ImportViewModel = rememberViewModel(), onNavigateBack:
                                         ButtonDefaults.buttonColors(
                                                 backgroundColor = MaterialTheme.colors.error
                                         )
-                        ) { Text("Vider et importer") }
+                        ) { Text(translate("auto.view.importview.vider_et_importer")) }
                     },
                     dismissButton = {
-                        Button(onClick = { showClearAndImportDialog = false }) { Text("Annuler") }
+                        Button(onClick = { showClearAndImportDialog = false }) { Text(translate("general.cancel")) }
                     }
             )
         }

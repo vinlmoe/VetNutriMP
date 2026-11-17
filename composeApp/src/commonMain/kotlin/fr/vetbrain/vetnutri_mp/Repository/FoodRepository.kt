@@ -39,7 +39,11 @@ interface FoodRepository {
      * @param foods Liste des aliments à importer
      * @return Résultat détaillé de l'importation
      */
-    suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult
+    suspend fun importFoods(
+            foods: List<AlimentEvJson>,
+            mergeNutrients: Boolean = false,
+            importOnlyIfNewer: Boolean = false
+    ): FoodImportResult
 
     /**
      * Insère un aliment avec ses propriétés associées (espèces, indications, valeurs de nutriments)
@@ -71,4 +75,19 @@ interface FoodRepository {
      * @return Le nombre d'aliments supprimés
      */
     suspend fun clearAllFoods(): Int
+
+    /** Retourne le nombre d'aliments sans charger leur contenu. */
+    suspend fun getFoodsCount(): Int
+
+    /** Retourne les labels de nutriments distincts présents dans la base (sans charger les valeurs). */
+    suspend fun getDistinctNutrientLabels(): List<String>
+
+    /**
+     * Récupère plusieurs aliments en une seule opération batch par leurs UUID.
+     * Par défaut, délègue à getFood() individuellement ; les implémentations peuvent surcharger
+     * avec une requête batch pour de meilleures performances.
+     */
+    suspend fun getFoodsByUuids(uuids: List<String>): Map<String, AlimentEv> {
+        return uuids.mapNotNull { uuid -> getFood(uuid)?.let { uuid to it } }.toMap()
+    }
 }

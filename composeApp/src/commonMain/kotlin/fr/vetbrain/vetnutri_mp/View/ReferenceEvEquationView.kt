@@ -12,15 +12,19 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import fr.vetbrain.vetnutri_mp.Components.ConfirmDialog
-import fr.vetbrain.vetnutri_mp.Components.TopBarWithActions
+import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Data.Equation
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.EquationViewModel
 import fr.vetbrain.vetnutri_mp.ViewModel.ReferenceEvViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Écran de gestion des équations pour une référence nutritionnelle
@@ -115,7 +119,7 @@ fun ReferenceEvEquationView(
                                                                         Alignment.CenterHorizontally
                                                         ) {
                                                                 Text(
-                                                                        "Aucune équation disponible. Veuillez en créer avant de pouvoir les associer.",
+                                                                        translate(LocalizationKeys.Reference.EQ_NO_EQUATION_AVAILABLE),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -134,7 +138,7 @@ fun ReferenceEvEquationView(
                                                                         Icon(
                                                                                 Icons.Default.Add,
                                                                                 contentDescription =
-                                                                                        "Ajouter"
+                                                                                        translate(LocalizationKeys.General.ADD)
                                                                         )
                                                                         Spacer(
                                                                                 modifier =
@@ -142,7 +146,7 @@ fun ReferenceEvEquationView(
                                                                                                 AppSizes.paddingSmall
                                                                                         )
                                                                         )
-                                                                        Text("Créer une équation")
+                                                                        Text(translate(LocalizationKeys.Reference.EQ_CREATE_EQUATION_BUTTON))
                                                                 }
                                                         }
                                                 }
@@ -168,7 +172,7 @@ fun ReferenceEvEquationView(
                                                         ) {
                                                                 Text(
                                                                         text =
-                                                                                "Équations principales",
+                                                                                translate(LocalizationKeys.Reference.EQ_MAIN_EQUATIONS_TITLE),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -186,7 +190,7 @@ fun ReferenceEvEquationView(
                                                                 // Équation de poids corporel (BW)
                                                                 EquationDropdown(
                                                                         label =
-                                                                                "Équation BW (poids corporel)",
+                                                                                translate(LocalizationKeys.Reference.EQ_LABEL_BW),
                                                                         selectedEquation =
                                                                                 currentReferenceEv
                                                                                         .equationBW,
@@ -214,7 +218,7 @@ fun ReferenceEvEquationView(
                                                                 // (BEE)
                                                                 EquationDropdown(
                                                                         label =
-                                                                                "Équation BEE (besoin énergétique)",
+                                                                                translate(LocalizationKeys.Reference.EQ_LABEL_BEE),
                                                                         selectedEquation =
                                                                                 currentReferenceEv
                                                                                         .equationBEE,
@@ -242,7 +246,7 @@ fun ReferenceEvEquationView(
                                                                 // pour aliments commerciaux (DEcom)
                                                                 EquationDropdown(
                                                                         label =
-                                                                                "Équation DEcom (densité énergétique commerciale)",
+                                                                                translate(LocalizationKeys.Reference.EQ_LABEL_DECOM),
                                                                         selectedEquation =
                                                                                 currentReferenceEv
                                                                                         .equationDEcom,
@@ -270,7 +274,7 @@ fun ReferenceEvEquationView(
                                                                 // pour matières premières (DEraw)
                                                                 EquationDropdown(
                                                                         label =
-                                                                                "Équation DEraw (densité énergétique matières premières)",
+                                                                                translate(LocalizationKeys.Reference.EQ_LABEL_DERAW),
                                                                         selectedEquation =
                                                                                 currentReferenceEv
                                                                                         .equationDEraw,
@@ -309,7 +313,7 @@ fun ReferenceEvEquationView(
                                                         ) {
                                                                 Text(
                                                                         text =
-                                                                                "Équations nutritionnelles additionnelles",
+                                                                                translate(LocalizationKeys.Reference.EQ_ADDITIONAL_EQUATIONS_TITLE),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -325,7 +329,7 @@ fun ReferenceEvEquationView(
                                                                         Icon(
                                                                                 Icons.Default.Add,
                                                                                 contentDescription =
-                                                                                        "Ajouter"
+                                                                                        translate(LocalizationKeys.General.ADD)
                                                                         )
                                                                         Spacer(
                                                                                 modifier =
@@ -333,7 +337,7 @@ fun ReferenceEvEquationView(
                                                                                                 AppSizes.paddingSmall
                                                                                         )
                                                                         )
-                                                                        Text("Nouvelle équation")
+                                                                        Text(translate(LocalizationKeys.Reference.EQ_NEW_EQUATION_BUTTON))
                                                                 }
                                                         }
                                                 }
@@ -357,15 +361,28 @@ fun ReferenceEvEquationView(
                                                                                         AppSizes.paddingMedium
                                                                                 )
                                                         ) {
-                                                                Text(
-                                                                        text =
-                                                                                "Équations nutritionnelles associées",
-                                                                        style =
-                                                                                MaterialTheme
-                                                                                        .typography
-                                                                                        .subtitle1,
-                                                                        fontWeight = FontWeight.Bold
-                                                                )
+                                                                Row(
+                                                                        modifier = Modifier.fillMaxWidth(),
+                                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                                        verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                        Text(
+                                                                                text =
+                                                                                        translate(LocalizationKeys.Reference.EQ_ASSOCIATED_EQUATIONS_TITLE),
+                                                                                style =
+                                                                                        MaterialTheme
+                                                                                                .typography
+                                                                                                .subtitle1,
+                                                                                fontWeight = FontWeight.Bold
+                                                                        )
+                                                                        if (currentReferenceEv.maladie) {
+                                                                                Text(
+                                                                                        text = translate(LocalizationKeys.Reference.EQ_ENERCOMP_HINT),
+                                                                                        style = MaterialTheme.typography.caption,
+                                                                                        color = VetNutriColors.Primary
+                                                                                )
+                                                                        }
+                                                                }
 
                                                                 Spacer(
                                                                         modifier =
@@ -382,7 +399,7 @@ fun ReferenceEvEquationView(
                                                                                 .isEmpty()
                                                                 ) {
                                                                         Text(
-                                                                                "Aucune équation nutritionnelle associée",
+                                                                                translate(LocalizationKeys.Reference.EQ_NO_ASSOCIATED_EQUATION),
                                                                                 style =
                                                                                         MaterialTheme
                                                                                                 .typography
@@ -394,8 +411,12 @@ fun ReferenceEvEquationView(
                                                                         // équations associées
                                                                         currentReferenceEv
                                                                                 .equationsNut
-                                                                                .forEach { equation
-                                                                                        ->
+                                                                                .forEach { equation ->
+                                                                                        val isEnercomp =
+                                                                                                equation.kind ==
+                                                                                                        fr.vetbrain.vetnutri_mp.Enumer
+                                                                                                                .EquationKind
+                                                                                                                .ENERCOMP
                                                                                         Row(
                                                                                                 modifier =
                                                                                                         Modifier.fillMaxWidth(),
@@ -406,35 +427,35 @@ fun ReferenceEvEquationView(
                                                                                                         Alignment
                                                                                                                 .CenterVertically
                                                                                         ) {
-                                                                                                Text(
-                                                                                                        text =
-                                                                                                                equation.name,
-                                                                                                        style =
-                                                                                                                MaterialTheme
-                                                                                                                        .typography
-                                                                                                                        .body1
-                                                                                                )
+                                                                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                                                        Text(
+                                                                                                                text = equation.name,
+                                                                                                                style = MaterialTheme.typography.body1
+                                                                                                        )
+                                                                                                        if (isEnercomp) {
+                                                                                                                Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
+                                                                                                                Text(
+                                                                                                                        text = translate("auto.view.referenceevequationview.enercomp"),
+                                                                                                                        style = MaterialTheme.typography.caption,
+                                                                                                                        color = VetNutriColors.Secondary
+                                                                                                                )
+                                                                                                        }
+                                                                                                }
                                                                                                 IconButton(
                                                                                                         onClick = {
-                                                                                                                viewModel
-                                                                                                                        .toggleNutritionEquation(
-                                                                                                                                equation
-                                                                                                                        )
+                                                                                                                viewModel.toggleNutritionEquation(equation)
                                                                                                         }
                                                                                                 ) {
                                                                                                         Icon(
-                                                                                                                Icons.Default
-                                                                                                                        .Delete,
-                                                                                                                contentDescription =
-                                                                                                                        "Retirer"
+                                                                                                                Icons.Default.Delete,
+                                                                                                                contentDescription = translate(LocalizationKeys.Reference.EQ_REMOVE_ACTION)
                                                                                                         )
                                                                                                 }
                                                                                         }
                                                                                         Divider(
                                                                                                 modifier =
                                                                                                         Modifier.padding(
-                                                                                                                vertical =
-                                                                                                                        AppSizes.paddingSmall
+                                                                                                                vertical = AppSizes.paddingSmall
                                                                                                         )
                                                                                         )
                                                                                 }
@@ -463,7 +484,7 @@ fun ReferenceEvEquationView(
                                                         ) {
                                                                 Text(
                                                                         text =
-                                                                                "À propos des équations nutritionnelles",
+                                                                                translate(LocalizationKeys.Reference.EQ_ABOUT_TITLE),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -479,7 +500,7 @@ fun ReferenceEvEquationView(
                                                                 )
 
                                                                 Text(
-                                                                        "Les équations nutritionnelles vous permettent de définir :",
+                                                                        translate(LocalizationKeys.Reference.EQ_ABOUT_INTRO),
                                                                         style =
                                                                                 MaterialTheme
                                                                                         .typography
@@ -495,10 +516,10 @@ fun ReferenceEvEquationView(
 
                                                                 val bulletPoints =
                                                                         listOf(
-                                                                                "Le calcul des besoins énergétiques",
-                                                                                "La conversion entre matière brute et matière sèche",
-                                                                                "Les facteurs de correction selon l'espèce et le stade physiologique",
-                                                                                "Les besoins spécifiques pour différentes pathologies"
+                                                                                translate(LocalizationKeys.Reference.EQ_BULLET_ENERGY_CALC),
+                                                                                translate(LocalizationKeys.Reference.EQ_BULLET_CONVERSION),
+                                                                                translate(LocalizationKeys.Reference.EQ_BULLET_CORRECTION_FACTORS),
+                                                                                translate(LocalizationKeys.Reference.EQ_BULLET_PATHOLOGY_NEEDS)
                                                                         )
 
                                                                 bulletPoints.forEach { point ->
@@ -543,7 +564,7 @@ fun ReferenceEvEquationView(
                                         if (!combinedEquations.isEmpty()) {
                                                 item {
                                                         Text(
-                                                                text = "Équations disponibles",
+                                                                text = translate(LocalizationKeys.Reference.EQ_AVAILABLE_EQUATIONS_TITLE),
                                                                 style = MaterialTheme.typography.h6,
                                                                 fontWeight = FontWeight.Bold,
                                                                 modifier =
@@ -556,6 +577,11 @@ fun ReferenceEvEquationView(
 
                                                 // Liste des équations disponibles
                                                 items(combinedEquations) { equation ->
+                                                        val isEnercomp =
+                                                                equation.kind ==
+                                                                        fr.vetbrain.vetnutri_mp.Enumer
+                                                                                .EquationKind
+                                                                                .ENERCOMP
                                                         EquationItem(
                                                                 equation = equation,
                                                                 onEdit = {
@@ -593,6 +619,13 @@ fun ReferenceEvEquationView(
                                                                                         equation.uuid
                                                                         }
                                                         )
+                                                        if (isEnercomp && !currentReferenceEv.maladie) {
+                                                                Text(
+                                                                        text = translate(LocalizationKeys.Reference.EQ_ENERCOMP_DISEASE_ONLY_HINT),
+                                                                        style = MaterialTheme.typography.caption,
+                                                                        color = Color.Gray
+                                                                )
+                                                        }
                                                 }
                                         }
                                 }
@@ -601,9 +634,9 @@ fun ReferenceEvEquationView(
                         // Dialogue de confirmation de suppression
                         if (showDeleteConfirm) {
                                 ConfirmDialog(
-                                        title = "Supprimer l'équation",
+                                        title = translate(LocalizationKeys.Reference.EQ_DELETE_CONFIRM_TITLE),
                                         message =
-                                                "Êtes-vous sûr de vouloir supprimer l'équation '${equationToDelete?.name}'?",
+                                                translate(LocalizationKeys.Reference.EQ_DELETE_CONFIRM_MESSAGE_FORMAT, equationToDelete?.name ?: ""),
                                         onConfirm = {
                                                 equationToDelete?.let {
                                                         equationViewModel.deleteEquation()
@@ -625,15 +658,15 @@ fun ReferenceEvEquationView(
         } else {
                 Scaffold(
                         topBar = {
-                                TopBarWithActions(
-                                        title = "Équations pour ${currentReferenceEv.nom}",
+                                TopBarSimple(
+                                        title = translate(LocalizationKeys.Reference.EQ_VIEW_TITLE_FORMAT, currentReferenceEv.nom),
                                         onNavigateBack = onNavigateBack,
                                         actions = {
                                                 IconButton(onClick = onCreateEquation) {
                                                         Icon(
                                                                 imageVector = Icons.Default.Add,
                                                                 contentDescription =
-                                                                        "Ajouter une équation",
+                                                                        translate(LocalizationKeys.Reference.EQ_ADD_EQUATION_CONTENT_DESC),
                                                                 tint =
                                                                         MaterialTheme.colors
                                                                                 .onPrimary
@@ -670,9 +703,9 @@ private fun EquationDropdown(
                         Text(
                                 text =
                                         selectedEquation?.name?.ifBlank {
-                                                "Sélectionner une équation"
+                                                translate(LocalizationKeys.NewReference.SELECT_EQUATION)
                                         }
-                                                ?: "Sélectionner une équation",
+                                                ?: translate(LocalizationKeys.NewReference.SELECT_EQUATION),
                                 style = MaterialTheme.typography.body1,
                                 modifier = Modifier.weight(1f)
                         )
@@ -680,7 +713,11 @@ private fun EquationDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         // Option pour ne sélectionner aucune équation
@@ -689,7 +726,7 @@ private fun EquationDropdown(
                                         onEquationSelected(null)
                                         expanded = false
                                 }
-                        ) { Text("Aucune") }
+                        ) { Text(translate(LocalizationKeys.General.NONE)) }
 
                         // Liste des équations disponibles
                         availableEquations.forEach { equation ->
@@ -734,14 +771,14 @@ private fun EquationItem(
                                         fontWeight = FontWeight.Bold
                                 )
                                 IconButton(onClick = onEdit) {
-                                        Icon(Icons.Default.Edit, contentDescription = "Éditer")
+                                        Icon(Icons.Default.Edit, contentDescription = translate(LocalizationKeys.General.EDIT))
                                 }
                         }
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
 
                         Text(
-                                text = "Type: ${equation.kind}",
+                                text = translate(LocalizationKeys.Reference.EQ_TYPE_FORMAT, equation.kind.toString()),
                                 style = MaterialTheme.typography.body2
                         )
 
@@ -771,12 +808,12 @@ private fun EquationItem(
                                                                         MaterialTheme.colors.primary
                                                                 else MaterialTheme.colors.surface
                                                 )
-                                ) { Text(if (isAssociated) "Retirer" else "Associer") }
+                                ) { Text(if (isAssociated) translate(LocalizationKeys.Reference.EQ_REMOVE_ACTION) else translate(LocalizationKeys.Reference.EQ_ASSOCIATE_ACTION)) }
 
                                 Spacer(modifier = Modifier.width(AppSizes.paddingSmall))
 
                                 // Bouton pour supprimer l'équation
-                                OutlinedButton(onClick = onDelete) { Text("Supprimer") }
+                                OutlinedButton(onClick = onDelete) { Text(translate(LocalizationKeys.General.DELETE)) }
                         }
                 }
         }

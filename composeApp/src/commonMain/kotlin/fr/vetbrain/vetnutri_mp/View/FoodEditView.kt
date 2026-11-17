@@ -1,12 +1,20 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
+import fr.vetbrain.vetnutri_mp.Components.AdaptiveTabRow
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateMap
 import androidx.compose.ui.Alignment
@@ -14,16 +22,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectionCard
 import fr.vetbrain.vetnutri_mp.Components.NutrientSection
 import fr.vetbrain.vetnutri_mp.Components.TopBar
+import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.ViewModel.FoodEditViewModel
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -31,6 +47,7 @@ fun FoodEditView(
         viewModel: FoodEditViewModel,
         onNavigateBack: () -> Unit,
         onNavigateToSettings: () -> Unit,
+        onFoodSaved: (AlimentEv) -> Unit = {},
         modifier: Modifier = Modifier
 ) {
         val aliment = viewModel.alimentState.collectAsState().value
@@ -52,6 +69,7 @@ fun FoodEditView(
         val quantIntState = remember { mutableStateOf("") }
         val contState = remember { mutableStateOf("") }
         val consistentState = remember { mutableStateOf(false) }
+        val deprecatedState = remember { mutableStateOf(false) }
         val dataBState = remember { mutableStateOf("") }
 
         val selectedFoodType = remember { mutableStateOf<FoodKind?>(null) }
@@ -64,10 +82,22 @@ fun FoodEditView(
         val allNutrients = viewModel.getAllNutrients()
         val nutrientValues = remember { mutableStateMapOf<Nutrient, String>() }
         val nutrientErrors = remember { mutableStateMapOf<Nutrient, Boolean>() }
+        val energieParEspeceState = remember { mutableStateMapOf<String, String>() }
+        val customNutrientNameState = remember { mutableStateOf("") }
+        val customNutrientUnitState = remember { mutableStateOf("g") }
+        val customNutrientSelectedLabelState = remember { mutableStateOf("") }
+        val customNutrientErrorState = remember { mutableStateOf<String?>(null) }
+
+        val selectedBiblioRefs by viewModel.selectedBiblioRefs.collectAsState()
+        val availableBiblioRefs by viewModel.availableBiblioRefs.collectAsState()
 
         // État pour les onglets
         var selectedTabIndex by remember { mutableStateOf(0) }
-        val tabTitles = listOf("Informations générales", "Composition nutritionnelle")
+        val tabTitles = listOf(
+                translate(LocalizationKeys.FoodEdit.TAB_GENERAL),
+                translate(LocalizationKeys.FoodEdit.TAB_NUTRITION),
+                translate("food_edit.tab_biblio")
+        )
 
         // Fonction de validation des nutriments
         fun validateNutrients(): Boolean {
@@ -100,6 +130,7 @@ fun FoodEditView(
                 quantIntState.value = aliment.quantInt?.toString() ?: ""
                 contState.value = aliment.cont?.toString() ?: ""
                 consistentState.value = aliment.consistent
+                deprecatedState.value = aliment.deprecated
                 dataBState.value = aliment.dataB ?: ""
                 selectedFoodType.value = aliment.typeAliment
                 selectedFoodGroup.value = aliment.group
@@ -119,86 +150,42 @@ fun FoodEditView(
                 selectedEspecesState.value = matchedEspeces
                 selectedIndications.value = aliment.indicat.toMutableList()
 
-                // Mettre à jour les valeurs des nutriments en utilisant getNutrient()
-                // pour appliquer la protection de l'aminogramme
+                // Mettre à jour les valeurs des nutriments à partir des valeurs réellement
+                // stockées sur l'aliment pour éviter toute perte silencieuse au rechargement.
                 nutrientValues.clear()
                 nutrientErrors.clear()
-                allNutrients.forEach { nutrient ->
-                        val nutrientValue = aliment.getNutrient(nutrient)
-                        if (nutrientValue != null) {
-                                nutrientValues[nutrient] = nutrientValue.toString()
-                        }
+                aliment.valMap.forEach { (nutrient, quantity) ->
+                        nutrientValues[nutrient] = quantity.value.toString()
+                }
+                energieParEspeceState.clear()
+                aliment.energieParEspece.forEach { (especeNom, value) ->
+                        energieParEspeceState[especeNom] = if (value > 0.0) value.toString() else ""
                 }
         }
 
-        Scaffold(
-                topBar = {
-                        TopBar(
-                                title =
-                                        if (aliment.uuid.isBlank()) "Ajouter un aliment"
-                                        else "Modifier l'aliment",
-                                onBackClick = onNavigateBack,
-                                onSettingsClick = onNavigateToSettings
-                        )
-                },
-                snackbarHost = {
-                        SnackbarHost(
-                                hostState =
-                                        remember { SnackbarHostState() }.apply {
-                                                if (showErrorMessage) {
-                                                        scope.launch {
-                                                                showSnackbar(
-                                                                        message = errorMessage,
-                                                                        actionLabel = "OK",
-                                                                        duration =
-                                                                                SnackbarDuration
-                                                                                        .Short
-                                                                )
-                                                                showErrorMessage = false
-                                                        }
-                                                }
-                                                if (showSuccessMessage) {
-                                                        scope.launch {
-                                                                showSnackbar(
-                                                                        message =
-                                                                                "Aliment enregistré avec succès",
-                                                                        actionLabel = "OK",
-                                                                        duration =
-                                                                                SnackbarDuration
-                                                                                        .Short
-                                                                )
-                                                                showSuccessMessage = false
-                                                        }
-                                                }
-                                        }
-                        )
-                }
-        ) { paddingValues ->
-                Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-                        // Bouton d'enregistrement
-                        Button(
-                                onClick = {
+        // Enregistrement : bouton rond ✓ en bas à droite, comme pour l'animal et la consultation
+        val enregistrer: () -> Unit = {
                                         scope.launch {
                                                 // Validation des champs obligatoires
-                                                if (nomState.value.isBlank()) {
-                                                        errorMessage =
-                                                                "Le nom de l'aliment est obligatoire"
-                                                        showErrorMessage = true
-                                                        return@launch
-                                                }
+                                                 if (nomState.value.isBlank()) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_NAME_REQUIRED)
+                                                         showErrorMessage = true
+                                                         return@launch
+                                                 }
 
-                                                if (selectedEspecesState.value.isEmpty()) {
-                                                        errorMessage =
-                                                                "Sélectionnez au moins une espèce"
-                                                        showErrorMessage = true
-                                                        return@launch
-                                                }
+                                                 if (selectedEspecesState.value.isEmpty()) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_SPECIES_REQUIRED)
+                                                         showErrorMessage = true
+                                                         return@launch
+                                                 }
 
                                                 // Validation des nutriments
-                                                if (!validateNutrients()) {
-                                                        errorMessage =
-                                                                "Certaines valeurs nutritionnelles sont invalides"
-                                                        showErrorMessage = true
+                                                 if (!validateNutrients()) {
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_NUTRIENTS_INVALID)
+                                                         showErrorMessage = true
                                                         selectedTabIndex =
                                                                 1 // Basculer sur l'onglet des
                                                         // nutriments
@@ -216,15 +203,12 @@ fun FoodEditView(
                                                                         fr.vetbrain.vetnutri_mp.Data.NutrientQuantity>()
 
                                                         // Log pour débugger
-                                                        nutrientValues.forEach { (nutrient, value)
-                                                                ->
-                                                        }
+                                                        AppLog.d("FoodEditView", "[FoodSaveDebug][UI] Save clicked uuid=${aliment.uuid} " +
+                                                                        "rawInputs=${nutrientValues.size} " +
+                                                                        "sample=${nutrientValues.entries.take(8).joinToString { "${it.key.label}=${it.value}" }}")
 
-                                                        // Traiter chaque valeur nutritionnelle
-                                                        allNutrients.forEach { nutrient ->
-                                                                val valueStr =
-                                                                        nutrientValues[nutrient]
-                                                                                ?: ""
+                                                        // Traiter les valeurs présentes dans l'UI
+                                                        nutrientValues.forEach { (nutrient, valueStr) ->
 
                                                                 // Appliquer la protection de
                                                                 // l'aminogramme :
@@ -247,8 +231,7 @@ fun FoodEditView(
                                                                                                         "."
                                                                                                 )
                                                                                                 .toDoubleOrNull()
-                                                                                                ?: 0.0
-                                                                                if (value > 0.0) {
+                                                                                if (value != null && value >= 0.0) {
                                                                                         processedNutrientValues[
                                                                                                 nutrient] =
                                                                                                 fr.vetbrain
@@ -260,18 +243,15 @@ fun FoodEditView(
                                                                                                         )
                                                                                 }
                                                                         }
-                                                                        // Si vide ou valeur ≤ 0, ne
-                                                                        // pas
-                                                                        // ajouter à la map pour que
-                                                                        // le
-                                                                        // nutriment soit supprimé
+                                                                        // Un champ vide supprime la valeur ; un
+                                                                        // zéro explicite est conservé.
                                                                 }
                                                         }
 
                                                         // Log pour débugger
-                                                        processedNutrientValues.forEach {
-                                                                (nutrient, quantity) ->
-                                                        }
+                                                        AppLog.d("FoodEditView", "[FoodSaveDebug][UI] Processed map uuid=${aliment.uuid} " +
+                                                                        "processedCount=${processedNutrientValues.size} " +
+                                                                        "sample=${processedNutrientValues.entries.take(8).joinToString { "${it.key.label}=${it.value.value}" }}")
 
                                                         val updatedAliment =
                                                                 aliment.copy(
@@ -322,6 +302,9 @@ fun FoodEditView(
                                                                         consistent =
                                                                                 consistentState
                                                                                         .value,
+                                                                        deprecated =
+                                                                                deprecatedState
+                                                                                        .value,
                                                                         dataB =
                                                                                 dataBState.value
                                                                                         .takeIf {
@@ -351,37 +334,96 @@ fun FoodEditView(
                                                                         // problèmes de clé
                                                                         // étrangère
                                                                         rationUUID =
-                                                                                aliment.rationUUID
+                                                                                aliment.rationUUID,
+                                                                        energieParEspece =
+                                                                                energieParEspeceState
+                                                                                        .mapNotNull { (k, v) ->
+                                                                                                val d = v.replace(",", ".").toDoubleOrNull()
+                                                                                                if (d != null && d > 0.0) k to d else null
+                                                                                        }
+                                                                                        .toMap()
                                                                 )
-                                                        try {
+                                                         try {
+                                                                AppLog.d("FoodEditView", "[FoodSaveDebug][UI] Calling saveAliment uuid=${updatedAliment.uuid} " +
+                                                                                "valMapCount=${updatedAliment.valMap.size}")
                                                                 viewModel.saveAliment(
                                                                         updatedAliment
                                                                 )
                                                                 showSuccessMessage = true
+                                                                onFoodSaved(updatedAliment)
                                                                 onNavigateBack()
-                                                        } catch (e: Exception) {
-                                                                e.printStackTrace()
-                                                                errorMessage =
-                                                                        "Erreur lors de la sauvegarde: ${e.message}"
-                                                                showErrorMessage = true
+                                                         } catch (e: Exception) {
+                                                                 e.rethrowIfCancellation()
+                                                                 AppLog.e("FoodEditView", e.message ?: "Erreur", e)
+                                                                 errorMessage =
+                                                                         translate(LocalizationKeys.FoodEdit.ERROR_SAVE_FAILED, e.message ?: "")
+                                                                 showErrorMessage = true
+                                                         }
+                                                 } catch (e: Exception) {
+                                                         e.rethrowIfCancellation()
+                                                         errorMessage =
+                                                                 translate(LocalizationKeys.FoodEdit.ERROR_SAVE_FAILED, e.message ?: "")
+                                                         showErrorMessage = true
+                                                 }
+                                        }
+}
+
+        Scaffold(
+                floatingActionButton = {
+                        FloatingActionButton(
+                                onClick = enregistrer,
+                                backgroundColor = VetNutriColors.Primary,
+                                contentColor = VetNutriColors.OnPrimary
+                        ) { Icon(Icons.Default.Check, contentDescription = translate(LocalizationKeys.General.SAVE)) }
+                },
+                topBar = {
+                        TopBar(
+                                title =
+                                        if (aliment.uuid.isBlank()) translate(LocalizationKeys.FoodEdit.TITLE_ADD)
+                                        else translate(LocalizationKeys.FoodEdit.TITLE_EDIT),
+                                onBackClick = onNavigateBack,
+                                onSettingsClick = onNavigateToSettings
+                        )
+                },
+                snackbarHost = {
+                        SnackbarHost(
+                                hostState =
+                                        remember { SnackbarHostState() }.apply {
+                                                if (showErrorMessage) {
+                                                        scope.launch {
+                                                                showSnackbar(
+                                                                         message = errorMessage,
+                                                                         actionLabel = translate(LocalizationKeys.General.OK),
+                                                                         duration =
+                                                                                 SnackbarDuration
+                                                                                         .Short
+                                                                )
+                                                                showErrorMessage = false
                                                         }
-                                                } catch (e: Exception) {
-                                                        errorMessage =
-                                                                "Erreur lors de l'enregistrement: ${e.message}"
-                                                        showErrorMessage = true
+                                                }
+                                                if (showSuccessMessage) {
+                                                        scope.launch {
+                                                                showSnackbar(
+                                                                         message =
+                                                                                 translate(LocalizationKeys.FoodEdit.SUCCESS_SAVE),
+                                                                         actionLabel = translate(LocalizationKeys.General.OK),
+                                                                         duration =
+                                                                                 SnackbarDuration
+                                                                                         .Short
+                                                                )
+                                                                showSuccessMessage = false
+                                                        }
                                                 }
                                         }
-                                },
-                                modifier = Modifier.fillMaxWidth().padding(16.dp)
-                        ) {
-                                Icon(Icons.Default.Check, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Enregistrer")
-                        }
+                        )
+                }
+        ) { paddingValues ->
+                Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
 
                         // Onglets
-                        TabRow(
+                        AdaptiveTabRow(
                                 selectedTabIndex = selectedTabIndex,
+                                tabCount = tabTitles.size,
                                 backgroundColor = MaterialTheme.colors.surface,
                                 contentColor = VetNutriColors.Primary
                         ) {
@@ -413,6 +455,7 @@ fun FoodEditView(
                                                         quantIntState = quantIntState,
                                                         contState = contState,
                                                         consistentState = consistentState,
+                                                        deprecatedState = deprecatedState,
                                                         dataBState = dataBState,
                                                         selectedFoodType = selectedFoodType,
                                                         selectedFoodGroup = selectedFoodGroup,
@@ -431,11 +474,208 @@ fun FoodEditView(
                                                 NutritionInfoTab(
                                                         allNutrients = allNutrients,
                                                         nutrientValues = nutrientValues,
-                                                        nutrientErrors = nutrientErrors
+                                                        nutrientErrors = nutrientErrors,
+                                                        customNutrientNameState = customNutrientNameState,
+                                                        customNutrientUnitState = customNutrientUnitState,
+                                                        customNutrientSelectedLabelState = customNutrientSelectedLabelState,
+                                                        customNutrientErrorState = customNutrientErrorState,
+                                                        especesAliment = selectedEspecesState.value,
+                                                        energieParEspece = energieParEspeceState,
+                                                        onAddCustomNutrient = { name, unit ->
+                                                                val nutrient =
+                                                                        viewModel.addOrGetCustomNutrient(name, unit)
+                                                                if (nutrient != null && nutrient !in nutrientValues) {
+                                                                        nutrientValues[nutrient] = ""
+                                                                        customNutrientErrorState.value = null
+                                                                } else if (nutrient == null) {
+                                                                        customNutrientErrorState.value =
+                                                                                translate("food_edit.error.custom_nutrient_name_used")
+                                                                }
+                                                        },
+                                                        onUpdateCustomNutrient = { original, newName, newUnit ->
+                                                                val updated =
+                                                                        viewModel.updateCustomNutrient(
+                                                                                original,
+                                                                                newName,
+                                                                                newUnit
+                                                                        )
+                                                                if (updated != null) {
+                                                                        val previousKey =
+                                                                                nutrientValues.keys.firstOrNull {
+                                                                                        it.label == original.label
+                                                                                }
+                                                                        val previousValue =
+                                                                                previousKey?.let {
+                                                                                        nutrientValues.remove(it)
+                                                                                }
+                                                                        if (previousValue != null) {
+                                                                                nutrientValues[updated] =
+                                                                                        previousValue
+                                                                        }
+                                                                        customNutrientSelectedLabelState.value =
+                                                                                updated.nameToString()
+                                                                        customNutrientErrorState.value = null
+                                                                } else {
+                                                                        customNutrientErrorState.value =
+                                                                                translate("food_edit.error.custom_nutrient_update_failed")
+                                                                }
+                                                        },
+                                                        onDeleteCustomNutrient = { nutrient ->
+                                                                viewModel.deleteCustomNutrient(nutrient)
+                                                                nutrientValues.remove(nutrient)
+                                                                customNutrientSelectedLabelState.value = ""
+                                                                customNutrientNameState.value = ""
+                                                                customNutrientUnitState.value = "g"
+                                                                customNutrientErrorState.value = null
+                                                        }
+                                                )
+                                        2 ->
+                                                BiblioRefTab(
+                                                        selectedRefs = selectedBiblioRefs,
+                                                        availableRefs = availableBiblioRefs,
+                                                        onAdd = { viewModel.addBiblioRef(it) },
+                                                        onRemove = { viewModel.removeBiblioRef(it) }
                                                 )
                                 }
                         }
                 }
+        }
+}
+
+@Composable
+private fun BiblioRefTab(
+        selectedRefs: List<BiblioRef>,
+        availableRefs: List<BiblioRef>,
+        onAdd: (BiblioRef) -> Unit,
+        onRemove: (BiblioRef) -> Unit
+) {
+        var showPicker by remember { mutableStateOf(false) }
+        var searchQuery by remember { mutableStateOf("") }
+
+        Column(modifier = Modifier.fillMaxSize().padding(vertical = 8.dp)) {
+                Button(
+                        onClick = { showPicker = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = VetNutriColors.Primary)
+                ) {
+                        Icon(Icons.Default.Add, contentDescription = null, tint = VetNutriColors.OnPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(translate("food_edit.biblio.add_button"), color = VetNutriColors.OnPrimary)
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                if (selectedRefs.isEmpty()) {
+                        Text(
+                                translate("food_edit.biblio.empty"),
+                                style = MaterialTheme.typography.body2,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(vertical = 16.dp)
+                        )
+                } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                                items(selectedRefs, key = { it.uuid }) { ref ->
+                                        Card(
+                                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                                elevation = 2.dp
+                                        ) {
+                                                Row(
+                                                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                        Column(modifier = Modifier.weight(1f)) {
+                                                                Text(
+                                                                        "${ref.firstAuthor} (${ref.year})",
+                                                                        style = MaterialTheme.typography.subtitle2
+                                                                )
+                                                                if (ref.completeRef.isNotBlank()) {
+                                                                        Text(
+                                                                                ref.completeRef,
+                                                                                style = MaterialTheme.typography.caption,
+                                                                                color = Color.Gray,
+                                                                                maxLines = 2
+                                                                        )
+                                                                }
+                                                        }
+                                                        IconButton(onClick = { onRemove(ref) }) {
+                                                                Icon(
+                                                                        Icons.Default.Close,
+                                                                        contentDescription = translate("general.delete"),
+                                                                        tint = MaterialTheme.colors.error
+                                                                )
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+
+        if (showPicker) {
+                val unselected = availableRefs.filter { avail ->
+                        selectedRefs.none { it.uuid == avail.uuid }
+                }
+                val filtered = if (searchQuery.isBlank()) unselected else unselected.filter { ref ->
+                        Recherche.correspond(searchQuery, ref.firstAuthor, ref.completeRef, ref.year.toString())
+                }
+                AppAlertDialog(
+                        onDismissRequest = { showPicker = false; searchQuery = "" },
+                        title = { Text(translate("food_edit.biblio.picker_title")) },
+                        text = {
+                                Column {
+                                        OutlinedTextField(
+                                                value = searchQuery,
+                                                onValueChange = { searchQuery = it },
+                                                placeholder = { Text(translate("food_edit.biblio.search_placeholder")) },
+                                                singleLine = true,
+                                                modifier = Modifier.fillMaxWidth(),
+                                                colors = TextFieldDefaults.outlinedTextFieldColors(
+                                                        focusedBorderColor = VetNutriColors.Primary,
+                                                        unfocusedBorderColor = Color.Gray
+                                                )
+                                        )
+                                        Spacer(Modifier.height(8.dp))
+                                        if (filtered.isEmpty()) {
+                                                Text(translate(LocalizationKeys.Reference.NONE_AVAILABLE), color = Color.Gray)
+                                        } else {
+                                                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                                                        items(filtered, key = { it.uuid }) { ref ->
+                                                                TextButton(
+                                                                        onClick = {
+                                                                                onAdd(ref)
+                                                                                showPicker = false
+                                                                                searchQuery = ""
+                                                                        },
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        Column(modifier = Modifier.fillMaxWidth()) {
+                                                                                Text(
+                                                                                        "${ref.firstAuthor} (${ref.year})",
+                                                                                        style = MaterialTheme.typography.subtitle2
+                                                                                )
+                                                                                if (ref.completeRef.isNotBlank()) {
+                                                                                        Text(
+                                                                                                ref.completeRef,
+                                                                                                style = MaterialTheme.typography.caption,
+                                                                                                color = Color.Gray,
+                                                                                                maxLines = 1
+                                                                                        )
+                                                                                }
+                                                                        }
+                                                                }
+                                                                Divider()
+                                                        }
+                                                }
+                                        }
+                                }
+                        },
+                        confirmButton = {},
+                        dismissButton = {
+                                TextButton(onClick = { showPicker = false; searchQuery = "" }) {
+                                        Text(translate(LocalizationKeys.General.CLOSE))
+                                }
+                        }
+                )
         }
 }
 
@@ -450,6 +690,7 @@ private fun GeneralInfoTab(
         quantIntState: MutableState<String>,
         contState: MutableState<String>,
         consistentState: MutableState<Boolean>,
+        deprecatedState: MutableState<Boolean>,
         dataBState: MutableState<String>,
         selectedFoodType: MutableState<FoodKind?>,
         selectedFoodGroup: MutableState<GroupAlim?>,
@@ -473,14 +714,14 @@ private fun GeneralInfoTab(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                                 Text(
-                                        text = "Informations générales",
+                                        text = translate(LocalizationKeys.FoodEdit.TAB_GENERAL),
                                         style = MaterialTheme.typography.h6
                                 )
 
                                 OutlinedTextField(
                                         value = nomState.value,
                                         onValueChange = { nomState.value = it },
-                                        label = { Text("Nom de l'aliment") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_NAME)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -492,7 +733,7 @@ private fun GeneralInfoTab(
                                 OutlinedTextField(
                                         value = brandState.value,
                                         onValueChange = { brandState.value = it },
-                                        label = { Text("Marque") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_BRAND)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -504,7 +745,7 @@ private fun GeneralInfoTab(
                                 OutlinedTextField(
                                         value = gammeState.value,
                                         onValueChange = { gammeState.value = it },
-                                        label = { Text("Gamme") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_GAMME)) },
                                         modifier = Modifier.fillMaxWidth(),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -514,7 +755,7 @@ private fun GeneralInfoTab(
                                 )
 
                                 DropdownField(
-                                        label = "Base de données",
+                                        label = translate(LocalizationKeys.FoodEdit.FIELD_DATABASE),
                                         selectedValue = dataBState.value.ifBlank { "" },
                                         options =
                                                 buildList {
@@ -538,7 +779,7 @@ private fun GeneralInfoTab(
                                                 },
                                         onValueChange = { dataBState.value = it },
                                         valueToString = {
-                                                if (it.isBlank()) "Sélectionner..."
+                                                if (it.isBlank()) translate(LocalizationKeys.General.SELECT_PLACEHOLDER)
                                                 else DataBMapping.getDisplayName(it)
                                         },
                                         modifier = Modifier.fillMaxWidth(),
@@ -555,7 +796,7 @@ private fun GeneralInfoTab(
                                         OutlinedTextField(
                                                 value = priceState.value,
                                                 onValueChange = { priceState.value = it },
-                                                label = { Text("Prix") },
+                                                label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_PRICE)) },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -568,7 +809,7 @@ private fun GeneralInfoTab(
                                         OutlinedTextField(
                                                 value = categPriceState.value,
                                                 onValueChange = { categPriceState.value = it },
-                                                label = { Text("Catégorie de prix") },
+                                                label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_PRICE_CATEGORY)) },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -586,7 +827,7 @@ private fun GeneralInfoTab(
                                         OutlinedTextField(
                                                 value = quantIntState.value,
                                                 onValueChange = { quantIntState.value = it },
-                                                label = { Text("Quantité") },
+                                                label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_QUANTITY)) },
                                                 modifier = Modifier.weight(1f),
                                                 colors =
                                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -618,7 +859,26 @@ private fun GeneralInfoTab(
                                                         )
                                         )
 
-                                        Text("Aliment consistant")
+                                        Text(translate(LocalizationKeys.FoodEdit.FIELD_CONSISTENT))
+                                }
+
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Checkbox(
+                                                checked = deprecatedState.value,
+                                                onCheckedChange = {
+                                                        deprecatedState.value = it
+                                                },
+                                                colors =
+                                                        CheckboxDefaults.colors(
+                                                                checkedColor =
+                                                                        VetNutriColors.Primary
+                                                        )
+                                        )
+
+                                        Text(translate(LocalizationKeys.FoodEdit.FIELD_DEPRECATED))
                                 }
                         }
                 }
@@ -630,7 +890,7 @@ private fun GeneralInfoTab(
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                                 Text(
-                                        text = "Type et classification",
+                                        text = translate(LocalizationKeys.FoodEdit.FIELD_TYPE_CLASS),
                                         style = MaterialTheme.typography.h6
                                 )
 
@@ -658,12 +918,12 @@ private fun GeneralInfoTab(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                                Text(text = "Ingrédients", style = MaterialTheme.typography.h6)
+                                Text(text = translate(LocalizationKeys.FoodEdit.FIELD_INGREDIENTS), style = MaterialTheme.typography.h6)
 
                                 OutlinedTextField(
                                         value = ingredientsState.value,
                                         onValueChange = { ingredientsState.value = it },
-                                        label = { Text("Liste des ingrédients") },
+                                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_INGREDIENTS_LIST)) },
                                         modifier = Modifier.fillMaxWidth().height(120.dp),
                                         colors =
                                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -676,22 +936,22 @@ private fun GeneralInfoTab(
 
                 // Section Espèces - Utilise le composant réutilisable MultiSelectionCard
                 MultiSelectionCard(
-                        titre = "Espèces compatibles",
+                        titre = translate(LocalizationKeys.FoodEdit.FIELD_COMPATIBLE_SPECIES),
                         elementsDisponibles = Espece.entries,
                         elementsSelectionnes = selectedEspecesState.value,
                         onSelectionChange = onSelectEspece,
-                        getLabel = { it.label },
+                        getLabel = { it.translateEnum() },
                         getIdentifiant = { it.name },
                         couleurArrierePlan = VetNutriColors.Secondary
                 )
 
                 // Section Indications - Utilise le composant réutilisable MultiSelectionCard
                 MultiSelectionCard(
-                        titre = "Indications",
+                        titre = translate(LocalizationKeys.FoodEdit.FIELD_INDICATIONS),
                         elementsDisponibles = AlimIndic.valuesExcept(),
                         elementsSelectionnes = selectedIndications.value,
                         onSelectionChange = onSelectIndication,
-                        getLabel = { it.label },
+                        getLabel = { it.translateEnum() },
                         getIdentifiant = { it.name },
                         couleurArrierePlan = VetNutriColors.Primary
                 )
@@ -704,7 +964,16 @@ private fun GeneralInfoTab(
 private fun NutritionInfoTab(
         allNutrients: List<Nutrient>,
         nutrientValues: SnapshotStateMap<Nutrient, String>,
-        nutrientErrors: SnapshotStateMap<Nutrient, Boolean>
+        nutrientErrors: SnapshotStateMap<Nutrient, Boolean>,
+        customNutrientNameState: MutableState<String>,
+        customNutrientUnitState: MutableState<String>,
+        customNutrientSelectedLabelState: MutableState<String>,
+        customNutrientErrorState: MutableState<String?>,
+        onAddCustomNutrient: (String, String) -> Unit,
+        onUpdateCustomNutrient: (CustomNutrient, String, String) -> Unit,
+        onDeleteCustomNutrient: (CustomNutrient) -> Unit,
+        especesAliment: List<Espece> = emptyList(),
+        energieParEspece: SnapshotStateMap<String, String> = mutableStateMapOf()
 ) {
         val scrollState = rememberScrollState()
 
@@ -715,6 +984,13 @@ private fun NutritionInfoTab(
         val minNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.MIN }
         val vitamNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.VITAM }
         val otherNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.OTHER }
+        val customNutrients = allNutrients.filter { it is CustomNutrient }.map { it as CustomNutrient }
+        var customDropdownExpanded by remember { mutableStateOf(false) }
+        var customUnitDropdownExpanded by remember { mutableStateOf(false) }
+        val allowedCustomUnits =
+                remember {
+                        UnitEnum.entries.map { it.displayName }.filter { it.isNotBlank() }.distinct()
+                }
         // Acides aminés
         val acidesAminesNutrients = allNutrients.filter { it.getMNE() == MainNutrientEnum.AMA }
 
@@ -724,11 +1000,10 @@ private fun NutritionInfoTab(
         ) {
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Utilisation des composants réutilisables pour chaque section de nutriments
                 // Section Principaux nutriments
                 if (mainNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Nutriments principaux",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_MAIN_NUTRIENTS),
                                 nutriments = mainNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -739,7 +1014,7 @@ private fun NutritionInfoTab(
                 // Section Lipides
                 if (lipidNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Lipides",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_LIPIDS),
                                 nutriments = lipidNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -750,7 +1025,7 @@ private fun NutritionInfoTab(
                 // Section Macronutriments
                 if (macroNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Macronutriments",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_MACRONUTRIENTS),
                                 nutriments = macroNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -761,7 +1036,7 @@ private fun NutritionInfoTab(
                 // Section Minéraux
                 if (minNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Minéraux",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_MINERALS),
                                 nutriments = minNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -772,7 +1047,7 @@ private fun NutritionInfoTab(
                 // Section Vitamines
                 if (vitamNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Vitamines",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_VITAMINS),
                                 nutriments = vitamNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -783,7 +1058,7 @@ private fun NutritionInfoTab(
                 // Section Acides aminés
                 if (acidesAminesNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Acides aminés",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_AMINO_ACIDS),
                                 nutriments = acidesAminesNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
@@ -794,12 +1069,221 @@ private fun NutritionInfoTab(
                 // Section Autres nutriments
                 if (otherNutrients.isNotEmpty()) {
                         NutrientSection(
-                                titre = "Autres nutriments",
+                                titre = translate(LocalizationKeys.FoodEdit.SECTION_OTHER_NUTRIENTS),
                                 nutriments = otherNutrients,
                                 valeursNutriments = nutrientValues,
                                 erreursNutriments = nutrientErrors,
                                 couleurArrierePlan = Color(0xFFF1F8E9)
                         )
+                }
+
+                // Bloc d'ajout de nutriments personnalisés en fin d'onglet
+                Card(modifier = Modifier.fillMaxWidth(), elevation = 4.dp) {
+                        Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                                Text(translate("food_edit.custom_nutrients.title"), style = MaterialTheme.typography.h6)
+                                OutlinedTextField(
+                                        value = customNutrientNameState.value,
+                                        onValueChange = {
+                                                customNutrientNameState.value = it
+                                                customNutrientErrorState.value = null
+                                        },
+                                        label = { Text(translate("food_edit.custom_nutrients.name_label")) },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                OutlinedTextField(
+                                        value = customNutrientUnitState.value,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        label = { Text(translate("food_edit.custom_nutrients.unit_label")) },
+                                        trailingIcon = {
+                                                IconButton(
+                                                        onClick = {
+                                                                customUnitDropdownExpanded =
+                                                                        !customUnitDropdownExpanded
+                                                        }
+                                                ) {
+                                                        Icon(
+                                                                Icons.Default.ArrowDropDown,
+                                                                contentDescription = null
+                                                        )
+                                                }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                                DropdownMenu(
+                                        expanded = customUnitDropdownExpanded,
+                                        onDismissRequest = { customUnitDropdownExpanded = false }
+                                ) {
+                                        allowedCustomUnits.forEach { unit ->
+                                                DropdownMenuItem(
+                                                        onClick = {
+                                                                customNutrientUnitState.value = unit
+                                                                customUnitDropdownExpanded = false
+                                                        }
+                                                ) { Text(unit) }
+                                        }
+                                }
+                                Button(
+                                        onClick = {
+                                                onAddCustomNutrient(
+                                                        customNutrientNameState.value,
+                                                        customNutrientUnitState.value
+                                                )
+                                                customNutrientSelectedLabelState.value =
+                                                        customNutrientNameState.value.trim()
+                                        },
+                                        enabled = customNutrientNameState.value.isNotBlank()
+                                ) { Text(translate(LocalizationKeys.General.ADD)) }
+                                customNutrientErrorState.value?.let { error ->
+                                        Text(
+                                                text = error,
+                                                color = MaterialTheme.colors.error,
+                                                style = MaterialTheme.typography.caption
+                                        )
+                                }
+                                if (customNutrients.isNotEmpty()) {
+                                        OutlinedTextField(
+                                                value = customNutrientSelectedLabelState.value,
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text(translate("food_edit.custom_nutrients.select_existing")) },
+                                                trailingIcon = {
+                                                        IconButton(
+                                                                onClick = {
+                                                                        customDropdownExpanded = !customDropdownExpanded
+                                                                }
+                                                        ) {
+                                                                Icon(
+                                                                        Icons.Default.ArrowDropDown,
+                                                                        contentDescription = null
+                                                                )
+                                                        }
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                        )
+                                        DropdownMenu(
+                                                expanded = customDropdownExpanded,
+                                                onDismissRequest = { customDropdownExpanded = false }
+                                        ) {
+                                                customNutrients.forEach { nutrient ->
+                                                        DropdownMenuItem(
+                                                                onClick = {
+                                                                        customNutrientSelectedLabelState.value =
+                                                                                nutrient.nameToString()
+                                                                        customNutrientNameState.value =
+                                                                                nutrient.nameToString()
+                                                                        customNutrientUnitState.value =
+                                                                                nutrient.unite
+                                                                        customDropdownExpanded = false
+                                                                }
+                                                        ) {
+                                                                Text("${nutrient.nameToString()} (${nutrient.unite})")
+                                                        }
+                                                }
+                                        }
+                                        Button(
+                                                onClick = {
+                                                        val selected = customNutrients.firstOrNull {
+                                                                it.nameToString() == customNutrientSelectedLabelState.value
+                                                        }
+                                                        if (selected != null && selected !in nutrientValues) {
+                                                                nutrientValues[selected] = ""
+                                                        }
+                                                },
+                                                enabled = customNutrientSelectedLabelState.value.isNotBlank()
+                                        ) {
+                                                Icon(Icons.Default.Add, contentDescription = null)
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(translate("food_edit.custom_nutrients.use_button"))
+                                        }
+                                        Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                val selected = customNutrients.firstOrNull {
+                                                                        it.nameToString() ==
+                                                                                customNutrientSelectedLabelState.value
+                                                                }
+                                                                if (selected != null) {
+                                                                        onUpdateCustomNutrient(
+                                                                                selected,
+                                                                                customNutrientNameState.value,
+                                                                                customNutrientUnitState.value
+                                                                        )
+                                                                }
+                                                        },
+                                                        enabled = customNutrientSelectedLabelState.value.isNotBlank()
+                                                ) { Text(translate(LocalizationKeys.General.EDIT)) }
+                                                OutlinedButton(
+                                                        onClick = {
+                                                                val selected = customNutrients.firstOrNull {
+                                                                        it.nameToString() ==
+                                                                                customNutrientSelectedLabelState.value
+                                                                }
+                                                                if (selected != null) {
+                                                                        onDeleteCustomNutrient(selected)
+                                                                }
+                                                        },
+                                                        enabled = customNutrientSelectedLabelState.value.isNotBlank(),
+                                                        colors =
+                                                                ButtonDefaults.outlinedButtonColors(
+                                                                        contentColor =
+                                                                                MaterialTheme.colors.error
+                                                                )
+                                                ) { Text(translate(LocalizationKeys.General.DELETE)) }
+                                        }
+                                }
+                        }
+                }
+
+                // Section Énergie par espèce — uniquement pour les espèces déclarées sur l'aliment
+                if (especesAliment.isNotEmpty()) {
+                        Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                backgroundColor = Color(0xFFFFF8E1),
+                                elevation = 2.dp
+                        ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                        Text(
+                                                translate("food_edit.energy_per_species.title"),
+                                                style = MaterialTheme.typography.subtitle1,
+                                                color = MaterialTheme.colors.primary
+                                        )
+                                        Text(
+                                                translate("food_edit.energy_per_species.description"),
+                                                style = MaterialTheme.typography.caption,
+                                                color = Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        especesAliment.forEach { espece ->
+                                                val key = espece.name
+                                                Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                                ) {
+                                                        Text(
+                                                                espece.name,
+                                                                modifier = Modifier.width(100.dp),
+                                                                style = MaterialTheme.typography.body2
+                                                        )
+                                                        OutlinedTextField(
+                                                                value = energieParEspece[key] ?: "",
+                                                                onValueChange = { v ->
+                                                                        energieParEspece[key] = v
+                                                                },
+                                                                label = { Text(translate("food_edit.energy_per_species.unit_label")) },
+                                                                singleLine = true,
+                                                                modifier = Modifier.weight(1f)
+                                                        )
+                                                }
+                                        }
+                                }
+                        }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -818,13 +1302,16 @@ fun FoodTypeDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedFoodType?.toString() ?: "Sélectionner un type d'aliment",
+                        value = selectedFoodType?.translateEnum() ?: translate(LocalizationKeys.FoodEdit.HINT_SELECT_TYPE),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                         tooltip = translate(LocalizationKeys.FoodEdit.HINT_SELECT_TYPE)
+                                )
                         },
                         colors =
                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -836,7 +1323,11 @@ fun FoodTypeDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         availableFoodTypes.forEach { foodType ->
@@ -845,7 +1336,7 @@ fun FoodTypeDropdown(
                                                 onFoodTypeSelected(foodType)
                                                 expanded = false
                                         }
-                                ) { Text(foodType.toString()) }
+                                ) { Text(foodType.translateEnum()) }
                         }
                 }
         }
@@ -863,13 +1354,16 @@ fun FoodGroupDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedFoodGroup?.toString() ?: "Sélectionner un groupe d'aliment",
+                        value = selectedFoodGroup?.translateEnum() ?: translate(LocalizationKeys.FoodEdit.HINT_SELECT_GROUP),
                         onValueChange = {},
                         readOnly = true,
                         trailingIcon = {
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                         tooltip = translate(LocalizationKeys.FoodEdit.HINT_SELECT_GROUP)
+                                )
                         },
                         colors =
                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -881,16 +1375,20 @@ fun FoodGroupDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         availableFoodGroups.forEach { foodGroup ->
                                 DropdownMenuItem(
-                                        onClick = {
+                                         onClick = {
                                                 onFoodGroupSelected(foodGroup)
                                                 expanded = false
                                         }
-                                ) { Text(foodGroup.toString()) }
+                                ) { Text(foodGroup.translateEnum()) }
                         }
                 }
         }
@@ -908,14 +1406,17 @@ private fun ContDropdown(
 
         Box(modifier = modifier) {
                 OutlinedTextField(
-                        value = selectedCont?.label ?: "Sélectionner un contenant",
+                        value = selectedCont?.translateEnum() ?: translate(LocalizationKeys.FoodEdit.HINT_SELECT_CONT),
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Contenant") },
+                        label = { Text(translate(LocalizationKeys.FoodEdit.FIELD_CONT)) },
                         trailingIcon = {
-                                IconButton(onClick = { expanded = !expanded }) {
-                                        Icon(Icons.Default.ArrowDropDown, contentDescription = null)
-                                }
+                                IconButtonWithTooltip(
+                                        onClick = { expanded = !expanded },
+                                        imageVector = Icons.Default.ArrowDropDown,
+                                        contentDescription = null,
+                                         tooltip = translate(LocalizationKeys.FoodEdit.HINT_SELECT_CONT)
+                                )
                         },
                         colors =
                                 TextFieldDefaults.outlinedTextFieldColors(
@@ -927,16 +1428,20 @@ private fun ContDropdown(
 
                 DropdownMenu(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false },
+                        onDismissRequest = {
+                            if (!isIosPlatform) {
+                                expanded = false 
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(0.9f)
                 ) {
                         availableConts.forEach { cont ->
                                 DropdownMenuItem(
-                                        onClick = {
+                                         onClick = {
                                                 onContSelected(cont)
                                                 expanded = false
                                         }
-                                ) { Text(cont.label) }
+                                ) { Text(cont.translateEnum()) }
                         }
                 }
         }

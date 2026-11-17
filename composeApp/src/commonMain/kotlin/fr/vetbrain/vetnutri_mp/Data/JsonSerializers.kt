@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKind
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
@@ -26,6 +27,7 @@ object LocalDateSerializer : KSerializer<LocalDate> {
         return try {
             LocalDate.parse(dateString)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             LocalDate(2023, 1, 1) // Valeur par défaut en cas d'erreur
         }
     }
@@ -45,6 +47,7 @@ object GroupAlimSerializer : KSerializer<GroupAlim> {
         return try {
             GroupAlim.valueOf(groupString)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Valeur par défaut ou gestion d'erreur
             GroupAlim.values().firstOrNull()
                     ?: throw IllegalArgumentException("GroupAlim non trouvé: $groupString")
@@ -66,6 +69,7 @@ object FoodKindSerializer : KSerializer<FoodKind> {
         return try {
             FoodKind.valueOf(foodKindString)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Valeur par défaut ou gestion d'erreur
             FoodKind.values().firstOrNull()
                     ?: throw IllegalArgumentException("FoodKind non trouvé: $foodKindString")
@@ -88,6 +92,7 @@ object EspeceSerializer : KSerializer<Espece> {
             // D'abord essayer de parser comme enum par nom
             Espece.valueOf(especeString)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             try {
                 // Ensuite essayer de convertir comme ID numérique
                 val especeId = especeString.toIntOrNull()
@@ -103,6 +108,7 @@ object EspeceSerializer : KSerializer<Espece> {
                     }
                 }
             } catch (e2: Exception) {
+                e2.rethrowIfCancellation()
                 Espece.CHIEN // Valeur par défaut
             }
         }
@@ -123,6 +129,7 @@ object UnitReqEnumSerializer : KSerializer<UnitReqEnum> {
         return try {
             UnitReqEnum.valueOf(unitReqString)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Valeur par défaut ou gestion d'erreur
             UnitReqEnum.values().firstOrNull()
                     ?: throw IllegalArgumentException("UnitReqEnum non trouvé: $unitReqString")

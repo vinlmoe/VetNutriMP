@@ -1,5 +1,8 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
@@ -9,22 +12,30 @@ import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.StadePhysio
 import fr.vetbrain.vetnutri_mp.Repository.DatabaseReferenceEvRepository
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** ViewModel pour la gestion des références évaluées (ReferenceEv). */
 class ReferenceEvViewModel(
         private val repository: DatabaseReferenceEvRepository,
+        private val equationRepository: EquationRepository? = null,
         private val platformDispatcher: PlatformDispatcher = PlatformDispatcher(),
         private val coroutineContext: CoroutineContext = platformDispatcher.provideMainDispatcher()
-) {
-    private val scope = CoroutineScope(coroutineContext)
+) : ViewModel() {
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(coroutineContext + job)
 
     // Référence courante en édition
     private val _currentReferenceEv = MutableStateFlow(ReferenceEv())
@@ -84,7 +95,6 @@ class ReferenceEvViewModel(
 
     // États pour les équations disponibles
     private val _loadingEquations = MutableStateFlow(false)
-    val loadingEquations: StateFlow<Boolean> = _loadingEquations.asStateFlow()
 
     private val _availableEquations = MutableStateFlow<List<Equation>>(emptyList())
     val availableEquations: StateFlow<List<Equation>> = _availableEquations.asStateFlow()
@@ -96,17 +106,15 @@ class ReferenceEvViewModel(
 
                 // Filtre par texte de recherche
                 if (search.isNotBlank()) {
-                    val searchLower = search.lowercase()
                     filtered =
                             filtered.filter { reference ->
-                                reference.nom.lowercase().contains(searchLower) ||
-                                        reference.description.lowercase().contains(searchLower) ||
-                                        reference.nomEnergie.lowercase().contains(searchLower) ||
-                                        (reference.maladie &&
-                                                reference
-                                                        .nomMaladie
-                                                        .lowercase()
-                                                        .contains(searchLower))
+                                Recherche.correspond(
+                                        search,
+                                        reference.nom,
+                                        reference.description,
+                                        reference.nomEnergie,
+                                        reference.nomMaladie.takeIf { reference.maladie }
+                                )
                             }
                 }
 
@@ -134,25 +142,14 @@ class ReferenceEvViewModel(
                 references.forEach { ref ->
                 }
                 _allReferences.value = references
-                println("✅ [LOAD] Chargement terminé avec succès")
             } catch (e: Exception) {
-                println("❌ [LOAD] Erreur lors du chargement: ${e.message}")
+                e.rethrowIfCancellation()
                 _error.value =
-                        "Erreur lors du chargement des références: ${e.message ?: "Erreur inconnue"}"
+                        translate(LocalizationKeys.Reference.VM_LOAD_ALL_ERROR_FORMAT, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
             } finally {
                 _loading.value = false
             }
         }
-    }
-
-    /** Met à jour le texte de recherche */
-    fun updateSearchText(text: String) {
-        _searchText.value = text
-    }
-
-    /** Met à jour l'espèce sélectionnée pour le filtrage */
-    fun updateSelectedEspece(espece: Espece?) {
-        _selectedEspece.value = espece
     }
 
     /** Crée une nouvelle référence */
@@ -182,6 +179,7 @@ class ReferenceEvViewModel(
 
             return newReference
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la création de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -197,11 +195,9 @@ class ReferenceEvViewModel(
         try {
 
             repository.update(reference)
-            println("✅ [UPDATE_REF] Mise à jour réussie, rechargement de la liste...")
             loadAllReferences() // Recharger la liste
-            println("✅ [UPDATE_REF] Liste rechargée avec succès")
         } catch (e: Exception) {
-            println("❌ [UPDATE_REF] Erreur lors de la mise à jour: ${e.message}")
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la mise à jour de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -218,6 +214,7 @@ class ReferenceEvViewModel(
             repository.delete(referenceId)
             loadAllReferences() // Recharger la liste
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value =
                     "Erreur lors de la suppression de la référence: ${e.message ?: "Erreur inconnue"}"
             throw e
@@ -264,9 +261,7 @@ class ReferenceEvViewModel(
             }
 
             // Référencer les équations nutritionnelles (pas de duplication)
-            duplicated.equationsNut = ArrayList(source.equationsNut.map { equation ->
-                equation
-            })
+            duplicated.equationsNut = source.equationsNut.toMutableList()
 
             // Référencer les nutriments avec leurs références bibliographiques existantes
             val minCount = source.getRefMapMin().size
@@ -320,22 +315,22 @@ class ReferenceEvViewModel(
             }
 
             // Référencer les coefficients modificateurs (pas de duplication)
-            val k1Count = source.getModk1().size
-            val k2Count = source.getModk2().size
-            val k3Count = source.getModk3().size
-            val k4Count = source.getModk4().size
-            val k5Count = source.getModk5().size
+            val k1Count = source.modk1.size
+            val k2Count = source.modk2.size
+            val k3Count = source.modk3.size
+            val k4Count = source.modk4.size
+            val k5Count = source.modk5.size
 
-            duplicated.getModk1().clear()
-            duplicated.getModk1().addAll(source.getModk1()) // Référence directe
-            duplicated.getModk2().clear()
-            duplicated.getModk2().addAll(source.getModk2()) // Référence directe
-            duplicated.getModk3().clear()
-            duplicated.getModk3().addAll(source.getModk3()) // Référence directe
-            duplicated.getModk4().clear()
-            duplicated.getModk4().addAll(source.getModk4()) // Référence directe
-            duplicated.getModk5().clear()
-            duplicated.getModk5().addAll(source.getModk5()) // Référence directe
+            duplicated.modk1.clear()
+            duplicated.modk1.addAll(source.modk1) // Référence directe
+            duplicated.modk2.clear()
+            duplicated.modk2.addAll(source.modk2) // Référence directe
+            duplicated.modk3.clear()
+            duplicated.modk3.addAll(source.modk3) // Référence directe
+            duplicated.modk4.clear()
+            duplicated.modk4.addAll(source.modk4) // Référence directe
+            duplicated.modk5.clear()
+            duplicated.modk5.addAll(source.modk5) // Référence directe
 
             // Copier les noms des coefficients
             duplicated.nomk1 = source.nomk1
@@ -349,12 +344,11 @@ class ReferenceEvViewModel(
             if (saveResult) {
                 loadAllReferences()
                 _operationMessage.value = "Référence dupliquée avec succès"
-                println("✅ [DUPLICATION] Duplication terminée avec succès")
             } else {
                 _operationMessage.value = "Erreur lors de la sauvegarde de la référence dupliquée"
-                println("❌ [DUPLICATION] Erreur lors de la sauvegarde")
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _error.value = "Erreur lors de la duplication: ${e.message ?: "Erreur inconnue"}"
         } finally {
             _loading.value = false
@@ -366,17 +360,6 @@ class ReferenceEvViewModel(
     // Méthode cloneBiblioRef supprimée - on référence directement les bibliographies existantes
 
     // Méthode cloneCoefP supprimée - on référence directement les coefficients existants
-
-    /** Obtient une référence par son identifiant */
-    suspend fun getReferenceById(referenceId: String): ReferenceEv? {
-        return try {
-            repository.getById(referenceId)
-        } catch (e: Exception) {
-            _error.value =
-                    "Erreur lors de la récupération de la référence: ${e.message ?: "Erreur inconnue"}"
-            null
-        }
-    }
 
     // Initialiser pour l'édition
     fun initForEdit() {
@@ -449,6 +432,7 @@ class ReferenceEvViewModel(
                                     "Référence non trouvée avec l'ID: $referenceEvId"
                         }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors du chargement de la référence: ${e.message}"
                 _operationMessage.value = "Erreur lors du chargement de la référence: ${e.message}"
             } finally {
@@ -457,39 +441,8 @@ class ReferenceEvViewModel(
         }
     }
 
-    // Mettre à jour les champs du formulaire
-    fun updateNom(value: String) {
-        _nom.value = value
-        validateForm()
-    }
-
     fun updateDescription(value: String) {
         _description.value = value
-        validateForm()
-    }
-
-    fun updateNomEnergie(value: String) {
-        _nomEnergie.value = value
-        validateForm()
-    }
-
-    fun updateEspece(value: Espece) {
-        _espece.value = value
-        validateForm()
-    }
-
-    fun updateStadePhysio(value: StadePhysio) {
-        _stadePhysio.value = value
-        validateForm()
-    }
-
-    fun updateIsMaladie(value: Boolean) {
-        _isMaladie.value = value
-        validateForm()
-    }
-
-    fun updateNomMaladie(value: String) {
-        _nomMaladie.value = value
         validateForm()
     }
 
@@ -548,6 +501,7 @@ class ReferenceEvViewModel(
 
             _operationMessage.value = "Référence sauvegardée avec succès"
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _operationMessage.value = "Erreur lors de la sauvegarde: ${e.message}"
             throw e
         } finally {
@@ -568,7 +522,7 @@ class ReferenceEvViewModel(
             _actionInProgress.value = true
             try {
                 // Clone de la référence actuelle pour modification
-                val updatedReference = currentRef.copy()
+                val updatedReference = currentRef.deepCopy()
 
                 // Rechercher l'équation correspondante dans la liste disponible
                 val selectedEquation =
@@ -596,8 +550,9 @@ class ReferenceEvViewModel(
                     _operationMessage.value = "Erreur lors de la mise à jour de l'équation"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("ReferenceEvViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -618,21 +573,19 @@ class ReferenceEvViewModel(
                 val isAlreadyAssociated = currentRef.equationsNut.any { it.uuid == equation.uuid }
 
                 // Clone de la référence actuelle pour modification
-                val updatedReference = currentRef.copy()
+                val updatedReference = currentRef.deepCopy()
 
                 // Mise à jour de la liste des équations nutritionnelles
                 if (isAlreadyAssociated) {
                     // Dissocier l'équation
                     updatedReference.equationsNut =
-                            ArrayList(
-                                    updatedReference.equationsNut.filter {
-                                        it.uuid != equation.uuid
-                                    }
-                            )
+                            updatedReference.equationsNut.filter {
+                                it.uuid != equation.uuid
+                            }.toMutableList()
                 } else {
                     // Associer l'équation (créer une nouvelle liste pour éviter des problèmes de
                     // référence)
-                    val newList = ArrayList(updatedReference.equationsNut)
+                    val newList = updatedReference.equationsNut.toMutableList()
                     newList.add(equation)
                     updatedReference.equationsNut = newList
                 }
@@ -649,8 +602,9 @@ class ReferenceEvViewModel(
                             "Erreur lors de la modification des équations nutritionnelles"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("ReferenceEvViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -662,54 +616,22 @@ class ReferenceEvViewModel(
 
         scope.launch {
             try {
-                // Création d'équations de démonstration pour le développement
-                val equations =
-                        listOf(
-                                Equation(
-                                        uuid = "equation-1",
-                                        name = "BEE Chien",
-                                        kind =
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .ENERGYDENSITY
-                                ),
-                                Equation(
-                                        uuid = "equation-2",
-                                        name = "BEE Chat",
-                                        kind =
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .ENERGYNEED
-                                ),
-                                Equation(
-                                        uuid = "equation-3",
-                                        name = "Poids métabolique",
-                                        kind = fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
-                                ),
-                                Equation(
-                                        uuid = "equation-4",
-                                        name = "Densité énergétique",
-                                        kind =
-                                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind
-                                                        .ENERGYDENSITY
-                                )
-                        )
-
+                val equations = equationRepository?.getAllEquations() ?: emptyList()
                 _availableEquations.value = equations
-
-                // Vérification des équations disponibles
-                for (i in equations.indices) {
-                    val equation = equations[i]
-                }
-
-                // Vérification des équations associées à la référence courante
-                _currentReferenceEv.value.equationsNut.forEach { equation -> }
-
-                // Vérification des équations principales
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.rethrowIfCancellation()
+                AppLog.e("ReferenceEvViewModel", e.message ?: "Erreur", e)
                 _operationMessage.value = "Erreur lors du chargement des équations: ${e.message}"
+                _availableEquations.value = emptyList()
             } finally {
                 _loadingEquations.value = false
             }
         }
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
+        scope.cancel()
     }
 }

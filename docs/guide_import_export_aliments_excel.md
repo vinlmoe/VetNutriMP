@@ -72,12 +72,19 @@ Pour chaque nutriment, deux colonnes sont créées :
 - AG40 à AG226 (différents acides gras : C4:0, C6:0, C8:0, etc.)
 - CHOLES (Cholestérol), O3 (Omega 3), O6 (Omega 6), EPADHA (EPA et DHA)
 
+#### Acides aminés (22 nutriments)
+- ALANINE, ARGININE, ASPARAGINE, ASPARATE, CYSTEINE
+- GLUTAMATE, GLUTAMINE, GLYCINE, HISTIDINE, ISOLEUCINE
+- LEUCINE, LYSINE, METHIONINE, PHENYLALANINE, PROLINE
+- PYRROLYSINE, SELENOCYSTEINE, SERINE, THREONINE, TRYPTOPHANE
+- TYROSINE, VALINE
+
 #### Autres nutriments (12 nutriments)
 - TAURINE, CARNITINE, FOS, MOS
 - SACC (Saccharose), FRUCT (Fructose), LACTO (Lactose), MALT (Maltose)
 - AcOx (Acide Oxalique), GAL (Galactose), GLUCOSE, DEXTROSE
 
-**Total : 76 nutriments × 2 colonnes = 152 colonnes de nutriments**
+**Total : 98 nutriments × 2 colonnes = 196 colonnes de nutriments**
 
 > **Note**: Les nutriments d'énergie (9 éléments) et d'analyse (10 éléments) ont été exclus car ils sont généralement calculés automatiquement ou ne sont pas directement saisis dans les aliments de base.
 

@@ -1,6 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Utils
 
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /** Utilitaire pour gérer les nutriments et leurs catégories */
 object NutrientUtils {
@@ -137,15 +138,15 @@ object NutrientUtils {
     /** Obtient le nom d'affichage pour une catégorie */
     fun getCategoryDisplayName(category: MainNutrientEnum): String {
         return when (category) {
-            MainNutrientEnum.BASE -> "Macronutriments"
-            MainNutrientEnum.MACRO -> "Minéraux essentiels"
-            MainNutrientEnum.MIN -> "Oligo-éléments"
-            MainNutrientEnum.VITAM -> "Vitamines"
-            MainNutrientEnum.LIPID -> "Acides gras"
-            MainNutrientEnum.AMA -> "Acides aminés"
-            MainNutrientEnum.ANA -> "Analyses et ratios"
-            MainNutrientEnum.OTHER -> "Autres nutriments"
-            MainNutrientEnum.ENERGIE -> "Énergie"
+            MainNutrientEnum.BASE -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.BASE_NAME.translate()
+            MainNutrientEnum.MACRO -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.MACRO_NAME.translate()
+            MainNutrientEnum.MIN -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.MIN_NAME.translate()
+            MainNutrientEnum.VITAM -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.VITAM_NAME.translate()
+            MainNutrientEnum.LIPID -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.LIPID_NAME.translate()
+            MainNutrientEnum.AMA -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.AMA_NAME.translate()
+            MainNutrientEnum.ANA -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.ANA_NAME.translate()
+            MainNutrientEnum.OTHER -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.OTHER_NAME.translate()
+            MainNutrientEnum.ENERGIE -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.ENERGIE_NAME.translate()
             else -> category.label
         }
     }
@@ -153,15 +154,15 @@ object NutrientUtils {
     /** Obtient la description pour une catégorie */
     fun getCategoryDescription(category: MainNutrientEnum): String {
         return when (category) {
-            MainNutrientEnum.BASE -> "Protéines, lipides, glucides, fibres, énergie"
-            MainNutrientEnum.MACRO -> "Calcium, phosphore, sodium, potassium, magnésium, chlore"
-            MainNutrientEnum.MIN -> "Fer, zinc, cuivre, manganèse, iode, sélénium"
-            MainNutrientEnum.VITAM -> "Vitamines liposolubles et hydrosolubles"
-            MainNutrientEnum.LIPID -> "Acides gras saturés, mono-insaturés, poly-insaturés"
-            MainNutrientEnum.AMA -> "Acides aminés essentiels et non essentiels"
-            MainNutrientEnum.ANA -> "Ratios et analyses nutritionnelles"
-            MainNutrientEnum.OTHER -> "Taurine, carnitine, prébiotiques"
-            MainNutrientEnum.ENERGIE -> "Densité énergétique et métabolisme"
+            MainNutrientEnum.BASE -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.BASE_DESC.translate()
+            MainNutrientEnum.MACRO -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.MACRO_DESC.translate()
+            MainNutrientEnum.MIN -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.MIN_DESC.translate()
+            MainNutrientEnum.VITAM -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.VITAM_DESC.translate()
+            MainNutrientEnum.LIPID -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.LIPID_DESC.translate()
+            MainNutrientEnum.AMA -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.AMA_DESC.translate()
+            MainNutrientEnum.ANA -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.ANA_DESC.translate()
+            MainNutrientEnum.OTHER -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.OTHER_DESC.translate()
+            MainNutrientEnum.ENERGIE -> fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.NutrientCategory.ENERGIE_DESC.translate()
             else -> ""
         }
     }

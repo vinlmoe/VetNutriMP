@@ -20,5 +20,6 @@ enum class ContEnum(override val label: String, private val id: Int) : Labelable
     companion object {
         fun byId(id: Int) = values().find { it.id == id } ?: NO
         fun getByName(str: String) = values().find { it.name == str } ?: NO
+        fun getByLabel(label: String): ContEnum = values().find { it.label.equals(label, ignoreCase = true) } ?: NO
     }
 }

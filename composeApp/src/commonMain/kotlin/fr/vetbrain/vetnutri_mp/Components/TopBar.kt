@@ -3,11 +3,12 @@ package fr.vetbrain.vetnutri_mp.Components
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 
 @Composable
@@ -38,7 +39,7 @@ fun TopBar(
                         ) {
                                 Icon(
                                         Icons.Default.Settings,
-                                        contentDescription = "Paramètres",
+                                        contentDescription = translate("topBar.settings"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }
@@ -68,8 +69,8 @@ fun TopBar(
                                 modifier = Modifier.size(AppSizes.iconSizeLarge)
                         ) {
                                 Icon(
-                                        Icons.Default.ArrowBack,
-                                        contentDescription = "Retour",
+                                        Icons.AutoMirrored.Default.ArrowBack,
+                                        contentDescription = translate("topBar.back"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }
@@ -93,7 +94,7 @@ fun TopBar(
                         ) {
                                 Icon(
                                         Icons.Default.Settings,
-                                        contentDescription = "Paramètres",
+                                        contentDescription = translate("topBar.settings"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }
@@ -123,8 +124,8 @@ fun TopBarSimple(
                                 modifier = Modifier.size(AppSizes.iconSizeLarge)
                         ) {
                                 Icon(
-                                        Icons.Default.ArrowBack,
-                                        contentDescription = "Retour",
+                                        Icons.AutoMirrored.Default.ArrowBack,
+                                        contentDescription = translate("topBar.back"),
                                         modifier = Modifier.size(AppSizes.iconSizeMedium)
                                 )
                         }

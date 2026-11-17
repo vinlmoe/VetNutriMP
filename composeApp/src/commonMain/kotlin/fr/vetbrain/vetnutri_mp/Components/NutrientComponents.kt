@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
+import fr.vetbrain.vetnutri_mp.Enumer.CustomNutrient
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro
@@ -23,6 +24,8 @@ import fr.vetbrain.vetnutri_mp.Enumer.NutrientOther
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant pour afficher une section de valeurs nutritionnelles avec un fond coloré.
@@ -43,6 +46,9 @@ fun NutrientSection(
         couleurArrierePlan: Color,
         modifier: Modifier = Modifier
 ) {
+        BoxWithConstraints(modifier = modifier) {
+                val isWideScreen = maxWidth.compareTo(600.dp) >= 0 // Seuil pour considérer un écran comme large
+
         Card(
                 modifier = modifier.fillMaxWidth(),
                 elevation = 4.dp,
@@ -60,43 +66,115 @@ fun NutrientSection(
 
                         Divider(color = MaterialTheme.colors.onSurface.copy(alpha = 0.2f))
 
-                        nutriments.forEach { nutriment ->
-                                val valeur = valeursNutriments[nutriment] ?: ""
-                                val aErreur = erreursNutriments[nutriment] == true
+                        if (isWideScreen) {
+                                // Mise en page sur 2 colonnes pour les écrans larges
+                                val nutrimentsChunks = nutriments.chunked((nutriments.size + 1) / 2)
 
                                 Row(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
-                                        // Obtenir le nom à afficher selon le type de nutriment
-                                        val nomAffiche =
-                                                when (nutriment) {
-                                                        is NutrientLipid ->
-                                                                (nutriment as NutrientLipid)
-                                                                        .nameToString()
-                                                        is NutrientMacro ->
-                                                                (nutriment as NutrientMacro)
-                                                                        .nameToString()
-                                                        is NutrientMain ->
-                                                                (nutriment as NutrientMain)
-                                                                        .nameToString()
-                                                        is NutrientMin ->
-                                                                (nutriment as NutrientMin)
-                                                                        .nameToString()
-                                                        is NutrientOther ->
-                                                                (nutriment as NutrientOther)
-                                                                        .nameToString()
-                                                        is NutrientVitam ->
-                                                                (nutriment as NutrientVitam)
-                                                                        .displayName
-                                                        is AAEnum -> (nutriment as AAEnum).nom
-                                                        else -> nutriment.toString()
+                                        // Colonne gauche
+                                        Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                nutrimentsChunks.getOrNull(0)?.forEach { nutriment
+                                                        ->
+                                                        NutrientRow(
+                                                                nutriment = nutriment,
+                                                                valeur =
+                                                                        valeursNutriments[nutriment]
+                                                                                ?: "",
+                                                                aErreur =
+                                                                        erreursNutriments[
+                                                                                nutriment] == true,
+                                                                onValueChange = { nouvelleValeur ->
+                                                                        valeursNutriments[
+                                                                                nutriment] =
+                                                                                nouvelleValeur
+                                                                        // Validation en temps réel
+                                                                        if (nouvelleValeur
+                                                                                        .isNotBlank()
+                                                                        ) {
+                                                                                val valeurDouble =
+                                                                                        nouvelleValeur
+                                                                                                .replace(
+                                                                                                        ",",
+                                                                                                        "."
+                                                                                                )
+                                                                                                .toDoubleOrNull()
+                                                                                erreursNutriments[
+                                                                                        nutriment] =
+                                                                                        valeurDouble ==
+                                                                                                null ||
+                                                                                                valeurDouble <
+                                                                                                        0
+                                                                        } else {
+                                                                                erreursNutriments
+                                                                                        .remove(
+                                                                                                nutriment
+                                                                                        )
+                                                                        }
+                                                                }
+                                                        )
                                                 }
+                                        }
 
-                                        Text(text = nomAffiche, modifier = Modifier.weight(1f))
-
-                                        OutlinedTextField(
-                                                value = valeur,
+                                        // Colonne droite
+                                        Column(
+                                                modifier = Modifier.weight(1f),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                                nutrimentsChunks.getOrNull(1)?.forEach { nutriment
+                                                        ->
+                                                        NutrientRow(
+                                                                nutriment = nutriment,
+                                                                valeur =
+                                                                        valeursNutriments[nutriment]
+                                                                                ?: "",
+                                                                aErreur =
+                                                                        erreursNutriments[
+                                                                                nutriment] == true,
+                                                                onValueChange = { nouvelleValeur ->
+                                                                        valeursNutriments[
+                                                                                nutriment] =
+                                                                                nouvelleValeur
+                                                                        // Validation en temps réel
+                                                                        if (nouvelleValeur
+                                                                                        .isNotBlank()
+                                                                        ) {
+                                                                                val valeurDouble =
+                                                                                        nouvelleValeur
+                                                                                                .replace(
+                                                                                                        ",",
+                                                                                                        "."
+                                                                                                )
+                                                                                                .toDoubleOrNull()
+                                                                                erreursNutriments[
+                                                                                        nutriment] =
+                                                                                        valeurDouble ==
+                                                                                                null ||
+                                                                                                valeurDouble <
+                                                                                                        0
+                                                                        } else {
+                                                                                erreursNutriments
+                                                                                        .remove(
+                                                                                                nutriment
+                                                                                        )
+                                                                        }
+                                                                }
+                                                        )
+                                                }
+                                        }
+                                }
+                        } else {
+                                // Mise en page sur 1 colonne pour les écrans fins
+                                nutriments.forEach { nutriment ->
+                                        NutrientRow(
+                                                nutriment = nutriment,
+                                                valeur = valeursNutriments[nutriment] ?: "",
+                                                aErreur = erreursNutriments[nutriment] == true,
                                                 onValueChange = { nouvelleValeur ->
                                                         valeursNutriments[nutriment] =
                                                                 nouvelleValeur
@@ -112,39 +190,64 @@ fun NutrientSection(
                                                         } else {
                                                                 erreursNutriments.remove(nutriment)
                                                         }
-                                                },
-                                                modifier = Modifier.width(120.dp),
-                                                keyboardOptions =
-                                                        KeyboardOptions(
-                                                                keyboardType = KeyboardType.Decimal
-                                                        ),
-                                                colors =
-                                                        TextFieldDefaults.outlinedTextFieldColors(
-                                                                focusedBorderColor =
-                                                                        if (aErreur) Color.Red
-                                                                        else VetNutriColors.Primary,
-                                                                unfocusedBorderColor =
-                                                                        if (aErreur) Color.Red
-                                                                        else Color.Gray,
-                                                                backgroundColor =
-                                                                        Color.White.copy(
-                                                                                alpha = 0.8f
-                                                                        ),
-                                                                errorBorderColor = Color.Red
-                                                        ),
-                                                isError = aErreur,
-                                                trailingIcon = {
-                                                        Text(
-                                                                text = nutriment.unite,
-                                                                style =
-                                                                        MaterialTheme.typography
-                                                                                .caption
-                                                        )
                                                 }
                                         )
                                 }
                         }
                 }
+        }
+        }
+}
+
+@Composable
+private fun NutrientRow(
+        nutriment: Nutrient,
+        valeur: String,
+        aErreur: Boolean,
+        onValueChange: (String) -> Unit
+) {
+        // Obtenir le nom à afficher selon le type de nutriment
+        val nomAffiche =
+                when (nutriment) {
+                        is NutrientLipid -> (nutriment as NutrientLipid).nameToString()
+                        is NutrientMacro -> (nutriment as NutrientMacro).nameToString()
+                        is NutrientMain -> (nutriment as NutrientMain).nameToString()
+                        is NutrientMin -> (nutriment as NutrientMin).nameToString()
+                        is NutrientOther -> (nutriment as NutrientOther).nameToString()
+                        is NutrientVitam -> (nutriment as NutrientVitam).displayName
+                        is AAEnum -> (nutriment as AAEnum).nom
+                        is CustomNutrient -> nutriment.nameToString()
+                        else -> nutriment.toString()
+                }
+
+        Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                Text(text = nomAffiche, modifier = Modifier.weight(1f))
+
+                OutlinedTextField(
+                        value = valeur,
+                        onValueChange = onValueChange,
+                        modifier = Modifier.width(120.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        colors =
+                                TextFieldDefaults.outlinedTextFieldColors(
+                                        focusedBorderColor =
+                                                if (aErreur) Color.Red else VetNutriColors.Primary,
+                                        unfocusedBorderColor =
+                                                if (aErreur) Color.Red else Color.Gray,
+                                        backgroundColor = Color.White.copy(alpha = 0.8f),
+                                        errorBorderColor = Color.Red
+                                ),
+                        isError = aErreur,
+                        trailingIcon = {
+                                Text(
+                                        text = nutriment.unite,
+                                        style = MaterialTheme.typography.caption
+                                )
+                        }
+                )
         }
 }
 
@@ -185,14 +288,14 @@ fun AnalyseNutritionnelleCard(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Analyse nutritionnelle",
+                                        text = translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.h6,
                                         color = VetNutriColors.Primary
                                 )
 
                                 TextButton(onClick = onModeDivisionChange) {
                                         Text(
-                                                text = "Par $typeDiviseur",
+                                                text = translate("nutrientComponents.byDivisorType", typeDiviseur),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )
@@ -212,8 +315,8 @@ fun AnalyseNutritionnelleCard(
                                         Text(
                                                 text =
                                                         if (diviseur <= 0)
-                                                                "Impossible de calculer les apports (diviseur nul)"
-                                                        else "Aucun nutriment à afficher",
+                                                                translate("nutrientComponents.divisorNullError")
+                                                        else translate("nutrientComponents.noNutrientToDisplay"),
                                                 style = MaterialTheme.typography.body2,
                                                 color = Color.Gray
                                         )
@@ -231,7 +334,7 @@ fun AnalyseNutritionnelleCard(
                                                 horizontalArrangement = Arrangement.SpaceBetween
                                         ) {
                                                 Text(
-                                                        text = "Nutriment",
+                                                        text = translate("nutrientComponents.columnNutrient"),
                                                         style =
                                                                 MaterialTheme.typography.subtitle2
                                                                         .copy(
@@ -242,7 +345,7 @@ fun AnalyseNutritionnelleCard(
                                                         modifier = Modifier.weight(2f)
                                                 )
                                                 Text(
-                                                        text = "Valeur",
+                                                        text = translate("nutrientComponents.columnValue"),
                                                         style =
                                                                 MaterialTheme.typography.subtitle2
                                                                         .copy(
@@ -253,7 +356,7 @@ fun AnalyseNutritionnelleCard(
                                                         modifier = Modifier.weight(1f)
                                                 )
                                                 Text(
-                                                        text = "Unité",
+                                                        text = translate("nutrientComponents.columnUnit"),
                                                         style =
                                                                 MaterialTheme.typography.subtitle2
                                                                         .copy(
@@ -387,7 +490,7 @@ fun AnalyseNutritionnelleCompacte(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Analyse nutritionnelle",
+                                        text = translate(LocalizationKeys.AnalNut.NUTR_ANALYSIS_TITLE),
                                         style = MaterialTheme.typography.subtitle1,
                                         color = VetNutriColors.Primary
                                 )
@@ -398,7 +501,7 @@ fun AnalyseNutritionnelleCompacte(
                                                 PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                                 ) {
                                         Text(
-                                                text = "Par $typeDiviseur",
+                                                text = translate("nutrientComponents.byDivisorType", typeDiviseur),
                                                 style = MaterialTheme.typography.caption,
                                                 color = VetNutriColors.Primary
                                         )

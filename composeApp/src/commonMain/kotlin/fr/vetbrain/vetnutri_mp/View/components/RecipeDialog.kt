@@ -1,5 +1,7 @@
-package fr.vetbrain.vetnutri_mp.View.components
+package fr.vetbrain.vetnutri_mp.View.Components
 
+import fr.vetbrain.vetnutri_mp.ViewModel.RecipeLibrary
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -22,15 +24,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Data.Ration
-import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
-import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import kotlinx.coroutines.launch
 
 @Composable
 fun RecipeDialog(
-        repository: RecipeRepository,
-        foodRepository: FoodRepository,
+        library: RecipeLibrary,
         onApply: (Ration) -> Unit,
         onClose: () -> Unit
 ) {
@@ -40,19 +41,7 @@ fun RecipeDialog(
     var showCreateDialog by remember { mutableStateOf(false) }
     var newName by remember { mutableStateOf("") }
 
-    // Fonction helper pour charger les recettes avec les détails des aliments
-    suspend fun loadRecipesWithFoodDetails(): List<Ration> {
-        val loadedRecipes = repository.getAllRecipes()
-        return loadedRecipes.map { recipe ->
-            val alimentsWithDetails =
-                    recipe.alimentMutableList.map { aliment ->
-                        val alimentDetails =
-                                aliment.refAlimUnif?.let { foodRepository.getFoodById(it) }
-                        aliment.copy(aliment = alimentDetails)
-                    }
-            recipe.copy(alimentMutableList = alimentsWithDetails.toMutableList())
-        }
-    }
+    suspend fun loadRecipesWithFoodDetails(): List<Ration> = library.loadRecipes()
 
     LaunchedEffect(Unit) {
         isLoading = true
@@ -63,9 +52,9 @@ fun RecipeDialog(
         }
     }
 
-    AlertDialog(
+    AppAlertDialog(
             onDismissRequest = onClose,
-            title = { Text("Recettes") },
+            title = { Text(translate(LocalizationKeys.Recipe.TITLE)) },
             text = {
                 if (isLoading) {
                     CircularProgressIndicator()
@@ -82,12 +71,12 @@ fun RecipeDialog(
                         ) {
                             Icon(
                                     imageVector = Icons.Default.Add,
-                                    contentDescription = "Créer une recette",
+                                    contentDescription = translate("recipe.createNew"),
                                     tint = VetNutriColors.Primary,
                                     modifier = Modifier.size(24.dp)
                             )
                             Text(
-                                    text = "Créer une recette",
+                                    text = translate("recipe.createNew"),
                                     color = VetNutriColors.Primary,
                                     style = MaterialTheme.typography.button
                             )
@@ -119,7 +108,7 @@ fun RecipeDialog(
                                             // Bouton Appliquer avec icône
                                             Icon(
                                                     imageVector = Icons.Default.Check,
-                                                    contentDescription = "Appliquer la recette",
+                                                    contentDescription = translate(LocalizationKeys.Recipe.CONTENT_APPLY),
                                                     tint = VetNutriColors.Primary,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
@@ -130,12 +119,12 @@ fun RecipeDialog(
                                             // Bouton Cloner avec icône
                                             Icon(
                                                     imageVector = Icons.Default.ContentCopy,
-                                                    contentDescription = "Cloner la recette",
+                                                    contentDescription = translate(LocalizationKeys.Recipe.CONTENT_CLONE),
                                                     tint = VetNutriColors.Secondary,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
                                                                 scope.launch {
-                                                                    repository.cloneRecipe(r.uuid)
+                                                                    library.cloneRecipe(r.uuid)
                                                                     recipes =
                                                                             loadRecipesWithFoodDetails()
                                                                 }
@@ -145,12 +134,12 @@ fun RecipeDialog(
                                             // Bouton Supprimer avec icône
                                             Icon(
                                                     imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Supprimer la recette",
-                                                    tint = Color.Red,
+                                                    contentDescription = translate(LocalizationKeys.Recipe.CONTENT_DELETE),
+                                                    tint = VetNutriColors.Error,
                                                     modifier =
                                                             Modifier.size(24.dp).clickable {
                                                                 scope.launch {
-                                                                    repository.deleteRecipe(r.uuid)
+                                                                    library.deleteRecipe(r.uuid)
                                                                     recipes =
                                                                             loadRecipesWithFoodDetails()
                                                                 }
@@ -171,7 +160,11 @@ fun RecipeDialog(
                                                             (kotlin.math.round(q * 10.0) / 10.0)
                                                                     .toString()
                                                     Text(
-                                                            "- $nom: $qStr g",
+                                                            translate(
+                                                                    "recipe.foodLine",
+                                                                    nom.toString(),
+                                                                    qStr
+                                                            ),
                                                             style = MaterialTheme.typography.caption
                                                     )
                                                 }
@@ -187,7 +180,7 @@ fun RecipeDialog(
             confirmButton = {
                 Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Fermer",
+                        contentDescription = translate(LocalizationKeys.AnalNut.CLOSE),
                         tint = VetNutriColors.Primary,
                         modifier = Modifier.size(24.dp).clickable { onClose() }
                 )
@@ -197,18 +190,18 @@ fun RecipeDialog(
     if (showCreateDialog) {
         AlertDialog(
                 onDismissRequest = { showCreateDialog = false },
-                title = { Text("Créer une recette") },
+                title = { Text(translate("recipe.createNew")) },
                 text = {
                     OutlinedTextField(
                             value = newName,
                             onValueChange = { newName = it },
-                            label = { Text("Nom de la recette") }
+                            label = { Text(translate(LocalizationKeys.Recipe.NAME_LABEL)) }
                     )
                 },
                 confirmButton = {
                     Icon(
                             imageVector = Icons.Default.Check,
-                            contentDescription = "Créer la recette",
+                            contentDescription = translate(LocalizationKeys.Recipe.CONTENT_CREATE),
                             tint = if (newName.isNotBlank()) VetNutriColors.Primary else Color.Gray,
                             modifier =
                                     Modifier.size(24.dp)
@@ -216,11 +209,7 @@ fun RecipeDialog(
                                                     enabled = newName.isNotBlank(),
                                                     onClick = {
                                                         scope.launch {
-                                                            repository.createRecipe(
-                                                                    newName,
-                                                                    null,
-                                                                    null
-                                                            )
+                                                            library.createRecipe(newName)
                                                             recipes = loadRecipesWithFoodDetails()
                                                             newName = ""
                                                             showCreateDialog = false
@@ -232,7 +221,7 @@ fun RecipeDialog(
                 dismissButton = {
                     Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Annuler",
+                            contentDescription = translate(LocalizationKeys.General.CANCEL),
                             tint = Color.Gray,
                             modifier = Modifier.size(24.dp).clickable { showCreateDialog = false }
                     )

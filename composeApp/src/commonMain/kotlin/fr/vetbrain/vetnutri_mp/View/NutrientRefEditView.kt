@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,6 +19,7 @@ import fr.vetbrain.vetnutri_mp.Enumer.UnitEnum
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.NutrientRefViewModel
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
 
 /**
  * Vue pour l'édition des besoins nutritionnels d'une référence par catégorie
@@ -45,7 +47,7 @@ fun NutrientRefEditView(
     Scaffold(
             topBar = {
                 TopBarSimple(
-                        title = "Édition des besoins - ${nutrientType.name}",
+                        title = translate("reference.editionBesoins", nutrientType.name),
                         onNavigateBack = onNavigateBack
                 )
             }
@@ -57,27 +59,27 @@ fun NutrientRefEditView(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        "Nutriment",
+                        translate("nutrientComponents.columnNutrient"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Valeur",
+                        translate("nutrientComponents.columnValue"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Unité physique",
+                        translate("auto.view.nutrientrefeditview.unite_physique"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Unité besoin",
+                        translate("auto.view.nutrientrefeditview.unite_besoin"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f).padding(horizontal = 8.dp)
                 )
                 Text(
-                        "Référence",
+                        translate("auto.view.nutrientrefeditview.reference"),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(2f).padding(horizontal = 8.dp)
                 )
@@ -116,14 +118,14 @@ fun NutrientRefEditView(
                 OutlinedButton(
                         onClick = { viewModel.resetNutrientsForType(nutrientType) },
                         modifier = Modifier.padding(end = 8.dp)
-                ) { Text("Réinitialiser") }
+                ) { Text(translate("crossConsultation.reset")) }
 
                 Button(
                         onClick = {
                             viewModel.saveNutrientsForType(nutrientType)
                             onNavigateBack()
                         }
-                ) { Text("Enregistrer") }
+                ) { Text(translate("auto.view.settingsview.enregistrer")) }
             }
         }
     }
@@ -187,7 +189,11 @@ private fun NutrientRefItem(
 
             DropdownMenu(
                     expanded = showUnitEnumDropdown,
-                    onDismissRequest = { showUnitEnumDropdown = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            showUnitEnumDropdown = false 
+                        }
+                    }
             ) {
                 compatibleUnits.forEach { unit ->
                     DropdownMenuItem(
@@ -209,7 +215,11 @@ private fun NutrientRefItem(
 
             DropdownMenu(
                     expanded = showUnitDropdown,
-                    onDismissRequest = { showUnitDropdown = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            showUnitDropdown = false 
+                        }
+                    }
             ) {
                 UnitReqEnum.values().forEach { unit ->
                     DropdownMenuItem(
@@ -231,7 +241,11 @@ private fun NutrientRefItem(
 
             DropdownMenu(
                     expanded = showBiblioDropdown,
-                    onDismissRequest = { showBiblioDropdown = false }
+                    onDismissRequest = {
+                        if (!isIosPlatform) {
+                            showBiblioDropdown = false 
+                        }
+                    }
             ) {
                 // Option pour aucune référence
                 DropdownMenuItem(
@@ -239,7 +253,7 @@ private fun NutrientRefItem(
                             onBiblioRefChange(null)
                             showBiblioDropdown = false
                         }
-                ) { Text("Aucune") }
+                ) { Text(translate("crossConsultation.refNone")) }
 
                 // Liste des références disponibles
                 availableBiblioRefs.forEach { biblioRef ->

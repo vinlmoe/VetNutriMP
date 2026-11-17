@@ -1,11 +1,17 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import androidx.lifecycle.ViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.compose.runtime.mutableStateOf
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository
+import fr.vetbrain.vetnutri_mp.Service.CrossRefService
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,10 +20,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
 /** ViewModel pour la gestion des références bibliographiques */
-class BiblioRefViewModel(private val repository: BiblioRefRepository) {
+class BiblioRefViewModel(private val repository: BiblioRefRepository) : ViewModel() {
     // Utilisation du dispatcher de la plateforme
     private val dispatcher = PlatformDispatcher().provideMainDispatcher()
-    private val viewModelScope = CoroutineScope(dispatcher)
+    private val job = SupervisorJob()
+    private val viewModelScope = CoroutineScope(dispatcher + job)
 
     // État de toutes les références bibliographiques
     val allBiblioRefs: StateFlow<List<BiblioRef>> =
@@ -47,6 +54,13 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     private val _operationMessage = MutableStateFlow<String?>(null)
     val operationMessage: StateFlow<String?> = _operationMessage
 
+    // État DOI
+    private val _doiLoading = MutableStateFlow(false)
+    val doiLoading: StateFlow<Boolean> = _doiLoading
+
+    private val _doiError = MutableStateFlow("")
+    val doiError: StateFlow<String> = _doiError
+
     /** Force le rechargement des références depuis le repository */
     fun refreshBiblioRefs() {
         viewModelScope.launch {
@@ -55,7 +69,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 kotlinx.coroutines.withTimeoutOrNull(2000) {
                     repository.getAllBiblioRefs().collect { refs -> }
                 }
-            } catch (e: Exception) {}
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("BiblioRefViewModel", "Exception ignorée : ${e.message}") }
         }
     }
 
@@ -83,8 +97,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             _operationMessage.value = "Erreur lors du chargement: ${e.message}"
-            e.printStackTrace()
+            AppLog.e("BiblioRefViewModel", e.message ?: "Erreur", e)
         } finally {
             _actionInProgress.value = false
         }
@@ -140,9 +155,30 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
         comments.value = value
     }
 
-    /** Met à jour la valeur du champ bibtex */
-    fun updateBibtex(value: String) {
-        bibtex.value = value
+    /** Pré-remplit le formulaire depuis un DOI via l'API CrossRef */
+    fun importFromDoi(doi: String) {
+        if (doi.isBlank()) return
+        viewModelScope.launch {
+            _doiLoading.value = true
+            _doiError.value = ""
+            try {
+                val result = CrossRefService.importDoi(doi)
+                firstAuthor.value = result.firstAuthor
+                year.value = if (result.year > 0) result.year.toString() else year.value
+                completeRef.value = result.completeRef
+                validateForm()
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                _doiError.value = "DOI introuvable ou API inaccessible"
+            } finally {
+                _doiLoading.value = false
+            }
+        }
+    }
+
+    /** Efface le message d'erreur DOI */
+    fun clearDoiError() {
+        _doiError.value = ""
     }
 
     /** Sauvegarde la référence bibliographique actuelle */
@@ -203,8 +239,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 // Réinitialiser le formulaire après sauvegarde
                 initForEdit()
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("BiblioRefViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -229,6 +266,7 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                 refreshBiblioRefs()
                 _operationMessage.value = "Référence dupliquée avec succès"
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
             }
         }
@@ -248,8 +286,9 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
                     initForEdit()
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _operationMessage.value = "Erreur: ${e.message}"
-                e.printStackTrace()
+                AppLog.e("BiblioRefViewModel", e.message ?: "Erreur", e)
             } finally {
                 _actionInProgress.value = false
             }
@@ -259,5 +298,11 @@ class BiblioRefViewModel(private val repository: BiblioRefRepository) {
     /** Efface le message d'opération */
     fun clearOperationMessage() {
         _operationMessage.value = null
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
+        viewModelScope.cancel()
     }
 }

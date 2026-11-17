@@ -5,6 +5,14 @@ import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlin.uuid.ExperimentalUuidApi
 
+/**
+ * Ration alimentaire (liste d'aliments + méta).
+ * - Stocke quantités, espèce, statut actuel/recette, description.
+ * - Fournit accès nutriments, quantités totales et densité énergétique (sync/suspend).
+ * - Étape de plan évolutif : `poids` propre (null = poids réel de la consultation) et variables
+ *   d'énergie propres (`suppVarp`), prioritaires sur celles de la consultation, et nom libre
+ *   facultatif (`nomLibre`).
+ */
 @OptIn(ExperimentalUuidApi::class)
 data class Ration(
         var uuid: String = genUUID(),
@@ -16,8 +24,37 @@ data class Ration(
         var espece: String? = null,
         var recette: Boolean = false,
         var description: String = "",
-        var alimentMutableList: MutableList<AlimentRation> = mutableListOf()
+        var alimentMutableList: MutableList<AlimentRation> = mutableListOf(),
+        var etapeEvolutive: Boolean = false,
+        var poids: Double? = null,
+        // Plan évolutif : UUID de la ration sous laquelle cette étape est rangée (null = ration
+        // principale). La ration parente est l'étape au poids réel du plan.
+        var refRationParente: String? = null,
+        var suppVarp: MutableList<SupplementalvariableP> = mutableListOf(),
+        // Plan évolutif : nom libre de l'étape (ex. « Croissance »), placé devant son poids et ses
+        // variables dans le nom affiché ; null = nom automatique seul
+        var nomLibre: String? = null
 ) {
+        /** Copie indépendante comme proposition, sans conserver les liens du plan source. */
+        fun copyToConsultation(consultationId: String, order: Int): Ration {
+                val newId = genUUID()
+                return copy(
+                        uuid = newId,
+                        idConsult = consultationId,
+                        number = order,
+                        actual = false,
+                        recette = false,
+                        etapeEvolutive = false,
+                        refRationParente = null,
+                        poids = null,
+                        suppVarp = mutableListOf(),
+                        nomLibre = null,
+                        alimentMutableList = alimentMutableList.map {
+                                it.copy(uuid = genUUID(), refRation = newId)
+                        }.toMutableList()
+                )
+        }
+
         fun getAlimentByUUID(uuiDalim: String): AlimentRation {
                 return alimentMutableList.last { al -> al.uuid == uuiDalim }
         }
@@ -64,14 +101,12 @@ data class Ration(
          * Calcule la densité énergétique moyenne de la ration
          *
          * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
-         * @param preferences Préférences de l'espèce pour les équations complémentaires
-         * @param equationRepository Repository des équations pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations énergétiques
          * @return La densité énergétique moyenne
          */
         suspend fun getDensiteEnergetiqueMoyenne(
                 referenceEv: ReferenceEv? = null,
-                preferences: PreferencesEspece? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+                equationRepository: EquationSource? = null
         ): Double {
                 val quantiteTotale = getQuantiteTotale()
 
@@ -83,7 +118,7 @@ data class Ration(
 
                 for (aliment in alimentMutableList) {
                         totalEnergie +=
-                                aliment.getEnergie(referenceEv, preferences, equationRepository)
+                                aliment.getEnergie(referenceEv, equationRepository)
                 }
 
                 return totalEnergie / quantiteTotale

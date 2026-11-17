@@ -1,5 +1,10 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.cancel
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Service.BackupService
 import fr.vetbrain.vetnutri_mp.Service.BackupService.BackupMetadata
 import fr.vetbrain.vetnutri_mp.Utils.PlatformDispatcher
@@ -12,12 +17,15 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.toLocalDateTime
 
 /**
- * ViewModel pour la gestion des sauvegardes et de la restauration
+ * Gestion sauvegardes/restauration.
+ * - Charge la liste des backups via `BackupService`.
+ * - Pilote création, suppression et restauration avec suivi (progress, log, bilan).
+ * - Scope dédié (pas de ViewModel Android) sur le dispatcher plateforme.
  */
 class BackupRestoreViewModel(
     private val backupService: BackupService,
     private val platformDispatcher: PlatformDispatcher
-) {
+) : ViewModel() {
     private val coroutineScope: CoroutineScope = kotlinx.coroutines.CoroutineScope(platformDispatcher.provideIODispatcher())
     
     private val _backups = MutableStateFlow<List<BackupMetadata>>(emptyList())
@@ -57,6 +65,7 @@ class BackupRestoreViewModel(
                 val availableBackups = backupService.getAvailableBackups()
                 _backups.value = availableBackups
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors du chargement des sauvegardes: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -80,6 +89,7 @@ class BackupRestoreViewModel(
                     _error.value = "Erreur lors de la création de la sauvegarde: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la création de la sauvegarde: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -120,6 +130,7 @@ class BackupRestoreViewModel(
                     _restoreLog.value = "Erreur: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la restauration: ${e.message}"
                 _restoreLog.value = "Erreur: ${e.message}"
             } finally {
@@ -148,6 +159,7 @@ class BackupRestoreViewModel(
                     _error.value = "Erreur lors de la suppression: ${result.exceptionOrNull()?.message}"
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 _error.value = "Erreur lors de la suppression: ${e.message}"
             }
         }
@@ -161,21 +173,14 @@ class BackupRestoreViewModel(
     }
     
     /**
-     * Effacer le log de restauration
-     */
-    fun clearRestoreLog() {
-        _restoreLog.value = ""
-    }
-    
-    /**
      * Formater la taille de fichier en format lisible
      */
     fun formatFileSize(bytes: Long): String {
         return when {
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} MB"
-            else -> "${bytes / (1024 * 1024 * 1024)} MB"
+            bytes < 1024 -> "$bytes ${translate("unite.octet")}"
+            bytes < 1024 * 1024 -> "${bytes / 1024} ${translate("unite.kilooctet")}"
+            bytes < 1024 * 1024 * 1024 -> "${bytes / (1024 * 1024)} ${translate("unite.megaoctet")}"
+            else -> "${bytes / (1024 * 1024 * 1024)} ${translate("unite.gigaoctet")}"
         }
     }
     
@@ -187,9 +192,15 @@ class BackupRestoreViewModel(
             val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(timestamp)
             val tz = kotlinx.datetime.TimeZone.currentSystemDefault()
             val localDateTime = instant.toLocalDateTime(tz)
-            "${localDateTime.dayOfMonth}/${localDateTime.monthNumber}/${localDateTime.year} ${localDateTime.hour}:${localDateTime.minute.toString().padStart(2, '0')}"
+            "${localDateTime.date.enTexte()} ${localDateTime.hour.toString().padStart(2, '0')}:${localDateTime.minute.toString().padStart(2, '0')}"
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             "Date inconnue"
         }
+    }
+
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+    override fun onCleared() {
+        coroutineScope.cancel()
     }
 }

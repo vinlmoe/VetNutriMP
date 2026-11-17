@@ -1,0 +1,420 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{booktabs,longtable,array,xcolor,hyperref,enumitem}
+\usepackage[htt]{hyphenat}
+\hypersetup{colorlinks=true,linkcolor=blue!50!black,urlcolor=blue!50!black}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\prio}[1]{\textbf{\textcolor{#1}{\textbullet}}}
+\setlist{nosep,leftmargin=*}
+
+\title{VetNutriMP --- Inventaire de la dette technique}
+\author{Audit statique du dépôt (branche \code{ccr-757b66d9-sd7476}, commit \code{ef0bc36})}
+\date{31 octobre 2026}
+
+\begin{document}
+\maketitle
+
+\section*{Méthode}
+Analyse statique par comptage (\code{grep}, \code{wc}, \code{md5sum}, \code{git ls-files}) sur
+\code{composeApp/src}. Aucune compilation ni exécution des tests n'a été faite. Les
+chiffres sont des indicateurs : un \code{catch} ou un \code{!!} n'est pas un défaut en soi,
+mais leur densité signale les zones fragiles.
+
+Légende des priorités : \prio{red!80!black}~haute, \prio{orange}~moyenne, \prio{gray}~basse.
+
+\section{Vue d'ensemble chiffrée}
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Indicateur & Valeur \\
+\midrule
+Fichiers Kotlin (\code{src}, toutes cibles) & 547 \\
+Lignes de code Kotlin & \(\approx 136\,600\) \\
+dont \code{View/} (101 fichiers) & 61\,329 (\(\approx 45\,\%\)) \\
+Lignes de tests (\code{commonTest} + \code{desktopTest}) & \(\approx 10\,500\) \\
+Ratio tests / production & \(\approx 7{,}7\,\%\) \\
+Fichiers de plus de 1\,000 lignes & 25 \\
+\code{catch (e: Exception|Throwable)} dans \code{commonMain} & 480 \\
+Opérateurs \code{!!} dans \code{commonMain} & 142 \\
+\code{mutableStateOf} dans \code{View/} & 669 \\
+Marqueurs \code{TODO}/\code{FIXME} & 16 \\
+Taille de \code{.git} & 59\,Mo \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Architecture}
+
+\subsection*{\prio{red!80!black} A1 --- Composables géants}
+La couche \code{View/} concentre près de la moitié du code. Les plus gros fichiers :
+\code{SettingsView.kt} (3\,386 l.), \code{AnimalDetailView.kt} (3\,287), \code{ImportUtils.kt} (3\,043),
+\code{AnalyseGraphiqueAlimentsView.kt} (3\,041), \code{RationsView.kt} (2\,981),
+\code{NewReferenceEvEditView.kt} (2\,695), \code{ConsultationFullScreenEditView.kt} (2\,305),
+\code{StartupScreen.kt} (2\,248), \code{MultiNutrientAdjustmentDialog.kt} (2\,231).
+\code{AnimalDetailView.kt} ne déclare que 3 fonctions \code{@Composable} pour 3\,287 lignes :
+ce sont des blocs monolithiques, difficiles à relire, à prévisualiser et à recomposer
+efficacement. Les 669 \code{mutableStateOf} dans les vues indiquent qu'une part importante
+de l'état d'écran vit hors des ViewModels.
+
+\emph{Action :} découper par section d'écran (un fichier par onglet ou panneau), en
+commençant par les fichiers modifiés le plus souvent.
+
+\subsection*{\prio{red!80!black} A2 --- Violation de la règle « Views $\not\to$ Repository »}
+\code{CLAUDE.md} interdit aux Composables de toucher les Repository ; 33 fichiers de
+\code{View/} les référencent pourtant, dont \code{RationsView}, \code{FoodSearchComponent},
+\code{MultiNutrientAdjustmentDialog}, \code{DetailNutrimentAnalysis}, \code{cardNutrient},
+les graphiques de \code{AnalyseGraphique/} et \code{SettingsSections/Recipe*}.
+La logique d'accès aux données et une partie des calculs se trouvent donc dans l'UI,
+hors de portée des tests unitaires.
+
+\emph{Action :} faire passer ces appels par des méthodes de ViewModel ; traiter en
+priorité les vues de calcul (analyse nutritionnelle, ajustement multi-nutriments).
+
+\subsection*{\prio{orange} A3 --- ViewModels « maison » et cycle de vie manuel}
+Aucun des 26 ViewModels n'hérite de \code{androidx.lifecycle.ViewModel} alors que la
+dépendance est déclarée. Chacun crée son \code{CoroutineScope(AppDispatchers.Main + job)}
+et expose un \code{clear()} appelé à la main dans des \code{DisposableEffect} de \code{App.kt}.
+Tout oubli d'appel fuit des coroutines. \code{AnimalDetailViewModel} (2\,665 l.),
+\code{EquationViewModel} (1\,178) et le couple \code{AnimalViewModel}/\code{AnimalListViewModel}
+cumulent trop de responsabilités.
+
+\subsection*{\prio{orange} A4 --- Scopes de coroutines non maîtrisés hors ViewModel}
+Scopes globaux sans annulation dans \code{BackupService}, \code{StartupService},
+\code{EquationRepository}, \code{LocalizationManager} (avec \code{Dispatchers.Main} direct, en
+contournement de \code{AppDispatchers}), \code{BiblioRefRepository:138}
+(\code{CoroutineScope(AppDispatchers.IO).launch} \emph{fire-and-forget}) et
+\code{DatabaseFoodRepository:67} (scope \emph{Main} dans un Repository).
+
+\subsection*{\prio{orange} A5 --- Règle \code{withContext(AppDispatchers.IO)} non respectée}
+Plusieurs Repository ont des \code{suspend fun} sans aucun \code{withContext} :
+\code{AnimalRepository}, \code{ConseilRepository}, \code{EquationRepository} (19 fonctions),
+\code{ExportImportRepository} (11, 1\,174 l., appelle des DAO directement),
+\code{FoodRepository}, \code{HtmlSectionRepository}, \code{PreferencesRepository},
+\code{ExamGradingRepository}. Certains déléguent peut-être à des couches qui changent de
+dispatcher ; à vérifier au cas par cas.
+
+\subsection*{\prio{gray} A6 --- Code bloquant}
+\code{runBlocking} reste présent dans \code{AppDatabase.kt}, \code{desktopMain/Utils/FileUtils.kt}
+et \code{windowsMain/main.kt}, plus l'abstraction \code{BlockingRunner} (\code{expect/actual}).
+Risque de gel de l'UI s'il est appelé depuis le thread principal.
+
+\section{Robustesse}
+
+\subsection*{\prio{red!80!black} R1 --- Gestion d'erreurs par avalement}
+480 blocs \code{catch (e: Exception)} ou \code{Throwable} dans \code{commonMain}, dont au moins
+25 vides et une trentaine limités à un \code{println}. Pour une application de calcul
+nutritionnel, une erreur silencieuse produit un résultat faux sans signal. Attraper
+\code{Exception} dans une coroutine intercepte aussi \code{CancellationException} et casse
+l'annulation structurée.
+
+\emph{Action :} journaliser via un logger unique, relancer \code{CancellationException},
+remonter les erreurs métier dans l'état UI.
+
+\subsection*{\prio{orange} R2 --- \code{!!} et journalisation}
+142 \code{!!} dans \code{commonMain} (crashs potentiels sur données importées incomplètes) ;
+14 \code{println} restants alors que \code{slf4j} est présent côté desktop.
+
+\subsection*{\prio{orange} R3 --- Fonctionnalités inachevées (TODO)}
+Plusieurs TODO touchent le métier, pas seulement l'UI :
+\begin{itemize}
+  \item \code{RationCalculator.kt:50,62} : évaluation des équations personnalisées non implémentée ;
+  \item \code{NutrientQuantity.kt:24} : conversions entre unités non implémentées ;
+  \item \code{MultiNutrientAdjustmentDialog.kt:1426} : ajustement énergétique final absent ;
+  \item \code{ExcelFoodService.kt:183} : espèce forcée à 0 ;
+  \item \code{SettingsView.kt:3238} : réglage non sauvegardé dans \code{PreferencesStorage} ;
+  \item \code{AppDatabase.kt:222,229} : sauvegarde automatique / export JSON non implémentés ;
+  \item \code{ConsultationEditDialog.kt:124} : callback \code{onEdit} vide (bouton inopérant).
+\end{itemize}
+
+\section{Code mort et exemples en production}
+\subsection*{\prio{orange} M1}
+\begin{itemize}
+  \item \code{Example/} et \code{Examples/} (5 fichiers) compilés dans \code{commonMain} ;
+  \item \code{Repository/ConseilRepositoryExample.kt} ;
+  \item \code{Greeting.kt} (gabarit de projet KMP) ;
+  \item \code{LegacyMigration.kt} (13 l.) à côté de \code{desktopMain/Service/LegacyV2Migration.kt} (1\,604 l.) ;
+  \item à la racine : \code{DataB\_Usage\_Example.kt}, \code{TestDataBFiltering.kt}, \code{temp\_histogramme.kt},
+        \code{test\_*.kt} (5 fichiers), et un dossier \code{commonMain/} contenant une copie de
+        sources \code{koalaplot} et \code{qrgenerator} hors du module Gradle.
+\end{itemize}
+
+\section{Build et dépendances}
+\subsection*{\prio{red!80!black} B1 --- Incohérences de versions}
+\begin{itemize}
+  \item \code{koalaplot} : catalogue en 0.9.0, mais \code{build.gradle.kts} code en dur 0.8.0 ;
+  \item \code{room} = \code{2.7.0-rc01} (version candidate en production ; \code{CLAUDE.md} indique 2.7.0) ;
+  \item \code{kotlinx-coroutines} 1.7.3 avec Kotlin 2.2.20 : très en retard ;
+  \item deux versions de \code{kotlinx-datetime} (0.4.1 et 0.6.1) dans le catalogue ;
+  \item \code{compose-plugin} 1.6.11, \code{compose} 1.7.8, \code{compose-multiplatform} 1.7.0,
+        \code{ui-util} 1.7.0 et \code{material-icons-extended} 1.7.3 codés en dur : versions Compose disparates ;
+  \item \code{libs.okio} déclaré deux fois ; \code{junit} 4, \code{junit-jupiter} 5 et \code{testng} au catalogue
+        sans usage cohérent ; dépendances commentées laissées en place.
+\end{itemize}
+\emph{Action :} tout faire passer par \code{libs.versions.toml}, purger les entrées inutilisées.
+
+\subsection*{\prio{orange} B2 --- Données dupliquées}
+\code{vetnutri\_export\_init.json} (\(\approx 20\) Mo) existe en 4 exemplaires :
+\code{commonMain/resources}, \code{androidMain/assets}, \code{iosApp/iosApp/Resources}
+(identiques) et \code{iosApp/iosApp/} (version différente), plus une copie horodatée
+\code{\dots 20-06-01-825.json}. Une mise à jour des données doit être reportée à la main
+partout ; la copie divergente d'iOS est déjà le symptôme. À générer par une tâche Gradle
+depuis une source unique.
+
+\subsection*{\prio{orange} B3 --- Fichiers lourds ou parasites versionnés}
+\begin{itemize}
+  \item 3 \code{.aab} de release (\(\approx 57\) Mo) toujours suivis malgré la règle
+        \code{composeApp/release/} du \code{.gitignore} (ajoutés avant elle) ;
+  \item \code{ani.json}, \code{animaux.json}, \code{food.json} (15--19 Mo chacun), \code{oza2.json},
+        \code{equations.json}, \code{test\_vbnr.json} à la racine ;
+  \item journaux \code{build\_log.txt}, \code{ios\_build.log}, \code{ios\_build\_final.log} ;
+        icônes « \code{copie} » en double ; \code{composeApp/bin/} ; \code{iosApp/*/File.txt} ;
+  \item \code{.git} pèse 59 Mo : un nettoyage d'historique (\code{git filter-repo}) serait nécessaire
+        pour récupérer l'espace, à coordonner car il réécrit l'historique.
+\end{itemize}
+
+\section{Tests}
+\subsection*{\prio{orange} T1}
+\(\approx 50\) fichiers de tests (\(\approx 10\,500\) lignes, 7,7\,\% du code). Le moteur
+pur (\code{Data/} : troupeau, exploration multiration, agrégation, analyse) est bien couvert,
+ainsi que les migrations Room. En revanche : aucun test sur la couche \code{View/} (45\,\% du code),
+un seul test de ViewModel (\code{PlanEvolutifInteractionTest}), aucun sur
+\code{ExportImportRepository}, \code{ImportUtils} n'a qu'un test JSON pour 3\,043 lignes. La logique
+logée dans les Composables (A2) échappe mécaniquement aux tests.
+
+\section{Documentation}
+\subsection*{\prio{gray} D1}
+\begin{itemize}
+  \item \code{CLAUDE.md} est désynchronisé : 51 vues annoncées (101 réelles), 23 ViewModels (26),
+        8 fichiers \code{DataBase/} (9), 24 migrations (25 objets \code{Migration}) ;
+  \item 15 fichiers \code{.md} à la racine (\code{ANALYSE\_*}, \code{OPTIMISATION\_*}, \code{README\_*},
+        \code{RESUME\_*}) dont certains se recoupent ; à déplacer dans \code{docs/} ou à archiver ;
+  \item fichier \code{Task} et \code{docs/Untitled.json} sans rôle identifiable.
+\end{itemize}
+
+\section{Plan de remboursement proposé}
+\begin{longtable}{p{0.5cm}p{9.5cm}p{2cm}p{2.3cm}}
+\toprule
+ & Action & Effort & Gain \\
+\midrule
+1 & Purger fichiers parasites et \code{.aab} de l'index, supprimer code d'exemple et fichiers \code{test\_*} racine & faible & lisibilité, taille \\
+2 & Unifier les versions dans \code{libs.versions.toml}, sortir Room de la RC, monter coroutines & faible--moyen & stabilité build \\
+3 & Source unique pour \code{vetnutri\_export\_init.json} générée au build & moyen & cohérence données \\
+4 & Politique d'erreurs : logger commun, \code{CancellationException} relancée, suppression des \code{catch} vides & moyen & fiabilité calculs \\
+5 & Terminer ou retirer les TODO métier (équations personnalisées, conversions d'unités) & moyen & exactitude \\
+6 & Ajouter \code{withContext(IO)} aux Repository concernés, rattacher les scopes orphelins & moyen & réactivité UI \\
+7 & Sortir les accès Repository des 33 vues vers les ViewModels, puis tester ces ViewModels & élevé & testabilité \\
+8 & Découper les 9 fichiers de plus de 2\,000 lignes & élevé & maintenabilité \\
+\bottomrule
+\end{longtable}
+
+\section{État après corrections (branche \code{ccr-757b66d9-sd7476})}
+Chaque étape a été validée par la CI GitHub (tests JVM common + desktop, tests unitaires
+Android, APK debug). La compilation iOS n'est lancée que manuellement et n'a pas été exécutée.
+
+\begin{longtable}{p{0.5cm}p{3.2cm}p{11cm}}
+\toprule
+ & Statut & Détail \\
+\midrule
+1 & fait & \code{.aab}, journaux, fichiers \code{test\_*}/temporaires, JSON de travail, copie de
+           koalaplot, icônes « copie » retirés ; code d'exemple et 5 ViewModels jamais instanciés
+           supprimés. L'historique Git n'a \emph{pas} été réécrit (les 59\,Mo restent dans
+           \code{.git}). \\
+2 & fait & Catalogue unique ; Room 2.7.0 ; coroutines 1.10.2 ; entrées mortes retirées. \\
+3 & fait & Source unique ; assets Android générés au build ; copie iOS resynchronisée (elle
+           avait divergé) et vérifiée par \code{InitialDataSyncTest}. \\
+4 & fait & \code{AppLog}, \code{rethrowIfCancellation()} dans 688 \code{catch}, 88 \code{catch}
+           vides journalisés, 156 \code{println}/\code{printStackTrace} remplacés. \\
+5 & fait & TODO résolus ou code mort supprimé (\code{RationCalculator},
+           \code{NutrientQuantityExt}, \code{createDatabaseBackup} qui renvoyait \code{true}
+           sans rien faire) ; sélecteurs de référentiels et création depuis un modèle de conseil
+           implémentés. Plus aucun \code{TODO} dans le code. \\
+6 & fait & \code{withContext(IO)} dans 6 Repository ; scopes nommés avec \code{SupervisorJob} ;
+           références bibliographiques fictives insérées dans les bases vides supprimées. \\
+7 & fait & Plus aucun appel de dépôt dans \code{View/} (il en restait 21) : listes de la sélection
+           d'export, préférences, bibliothèque de recettes (\code{RecipeLibrary}), enregistrement d'une
+           ration en recette, conseils passent par \code{SettingsViewModel},
+           \code{AnimalDetailViewModel}, \code{ConseilsViewModel}, \code{RecipeEditViewModel}.
+           Préférences : une seule instance partagée (12 instances locales supprimées).
+           Équations : le domaine (\code{Data/}, \code{Export/}, \code{EquationEvaluator}) dépend de
+           l'interface de lecture \code{EquationSource} et non plus du dépôt ; \code{Data} n'importe
+           plus rien de \code{Repository} ni de \code{View}, \code{ViewModel} rien de \code{View}.
+           Les vues transmettent encore des dépôts à leurs enfants (paramètres), sans les appeler. \\
+8 & fait & Plus aucun fichier de \code{View/} au-delà de 2\,000 lignes ; découpage vérifié par
+           captures (400\,×\,800, 800\,×\,1000, 1400\,×\,900).
+           \code{AnimalDetailView} 3\,287\,$\to$\,1\,343 l. (\code{WideScreenLayout} et
+           \code{NarrowScreenLayout}, identiques à 92\,\%, fusionnés en \code{AnimalDetailLayout} ;
+           export dans \code{AnimalDetailExport.kt}) ;
+           \code{SettingsView} 3\,386\,$\to$\,1\,381 (dialogues de sélection d'export, onglet Préférences) ;
+           \code{AnalyseGraphiqueAlimentsView} 3\,041\,$\to$\,1\,041 (graphiques, données) ;
+           \code{NewReferenceEvEditView} 2\,695\,$\to$\,608 (nutriments, coefficients, onglets
+           Équations/Compléments) ; \code{RationsView} 2\,981\,$\to$\,1\,947 ;
+           \code{ConsultationFullScreenEditView} 2\,305\,$\to$\,1\,403 ;
+           \code{StartupScreen} 2\,248\,$\to$\,1\,716 ;
+           \code{MultiNutrientAdjustmentDialog} 2\,231\,$\to$\,925 : l'algorithme d'ajustement
+           (1\,265 l., sans UI) passe dans \code{Data/AjustementMultiNutriments.kt}, ce qui supprime
+           les imports \code{Data} $\to$ \code{View.AnalNut} (\code{RationConstraintAdjuster},
+           \code{ExplorationMultiration}) et \code{ViewModel} $\to$ \code{View}.
+           Puis découpage des composables eux-mêmes (blocs extraits corps inchangé, dépendances en
+           paramètres typés, état modifié en \code{MutableState}) : \code{RationsView}
+           1\,947\,$\to$\,1\,060 (en-tête, grille, \code{RationsDialogState} regroupant 19 états de
+           dialogue), \code{StartupScreen} 1\,716\,$\to$\,1\,162 (état de la base),
+           éditeur de consultation 1\,403\,$\to$\,746 (cinq sections). \\
+-- & partiel & \code{!!} : 104 restants dans \code{commonMain} (142 à l'audit). Revue des sites
+           exécutés après un clic ou une attente : un seul non gardé, corrigé
+           (\code{besoinEnergetiqueStandard!!} dans l'ajustement multi-nutriments, plantage tant que le BEE
+           n'est pas calculé) ; un autre réécrit sans \code{!!}. Les autres suivent une garde
+           (\code{contains}, \code{isEmpty}, test de nullité sur un état Compose délégué, qui empêche le
+           smart-cast). \\
+-- & fait & \textbf{Cycle de vie des ViewModels} : les 12 ViewModels à scope propre héritent de
+           \code{androidx.lifecycle.ViewModel} (\code{clear()} $\to$ \code{onCleared()}) ; tous sont
+           créés par \code{rememberViewModel(clés)} : un \code{ViewModelStore} par clé, vidé à la sortie
+           de composition. Les 7 qui héritaient déjà de \code{ViewModel} étaient créés par
+           \code{remember} hors de tout \code{ViewModelStore} : leur \code{onCleared()} n'était jamais
+           appelé. Plus aucun \code{clear()} manuel dans \code{App.kt}. \\
+-- & fait & \textbf{Code bloquant (A6)} : plus aucun \code{runBlocking} hors des tests.
+           L'ouverture de la base (copie \code{.bak}, contrôle du fichier, migrations) bloquait le
+           thread de l'interface sur Android (\code{onCreate}) et iOS : \code{getRoomDatabase} devient
+           \code{suspend} sur \code{AppDispatchers.IO} et \code{AppWithDatabase} affiche un indicateur
+           pendant l'ouverture, faite une seule fois par processus (une rotation Android rouvrait et
+           resauvegardait la base). \code{BlockingRunner} supprimé ; dossier d'enregistrement de
+           \code{FileUtils} lu et écrit en arrière-plan. \code{windowsMain} (289 l.), déclaré dans aucune
+           cible Gradle donc jamais compilé (Windows est servi par la cible JVM), et
+           \code{DatabaseModule} (interface et 4 implémentations sans appelant) supprimés. \\
+-- & fait & \textbf{Import des référentiels (T1)} : 13 tests sur la lecture des \code{.vbnr.json}
+           (identité, besoins, niveaux, unités, équations, bibliographie, coefficients K, maladie et
+           stade, fichiers invalides), vérifiés par mutation. Ils ont révélé quatre erreurs qui
+           faussaient des besoins sans aucun signal :
+           \emph{(1)} un besoin « par kg de poids métabolique » (\code{KGMW}) était importé « par kg
+           de poids vif », et un pourcentage (\code{PERC}) en valeur absolue (correspondance désormais
+           identique à \code{LegacyV2Mappings}) ;
+           \emph{(2)} l'unité de la quantité était ignorée : 1\,500\,mg de potassium devenaient
+           1\,500\,g ; la quantité est ramenée à l'unité du nutriment ;
+           \emph{(3)} un libellé de nutriment inconnu ou mal orthographié était rapproché par
+           approximation d'un autre nutriment, dont il écrasait la valeur (\code{NutrientResolver},
+           zone protégée, n'est pas modifié : l'importeur n'accepte qu'un libellé exact et signale les
+           autres dans le rapport d'import) ;
+           \emph{(4)} les types d'équation écrits en toutes lettres \code{COMPLEMENTARY\_NUTRIENT} et
+           \code{ENERCOMP} devenaient des besoins énergétiques.
+           Aussi : bibliographie référencée par identifiant reconnue, niveaux \code{MINIMUM}/
+           \code{MAXIMUM} et codes numériques acceptés, erreurs d'enregistrement journalisées au lieu
+           d'être jetées, lecture dédoublée (versions \code{suspend} et non \code{suspend} copiées)
+           fusionnée. 6 fonctions publiques et 2 privées sans appelant retirées :
+           \code{ImportUtils} 3\,086\,$\to$\,2\,577 l. \\
+-- & fait & \textbf{Unités de besoin à l'import (T1)} : le code \code{DM} (matière sèche) était
+           compté « par kg de poids métabolique », et tout code inconnu en valeur absolue ; un tel
+           besoin est désormais écarté et signalé. Codes numériques V2 lus comme la migration.
+           Rétrocompatibilité vérifiée sur \code{references.json} (24 référentiels, 1\,092 besoins,
+           tous importés à l'identique du fichier) : elle a révélé que \code{PhosphProt} (nom
+           d'énumération V2 du rapport protéines/phosphore) était rangé sous le potassium, dont il
+           écrasait le minimum (K = 25 en valeur absolue dans 4 référentiels) ; il est
+           maintenant reconnu. 5 tests de plus, dont l'analyse d'une ration type (chien de 30\,kg)
+           sur chaque base de calcul ; \code{docs/import\_besoin.md} corrigé (numérotation et
+           exemple \code{DM} erronés). \\
+-- & fait & \textbf{Sauvegarde et restauration (T1)} : test d'aller-retour sur base Room réelle
+           (jeu initial complet : 11\,474 aliments, 27 référentiels, équations, bibliographie,
+           recettes, conseils, mots-clés ; un chien avec consultation, ration et étape de plan
+           évolutif ; un troupeau avec ses groupes) : export, restauration sur base vide ou sur la
+           même base, nouvel export identique au premier. Export d'un seul animal rechargé seul.
+           Corrigé : identifiants des ingrédients de recette régénérés à chaque import ; aliment
+           absent cité par deux recettes recréé deux fois (liste des aliments connus jamais mise à
+           jour) ; export sélectif (Paramètres, export d'un animal, examen) qui exportait sans
+           consultations, conseils, bibliographie ni mots-clés quand leur lecture échouait (il
+           échoue désormais, et l'export des Paramètres affiche l'erreur au lieu de la journaliser
+           seulement). \code{ExportImportRepository.kt.disabled} (906 l., non compilé) supprimé. \\
+-- & préparé & \textbf{Historique Git (B3)} : \code{.git} pèse 445\,Mo (pack 293\,Mo et cache LFS
+           local 143\,Mo), dont 220\,Mo de \code{.aab} de release. \code{docs/nettoyage\_historique.sh}
+           produit une copie miroir nettoyée sans toucher au dépôt de travail : pack 293\,$\to$\,30\,Mo,
+           1\,352 commits et 95 références conservés, contenu des branches à jour (\code{main},
+           \code{Work-fine-}, branche courante) strictement identique (vérifié par le script). Les
+           données initiales des anciennes versions sont gardées : un tag reste reconstructible.
+           Reste à décider l'envoi forcé sur GitHub (tous les identifiants de commits changent,
+           chaque poste doit recloner, les tags de version perdent leurs \code{.aab}). \\
+\bottomrule
+\end{longtable}
+
+\section{Interface et petits écrans (vérification visuelle)}
+Rendu réel de l'application desktop, hors écran, avec le pilote
+\code{GuideScreenshotDriver} (nouvelle variable \code{VETNUTRI\_GUIDE\_SIZE}) en
+400\,×\,800 (téléphone), 800\,×\,1000 (tablette) et 1400\,×\,900 (bureau), sur une base
+jetable : accueil, ajout d'animal, aliments, données de calcul, paramètres, fiche animal,
+consultations, rations.
+
+\begin{longtable}{p{3.2cm}p{11.5cm}}
+\toprule
+Écran & Défaut constaté $\to$ correction \\
+\midrule
+Consultations & Liste de 160\,px et détail côte à côte sur téléphone (« Consultation s ») $\to$
+  une seule colonne sous 600\,dp : liste, puis détail en plein écran
+  (\code{AppSizes.breakpointCompact}). \\
+Détail de consultation & Coefficients K1--K5 sur deux colonnes écrasés lettre par lettre
+  (« N on dé fi ni ») $\to$ une colonne quand la place manque ; bloc dupliqué factorisé
+  (\code{CoefficientsConsultation}). \\
+Paramètres, Calculs et 7 autres barres d'onglets & Libellés coupés en milieu de mot
+  (« Équatio ns », « Inter face ») $\to$ \code{AdaptiveTabRow} : onglets défilants quand ils
+  ne tiennent pas. \\
+Liste des aliments & Filtres tronqués (« Sélection ner », « Tout es »), indication de recherche
+  coupée en hauteur $\to$ un filtre par ligne sur téléphone, indication sur une ligne avec
+  « … ». \\
+Rations & Badge « APPORTS » coupé en « APP/ORT/S » $\to$ en-tête de la carte d'analyse en
+  \code{FlowRow} ; grille collée aux bords $\to$ marges ; grille de cartes vides sans
+  consultation $\to$ seul le message de sélection reste. \\
+Ajout d'animal & Listes Espèce/Sexe à 280\,dp avec double bordure, champ Race à bordure
+  pâle (air désactivé), boutons de date empilés $\to$ \code{ComboBox} pleine largeur,
+  bordure standard, boutons côte à côte. \\
+Fiche animal & « Date de naissance :2026-10-31 » collés ; icône d'Ordonnance identique à
+  Paramètres $\to$ colonne d'étiquettes élargie et atténuée ; icône document. \\
+Éditeur de consultation & Flèche retour annoncée « Rechercher » (accessibilité) $\to$
+  « Retour ». \\
+\bottomrule
+\end{longtable}
+
+Suites traitées :
+\begin{itemize}
+  \item \textbf{Couleur secondaire} : \code{\#80A9A9} avec texte noir (boutons Retour, Partager,
+        Import rapide, \textminus/+ à l'air désactivé) remplacé par \code{\#4E7D7D} avec texte
+        blanc (contraste $\approx$ 4,7:1). Trois boutons qui forçaient déjà du blanc deviennent lisibles.
+  \item \textbf{Traductions} : \code{androidMain/assets/strings\_*.json} (1 clé manquante) supprimées,
+        générées au build ; copies iOS \code{strings\_fr/en/zh.json} (10 clés manquantes : clés brutes
+        affichées) resynchronisées par \code{syncInitialDataIos} et vérifiées par
+        \code{InitialDataSyncTest}.
+  \item Libellés français sans accents (sélection d'export : « Selection des equations »,
+        « toggle tout », « Selectionnes ») corrigés ; barre d'actions de l'Ordonnance sur téléphone :
+        ordonnance pleine largeur, libellés du compte rendu sur deux lignes au lieu d'être tronqués.
+  \item \textbf{Dialogues défilants} : l'\code{AlertDialog} de Material 2 aligne son contenu sur la
+        première ligne de base du texte ; une liste qui défile change cette ligne et la boîte
+        changeait de hauteur à chaque défilement (artefacts signalés). 22 dialogues passent par
+        \code{AppAlertDialog} (titre, contenu, boutons empilés) : hauteur constante vérifiée.
+  \item Données : mots-clés de consultation en double avec fautes (« Cardiomyopathie dilaté »,
+        « Insufisance hépatique ») à fusionner.
+  \item \textbf{Ration} : ajouter un aliment déjà présent créait une seconde ligne à l'écran, perdue à
+        l'enregistrement (index unique aliment + ration) ; la quantité est désormais cumulée.
+  \item \textbf{Dispatchers} : les 5 derniers \code{Dispatchers.*} directs passent par
+        \code{AppDispatchers} (calculs d'analyse, téléchargement des mises à jour, source d'aliments).
+  \item \textbf{Tests ViewModel} (T1) : ajout d'aliment (cumul jusqu'en base, nouvelle ligne),
+        recettes et conseils sans dépôt, arrêt du travail après \code{onCleared} (vérifié par mutation) ;
+        fusion des mots-clés et préférences partagées testées sur base Room.
+  \item \textbf{ViewModels (A3)} : 141 membres morts retirés (fonctions publiques jamais appelées,
+        flux écrits mais jamais lus, champs orphelins ; vérification automatique membre par membre),
+        dont une analyse complète recalculée à chaque sélection de ration sans être affichée et son
+        cache LRU. \code{AnimalDetailViewModel} 2\,699\,$\to$\,2\,157 l. : référentiels et mots-clés
+        délégués à \code{ReferencesConsultation}, ajout et suppression de poids factorisés,
+        calculs de besoin énergétique déplacés dans \code{Data/RationAnalysisCalculations}.
+        Puis 2\,157\,$\to$\,2\,037 l. : bilan des étapes du plan évolutif en fonction pure
+        (\code{Data/BilanPlanEvolutif.kt}, \code{BilanEtape} sorti du ViewModel), chargement et
+        calcul de l'analyse du troupeau délégués à \code{AnalyseTroupeauConsultation} ; nouveau
+        test de bout en bout du troupeau (analyse du groupe, ration d'un animal d'un type,
+        effectif modifié). Les actions (étapes, choix du type) restent dans le ViewModel : elles
+        pilotent la ration sélectionnée et ne font qu'appeler les moteurs purs \code{PlanEvolutif}
+        et \code{Troupeau}.
+  \item Quatre fichiers Kotlin vides et suivis supprimés (\code{BackupViewModel},
+        \code{TestApiEnvelope}, \code{FullscreenToggle}, \code{GenericGraphComponent}).
+  \item Filtres de la sélection d'aliments (Graphique Aliments) : un par ligne sur téléphone.
+  \item Fichiers morts retirés : \code{AnimalDetailView.kt.old}, \code{RationsView.kt.bak2},
+        \code{View/oza2.json}, \code{View/vetfood.json} (1,9\,Mo), \code{PreferencesView.kt} (jamais appelé).
+\end{itemize}
+
+
+\end{document}

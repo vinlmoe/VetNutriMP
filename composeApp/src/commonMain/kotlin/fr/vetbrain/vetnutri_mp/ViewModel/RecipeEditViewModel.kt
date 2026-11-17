@@ -1,33 +1,37 @@
 package fr.vetbrain.vetnutri_mp.ViewModel
 
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.State
+import androidx.lifecycle.ViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import androidx.compose.ui.text.input.TextFieldValue
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Repository.FoodRepository
 import fr.vetbrain.vetnutri_mp.Repository.RecipeRepository
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /**
  * ViewModel pour l'édition des recettes
  */
 class RecipeEditViewModel(
     private val recipeRepository: RecipeRepository,
-    private val foodRepository: FoodRepository
-) {
+    val foodRepository: FoodRepository
+) : ViewModel() {
+    private val job = SupervisorJob()
+    private val scope = CoroutineScope(AppDispatchers.IO + job)
+
     // Compteur pour générer des UUIDs uniques
     private var uuidCounter = 0
     
@@ -74,19 +78,15 @@ class RecipeEditViewModel(
     
     // État de l'aliment en cours d'ajout
     private val _alimentToAdd = mutableStateOf<AlimentEv?>(null)
-    val alimentToAdd: State<AlimentEv?> = _alimentToAdd
     
     // État de la quantité pour l'aliment à ajouter
     private val _quantityToAdd = mutableStateOf("100")
-    val quantityToAdd: State<String> = _quantityToAdd
     
     // État de la cible pour l'aliment à ajouter
     private val _targetToAdd = mutableStateOf(0)
-    val targetToAdd: State<Int> = _targetToAdd
     
     // État de l'erreur de quantité
     private val _quantityError = mutableStateOf(false)
-    val quantityError: State<Boolean> = _quantityError
     
     // État de la confirmation de suppression
     private val _showDeleteConfirmation = mutableStateOf<Ration?>(null)
@@ -104,18 +104,22 @@ class RecipeEditViewModel(
      * Charge toutes les recettes depuis le repository
      */
     fun loadRecipes() {
-        CoroutineScope(AppDispatchers.IO).launch {
-            try {
-                _isLoading.value = true
-                val loadedRecipes = recipeRepository.getAllRecipes()
-                _recipes.clear()
-                _recipes.addAll(loadedRecipes)
-            } catch (e: Exception) {
-                
-                _message.value = "Erreur lors du chargement des recettes: ${e.message}"
-            } finally {
-                _isLoading.value = false
-            }
+        scope.launch {
+            loadRecipesInternal()
+        }
+    }
+
+    private suspend fun loadRecipesInternal() {
+        try {
+            _isLoading.value = true
+            val loadedRecipes = recipeRepository.getAllRecipes()
+            _recipes.clear()
+            _recipes.addAll(loadedRecipes)
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            _message.value = translate("recipe.error.load", e.message ?: "")
+        } finally {
+            _isLoading.value = false
         }
     }
     
@@ -130,15 +134,16 @@ class RecipeEditViewModel(
      * Filtre les recettes selon la recherche
      */
     fun getFilteredRecipes(): List<Ration> {
-        val query = _searchQuery.value.lowercase()
-        return if (query.isEmpty()) {
+        val query = _searchQuery.value
+        return if (query.isBlank()) {
             _recipes.toList()
         } else {
             _recipes.filter { recipe ->
-                recipe.name.lowercase().contains(query) ||
-                recipe.alimentMutableList.any { aliment ->
-                    aliment.aliment?.nom?.lowercase()?.contains(query) == true
-                }
+                Recherche.correspond(
+                    query,
+                    recipe.name,
+                    *recipe.alimentMutableList.map { it.aliment?.nom }.toTypedArray()
+                )
             }
         }
     }
@@ -211,13 +216,6 @@ class RecipeEditViewModel(
     }
     
     /**
-     * Met à jour la cible à ajouter
-     */
-    fun updateTargetToAdd(target: Int) {
-        _targetToAdd.value = target
-    }
-    
-    /**
      * Ajoute l'aliment sélectionné à la recette
      */
     fun addAlimentToRecipe() {
@@ -233,7 +231,7 @@ class RecipeEditViewModel(
                     val existingAliment = _selectedIngredients.find { it.refAlimUnif == aliment.uuid }
                     if (existingAliment != null) {
                         
-                        _message.value = "Cet aliment est déjà dans la recette"
+                        _message.value = translate("recipe.error.alimentAlreadyAdded")
                         return
                     }
                     
@@ -286,27 +284,16 @@ class RecipeEditViewModel(
     }
     
     /**
-     * Met à jour la cible d'un aliment dans la recette
-     */
-    fun updateAlimentTarget(alimentRation: AlimentRation, newTarget: Int) {
-        val index = _selectedIngredients.indexOf(alimentRation)
-        if (index != -1) {
-            val updatedAliment = alimentRation.copy(refTarget = newTarget)
-            _selectedIngredients[index] = updatedAliment
-        }
-    }
-    
-    /**
      * Sauvegarde la recette (création ou modification)
      */
     fun saveRecipe() {
         if (_newRecipeName.value.isBlank()) {
-            _message.value = "Le nom de la recette ne peut pas être vide"
+            _message.value = translate("recipe.error.nameRequired")
             return
         }
-        
+
         if (_selectedIngredients.isEmpty()) {
-            _message.value = "La recette doit contenir au moins un aliment"
+            _message.value = translate("recipe.error.ingredientRequired")
             return
         }
         
@@ -316,7 +303,7 @@ class RecipeEditViewModel(
             return
         }
         
-        CoroutineScope(AppDispatchers.IO).launch {
+        scope.launch {
             try {
                 _isLoading.value = true
                 
@@ -339,7 +326,7 @@ class RecipeEditViewModel(
                     // Modification d'une recette existante
                     recipeRepository.renameRecipe(recipeToSave.uuid, recipeToSave.name)
                     recipeRepository.replaceAliments(recipeToSave.uuid, recipeToSave.alimentMutableList)
-                    _message.value = "Recette modifiée avec succès"
+                    _message.value = translate("recipe.success.updated")
                 } else {
                     // Création d'une nouvelle recette
                     val newRecipe = recipeRepository.createRecipe(
@@ -348,55 +335,58 @@ class RecipeEditViewModel(
                         description = recipeToSave.description
                     )
                     recipeRepository.addAliments(newRecipe.uuid, recipeToSave.alimentMutableList)
-                    _message.value = "Recette créée avec succès"
+                    _message.value = translate("recipe.success.created")
                 }
                 
                 // Recharger les recettes et sortir du mode édition
-                loadRecipes()
+                loadRecipesInternal()
                 cancelEditing()
                 
             } catch (e: Exception) {
-                _message.value = "Erreur lors de la sauvegarde: ${e.message}"
+                e.rethrowIfCancellation()
+                _message.value = translate("recipe.error.save", e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
         }
     }
-    
+
     /**
      * Supprime une recette
      */
     fun deleteRecipe(recipe: Ration) {
-        CoroutineScope(AppDispatchers.IO).launch {
+        scope.launch {
             try {
                 _isLoading.value = true
                 recipeRepository.deleteRecipe(recipe.uuid)
-                _message.value = "Recette supprimée avec succès"
-                loadRecipes()
+                _message.value = translate("recipe.success.deleted")
+                loadRecipesInternal()
             } catch (e: Exception) {
-                _message.value = "Erreur lors de la suppression: ${e.message}"
+                e.rethrowIfCancellation()
+                _message.value = translate("recipe.error.delete", e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
         }
     }
-    
+
     /**
      * Duplique une recette
      */
     fun duplicateRecipe(recipe: Ration) {
-        CoroutineScope(AppDispatchers.IO).launch {
+        scope.launch {
             try {
                 _isLoading.value = true
                 val duplicatedRecipe = recipeRepository.cloneRecipe(recipe.uuid)
                 if (duplicatedRecipe != null) {
-                    _message.value = "Recette dupliquée avec succès"
+                    _message.value = translate("recipe.success.duplicated")
                 } else {
-                    _message.value = "Erreur lors de la duplication"
+                    _message.value = translate("recipe.error.duplicate")
                 }
-                loadRecipes()
+                loadRecipesInternal()
             } catch (e: Exception) {
-                _message.value = "Erreur lors de la duplication: ${e.message}"
+                e.rethrowIfCancellation()
+                _message.value = translate("recipe.error.duplicateDetail", e.message ?: "")
             } finally {
                 _isLoading.value = false
             }
@@ -447,20 +437,12 @@ class RecipeEditViewModel(
                !_quantityError.value
     }
     
-    /**
-     * Vérifie si la recette a été modifiée
-     */
-    fun hasRecipeChanged(): Boolean {
-        val originalRecipe = _editingRecipe.value
-        if (originalRecipe == null) return true // Nouvelle recette
-        
-        return originalRecipe.name != _newRecipeName.value ||
-               originalRecipe.alimentMutableList.size != _selectedIngredients.size ||
-               originalRecipe.alimentMutableList.any { original ->
-                   val matching = _selectedIngredients.find { it.uuidUnif == original.uuidUnif }
-                   matching == null || 
-                   matching.quantite != original.quantite ||
-                   matching.refTarget != original.refTarget
-               }
+    // Appelé par le ViewModelStore quand l'écran est quitté (rememberViewModel)
+
+    override fun onCleared() {
+        scope.cancel()
     }
+
+    /** Aliments disponibles pour l'ajout à la recette, mis à jour en continu */
+    fun observeAllFoods() = foodRepository.observeAllFoods()
 }

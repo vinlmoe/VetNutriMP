@@ -1,0 +1,69 @@
+package fr.vetbrain.vetnutri_mp.View
+
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Data.Ration
+import fr.vetbrain.vetnutri_mp.Data.sortedForDisplay
+import fr.vetbrain.vetnutri_mp.Localization.translate
+
+@Composable
+internal fun CopyRationDialog(
+        consultations: List<ConsultationEv>,
+        onDismiss: () -> Unit,
+        onCopy: (ConsultationEv, Ration) -> Unit
+) {
+        var selected by remember { mutableStateOf<Pair<String, String>?>(null) }
+        val sources = consultations.filter { it.rations.isNotEmpty() }.sortedByDescending { it.date }
+        val consultation = sources.firstOrNull { it.uuid == selected?.first }
+        val ration = consultation?.rations?.firstOrNull { it.uuid == selected?.second }
+        AppAlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(translate("copieRation.titre")) },
+                text = {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(translate("copieRation.aide"))
+                                if (sources.isEmpty()) {
+                                        Text(translate("copieRation.aucune"))
+                                } else {
+                                        LazyColumn(Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                                                sources.forEach { source ->
+                                                        item(key = source.uuid) {
+                                                                Text(
+                                                                        listOfNotNull(source.date?.enTexte() ?: "Date non renseignée", source.objectConsult.takeIf { it.isNotBlank() }).joinToString(" — "),
+                                                                        style = MaterialTheme.typography.subtitle2,
+                                                                        modifier = Modifier.padding(vertical = 8.dp)
+                                                                )
+                                                        }
+                                                        items(source.rations.sortedForDisplay(), key = { "${source.uuid}/${it.uuid}" }) { candidate ->
+                                                                val label = candidate.name.ifBlank { "Ration ${candidate.number}" }
+                                                                OutlinedButton(
+                                                                        onClick = { selected = source.uuid to candidate.uuid },
+                                                                        modifier = Modifier.fillMaxWidth()
+                                                                ) {
+                                                                        RadioButton(selected = selected == (source.uuid to candidate.uuid), onClick = null)
+                                                                        Spacer(Modifier.width(8.dp))
+                                                                        Text("$label · ${if (candidate.actual) translate("copieRation.actuelle") else translate("copieRation.proposee")} · " + translate("copieRation.nbAliments", candidate.alimentMutableList.size.toString()), modifier = Modifier.weight(1f))
+                                                                }
+                                                        }
+                                                }
+                                        }
+                                }
+                        }
+                },
+                confirmButton = {
+                        Button(enabled = ration != null, onClick = {
+                                if (consultation != null && ration != null) onCopy(consultation, ration)
+                        }) { Text(translate("copieRation.copier")) }
+                },
+                dismissButton = { TextButton(onClick = onDismiss) { Text(translate("copieRation.annuler")) } }
+        )
+}

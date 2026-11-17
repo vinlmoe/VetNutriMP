@@ -17,6 +17,10 @@ data class AnimalImportResult(
 interface AnimalRepository {
     suspend fun saveAnimal(animal: AnimalEv)
     suspend fun getAllAnimals(): List<AnimalEv>
+
+    /** Nombre d'animaux en base (sans charger les objets agrégés) */
+    suspend fun getAnimalsCount(): Int = getAllAnimals().size
+
     suspend fun deleteAnimal(animal: AnimalEv)
 
     /**
@@ -48,4 +52,12 @@ interface AnimalRepository {
      * @return Le repository des aliments ou null s'il n'est pas disponible
      */
     fun getFoodRepository(): FoodRepository?
+
+    /**
+     * Récupère les races uniques pour une espèce donnée
+     *
+     * @param specieId L'identifiant de l'espèce (label de l'énumération Espece)
+     * @return Liste des races uniques (non vides) pour cette espèce, triées alphabétiquement
+     */
+    suspend fun getRacesBySpecies(specieId: String): List<String>
 }

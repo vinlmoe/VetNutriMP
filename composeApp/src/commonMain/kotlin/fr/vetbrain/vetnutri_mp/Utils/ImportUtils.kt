@@ -3,6 +3,7 @@ package fr.vetbrain.vetnutri_mp.Utils
 import fr.vetbrain.vetnutri_mp.Data.AlimentEvJson
 import fr.vetbrain.vetnutri_mp.Data.AnimalEvJson
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
+import fr.vetbrain.vetnutri_mp.Utils.RaceCodeMapper
 import kotlin.collections.mutableListOf
 import kotlin.collections.mutableMapOf
 import kotlin.collections.set
@@ -24,11 +25,6 @@ object ImportUtils {
 
     /** Liste pour traquer les résolutions de nutriments problématiques */
     private val resolutionsProblematiques = mutableListOf<String>()
-
-    /** Fonction pour extraire tous les cas problématiques */
-    fun getResolutionsProblematiques(): List<String> {
-        return resolutionsProblematiques.toList()
-    }
 
     /** Fonction pour vider la liste des résolutions problématiques */
     fun clearResolutionsProblematiques() {
@@ -147,6 +143,7 @@ object ImportUtils {
                                 jsonParser.decodeFromString<List<AnimalEvJson>>(preprocessedContent)
                         result
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
 
                         // Essayer d'importer comme un seul animal
                         try {
@@ -154,7 +151,8 @@ object ImportUtils {
                                     jsonParser.decodeFromString<AnimalEvJson>(preprocessedContent)
                             listOf(animal)
                         } catch (e: Exception) {
-                            e.printStackTrace()
+                            e.rethrowIfCancellation()
+                            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
                             emptyList()
                         }
                     }
@@ -192,7 +190,8 @@ object ImportUtils {
 
             return ImportResult(animals, allFoods.toList())
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return ImportResult(emptyList(), emptyList())
         }
     }
@@ -314,6 +313,7 @@ object ImportUtils {
 
                 return foods
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 importErrors.add("Erreur générale lors de l'importation: ${e.message}")
 
                 try {
@@ -350,12 +350,14 @@ object ImportUtils {
 
                     return listOf(food)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     importErrors.add(
                             "Erreur lors de l'importation comme aliment unique: ${e.message}"
                     )
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             importErrors.add("Erreur lors du prétraitement du JSON: ${e.message}")
 
             // Fallback à la méthode standard
@@ -396,6 +398,7 @@ object ImportUtils {
 
                 return foods
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 importErrors.add("Erreur lors de l'importation standard comme liste: ${e.message}")
 
                 try {
@@ -432,6 +435,7 @@ object ImportUtils {
 
                     return listOf(food)
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     importErrors.add(
                             "Erreur lors de l'importation standard comme un seul aliment: ${e.message}"
                     )
@@ -509,7 +513,7 @@ object ImportUtils {
             // multiplateforme
             // Pour implémenter cette fonctionnalité, il faudrait utiliser expect/actual ou une
             // bibliothèque multiplateforme d'I/O
-        } catch (e: Exception) {}
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
     }
 
     /**
@@ -662,22 +666,6 @@ object ImportUtils {
                                         newValMap[normalizedKey] = nutritionValue
                                     }
 
-                                    // Format 5: Valeur null mais clé importante
-                                    value == null && isEssentialNutrient(normalizedKey) -> {
-                                        // Pour les nutriments essentiels, mettre une valeur par
-                                        // défaut
-                                        // de 0
-                                        val nutritionValue =
-                                                JsonObject(
-                                                        mapOf(
-                                                                "value" to JsonPrimitive(0.0),
-                                                                "nut" to
-                                                                        JsonPrimitive(normalizedKey)
-                                                        )
-                                                )
-                                        newValMap[normalizedKey] = nutritionValue
-                                    }
-
                                     // Autres cas - format spécial pouvant inclure des structures
                                     // JSON imbriquées
                                     else -> {
@@ -757,6 +745,7 @@ object ImportUtils {
                                                     newValMap[normalizedKey] = value
                                                 }
                                             } catch (e: Exception) {
+                                                e.rethrowIfCancellation()
                                                 // Conserver tel quel en cas d'erreur
                                                 newValMap[normalizedKey] = value
                                             }
@@ -764,7 +753,8 @@ object ImportUtils {
                                     }
                                 }
                             } catch (e: Exception) {
-                                e.printStackTrace()
+                                e.rethrowIfCancellation()
+                                AppLog.e("ImportUtils", e.message ?: "Erreur", e)
                             }
                         }
 
@@ -799,6 +789,7 @@ object ImportUtils {
                                                     listOf(JsonPrimitive(especeEnum.label))
                                             )
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     // Fallback à l'ancienne méthode si la conversion échoue
                                     result["Especes"] =
                                             kotlinx.serialization.json.JsonArray(
@@ -822,6 +813,7 @@ object ImportUtils {
                                         val especeEnum = Espece.getEnumFromInt(especeValue)
                                         newEspecesList.add(JsonPrimitive(especeEnum.label))
                                     } catch (e: Exception) {
+                                        e.rethrowIfCancellation()
                                         // Conserver la valeur originale si la conversion échoue
                                         newEspecesList.add(especeItem)
                                     }
@@ -849,27 +841,6 @@ object ImportUtils {
             }
             else -> return jsonElement
         }
-    }
-
-    /**
-     * Vérifie si un nutriment est essentiel et devrait être présent dans tous les aliments
-     * @param nutrientKey La clé du nutriment à vérifier
-     * @return true si le nutriment est essentiel, false sinon
-     */
-    private fun isEssentialNutrient(nutrientKey: String): Boolean {
-        val essentialNutrients =
-                setOf(
-                        "PROTEINE",
-                        "LIPIDE",
-                        "HUMIDITE",
-                        "CENDRE",
-                        "ENA",
-                        "CELLULOSE",
-                        "FIBRE",
-                        "AMIDON",
-                        "SUCRE"
-                )
-        return essentialNutrients.contains(nutrientKey)
     }
 
     /**
@@ -902,65 +873,6 @@ object ImportUtils {
             }
         }
 
-        // Calcul de l'ENA si manquant mais qu'on a les autres valeurs
-        if (valMap.containsKey("ENA")) {
-            val enaValue =
-                    try {
-                        val enaObj = valMap["ENA"] as? JsonObject
-                        (enaObj?.get("value") as? JsonPrimitive)?.content?.toDoubleOrNull() ?: 0.0
-                    } catch (e: Exception) {
-                        0.0
-                    }
-
-            // Si ENA est 0, essayer de le calculer
-            if (enaValue == 0.0) {
-                try {
-                    val proteine =
-                            (valMap["PROTEINE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val lipide =
-                            (valMap["LIPIDE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val humidite =
-                            (valMap["HUMIDITE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val cendre =
-                            (valMap["CENDRE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-                    val cellulose =
-                            (valMap["CELLULOSE"] as? JsonObject)?.let {
-                                (it["value"] as? JsonPrimitive)?.content?.toDoubleOrNull()
-                            }
-                                    ?: 0.0
-
-                    // Formule pour calculer l'ENA
-                    val calculatedEna = 100.0 - proteine - lipide - humidite - cendre - cellulose
-
-                    // Ne mettre à jour que si le résultat est positif et que les valeurs semblent
-                    // cohérentes
-                    if (calculatedEna > 0 &&
-                                    (proteine + lipide + humidite + cendre + cellulose) <= 100.0
-                    ) {
-                        val nutritionValue =
-                                JsonObject(
-                                        mapOf(
-                                                "value" to JsonPrimitive(calculatedEna),
-                                                "nut" to JsonPrimitive("ENA")
-                                        )
-                                )
-                        valMap["ENA"] = nutritionValue
-                    }
-                } catch (e: Exception) {}
-            }
-        }
     }
 
     /**
@@ -986,10 +898,12 @@ object ImportUtils {
                     try {
                         jsonParser.decodeFromString<List<AnimalEvJson>>(preprocessedContent)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Essayer d'importer comme un seul animal
                         try {
                             listOf(jsonParser.decodeFromString<AnimalEvJson>(preprocessedContent))
                         } catch (e: Exception) {
+                            e.rethrowIfCancellation()
                             emptyList()
                         }
                     }
@@ -1019,6 +933,7 @@ object ImportUtils {
 
             return allFoods.toList()
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return emptyList()
         }
     }
@@ -1045,6 +960,7 @@ object ImportUtils {
                                 try {
                                     especeStr.toIntOrNull()
                                 } catch (e: Exception) {
+                                    e.rethrowIfCancellation()
                                     null
                                 }
 
@@ -1056,6 +972,7 @@ object ImportUtils {
                                 // de categorie)
                                 result["espece"] = JsonPrimitive(especeEnum.id)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 // Conserver la valeur originale si la conversion échoue
                                 // Essayer de trouver une correspondance directe par categorie
                                 val especeByCategorie =
@@ -1079,8 +996,24 @@ object ImportUtils {
                                     result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                                 }
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 result["espece"] = JsonPrimitive("1") // Par défaut CHIEN (ID 1)
                             }
+                        }
+                    }
+                }
+
+                if (result.containsKey("race")) {
+                    val raceValue = result["race"]
+                    val especeValue = result["espece"]
+                    if (raceValue is JsonPrimitive && especeValue is JsonPrimitive) {
+                        val mapped =
+                                RaceCodeMapper.resolveRaceCode(
+                                        especeValue.content,
+                                        raceValue.content
+                                )
+                        if (mapped != null) {
+                            result["race"] = JsonPrimitive(mapped)
                         }
                     }
                 }
@@ -1100,290 +1033,6 @@ object ImportUtils {
             }
             else -> return jsonElement
         }
-    }
-
-    /**
-     * Analyse et valide la structure d'un fichier JSON d'animaux
-     * @param content Le contenu JSON à analyser
-     * @return Un message de diagnostic
-     */
-    fun analyzeAnimalJsonStructure(content: String): String {
-        if (content.isBlank()) {
-            return "Erreur: Le contenu JSON est vide"
-        }
-
-        val diagnosticBuilder = StringBuilder()
-        diagnosticBuilder.append("Analyse du fichier JSON d'animaux:\n")
-
-        try {
-            val jsonParser = Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-                coerceInputValues = true
-            }
-
-            // Vérifier si c'est un tableau ou un objet unique
-            val jsonElement = jsonParser.parseToJsonElement(content)
-
-            when (jsonElement) {
-                is kotlinx.serialization.json.JsonArray -> {
-                    diagnosticBuilder.append("Format: Tableau de ${jsonElement.size} éléments\n")
-
-                    // Examiner le premier élément pour vérifier les champs
-                    if (jsonElement.isNotEmpty()) {
-                        val firstAnimal = jsonElement[0]
-                        if (firstAnimal is JsonObject) {
-                            diagnosticBuilder.append("Champs du premier animal:\n")
-                            firstAnimal.keys.forEach { key ->
-                                val value = firstAnimal[key]
-                                diagnosticBuilder.append("- $key: ${value?.toString()?.take(50)}")
-                                if (value.toString().length > 50) diagnosticBuilder.append("...")
-                                diagnosticBuilder.append("\n")
-                            }
-
-                            // Vérifier spécifiquement le champ espece
-                            if (firstAnimal.containsKey("espece")) {
-                                val especeValue = firstAnimal["espece"]
-                                diagnosticBuilder.append(
-                                        "Type du champ espece: ${if (especeValue != null) especeValue::class.simpleName else "null"}\n"
-                                )
-                                diagnosticBuilder.append("Valeur du champ espece: $especeValue\n")
-                            } else {
-                                diagnosticBuilder.append("ATTENTION: Champ 'espece' manquant!\n")
-                            }
-
-                            // Vérifier les consultations
-                            if (firstAnimal.containsKey("consultations")) {
-                                val consultationsValue = firstAnimal["consultations"]
-                                if (consultationsValue is kotlinx.serialization.json.JsonArray) {
-                                    diagnosticBuilder.append(
-                                            "Consultations: ${consultationsValue.size} trouvées\n"
-                                    )
-                                } else {
-                                    diagnosticBuilder.append("Consultations: Format invalide\n")
-                                }
-                            } else if (firstAnimal.containsKey("list")) {
-                                val listValue = firstAnimal["list"]
-                                if (listValue is JsonObject &&
-                                                listValue.containsKey("consultations")
-                                ) {
-                                    val consultationsInList = listValue["consultations"]
-                                    if (consultationsInList is kotlinx.serialization.json.JsonArray
-                                    ) {
-                                        diagnosticBuilder.append(
-                                                "Consultations (via list): ${consultationsInList.size} trouvées\n"
-                                        )
-                                    } else {
-                                        diagnosticBuilder.append(
-                                                "Consultations (via list): Format invalide\n"
-                                        )
-                                    }
-                                } else {
-                                    diagnosticBuilder.append(
-                                            "list: Ne contient pas de consultations valides\n"
-                                    )
-                                }
-                            } else {
-                                diagnosticBuilder.append(
-                                        "AVERTISSEMENT: Aucune consultation trouvée\n"
-                                )
-                            }
-                        } else {
-                            diagnosticBuilder.append(
-                                    "ERREUR: Le premier élément n'est pas un objet JSON valide\n"
-                            )
-                        }
-                    }
-                }
-                is JsonObject -> {
-                    diagnosticBuilder.append("Format: Objet JSON unique (un seul animal)\n")
-                    diagnosticBuilder.append("Champs de l'animal:\n")
-                    jsonElement.keys.forEach { key ->
-                        val value = jsonElement[key]
-                        diagnosticBuilder.append("- $key: ${value?.toString()?.take(50)}")
-                        if (value.toString().length > 50) diagnosticBuilder.append("...")
-                        diagnosticBuilder.append("\n")
-                    }
-
-                    // Vérifier spécifiquement le champ espece
-                    if (jsonElement.containsKey("espece")) {
-                        val especeValue = jsonElement["espece"]
-                        diagnosticBuilder.append(
-                                "Type du champ espece: ${if (especeValue != null) especeValue::class.simpleName else "null"}\n"
-                        )
-                        diagnosticBuilder.append("Valeur du champ espece: $especeValue\n")
-                    } else {
-                        diagnosticBuilder.append("ATTENTION: Champ 'espece' manquant!\n")
-                    }
-                }
-                else -> {
-                    diagnosticBuilder.append(
-                            "ERREUR: Format JSON non reconnu (ni tableau ni objet)\n"
-                    )
-                }
-            }
-
-            // Tentative de désérialisation pour détecter les problèmes
-            try {
-                val preprocessedJson = preprocessNutrientValues(jsonElement)
-                val preprocessedWithEspeces = preprocessAnimalEspeces(preprocessedJson)
-                val preprocessedContent = jsonParser.encodeToString(preprocessedWithEspeces)
-
-                diagnosticBuilder.append("\nTest de désérialisation:\n")
-
-                val animals =
-                        try {
-                            jsonParser.decodeFromString<List<AnimalEvJson>>(preprocessedContent)
-                            diagnosticBuilder.append(
-                                    "✓ Désérialisation comme liste d'animaux réussie\n"
-                            )
-                            true
-                        } catch (e: Exception) {
-                            diagnosticBuilder.append(
-                                    "✗ Échec de désérialisation comme liste: ${e.message}\n"
-                            )
-
-                            try {
-                                jsonParser.decodeFromString<AnimalEvJson>(preprocessedContent)
-                                diagnosticBuilder.append(
-                                        "✓ Désérialisation comme animal unique réussie\n"
-                                )
-                                true
-                            } catch (e: Exception) {
-                                diagnosticBuilder.append(
-                                        "✗ Échec de désérialisation comme animal unique: ${e.message}\n"
-                                )
-                                false
-                            }
-                        }
-
-                if (!animals) {
-                    diagnosticBuilder.append("\nRECOMMANDATIONS:\n")
-                    diagnosticBuilder.append("- Vérifier la structure du JSON\n")
-                    diagnosticBuilder.append(
-                            "- Assurez-vous que tous les champs obligatoires sont présents\n"
-                    )
-                    diagnosticBuilder.append("- Vérifiez le format des dates (YYYY-MM-DD)\n")
-                    diagnosticBuilder.append(
-                            "- Vérifiez que les valeurs numériques sont correctes\n"
-                    )
-                }
-            } catch (e: Exception) {
-                diagnosticBuilder.append("\nERREUR lors du prétraitement: ${e.message}\n")
-            }
-        } catch (e: Exception) {
-            diagnosticBuilder.append("ERREUR lors de l'analyse JSON: ${e.message}\n")
-        }
-
-        return diagnosticBuilder.toString()
-    }
-
-    /**
-     * Analyse les espèces des aliments dans un fichier JSON
-     * @param content Le contenu JSON à analyser
-     * @return Un rapport détaillé sur les espèces trouvées
-     */
-    fun analyzeEspecesInFoodJson(content: String): String {
-        if (content.isBlank()) {
-            return "Erreur: Le contenu JSON est vide"
-        }
-
-        val diagnosticBuilder = StringBuilder()
-        diagnosticBuilder.append("Analyse des espèces des aliments:\n")
-
-        try {
-            val jsonParser = Json {
-                ignoreUnknownKeys = true
-                isLenient = true
-                coerceInputValues = true
-            }
-
-            // Prétraiter le JSON
-            val jsonElement = jsonParser.parseToJsonElement(content)
-            val preprocessedJson = preprocessEspecesAndNutrientValues(jsonElement)
-            val preprocessedContent =
-                    jsonParser.encodeToString(JsonElement.serializer(), preprocessedJson)
-
-            // Désérialiser les aliments
-            val foods =
-                    try {
-                        jsonParser.decodeFromString<List<AlimentEvJson>>(preprocessedContent)
-                    } catch (e: Exception) {
-                        try {
-                            listOf(jsonParser.decodeFromString<AlimentEvJson>(preprocessedContent))
-                        } catch (e: Exception) {
-                            emptyList()
-                        }
-                    }
-
-            if (foods.isEmpty()) {
-                diagnosticBuilder.append("Aucun aliment trouvé dans le JSON\n")
-                return diagnosticBuilder.toString()
-            }
-
-            diagnosticBuilder.append("Nombre d'aliments trouvés: ${foods.size}\n\n")
-
-            // Analyser les espèces pour chaque aliment
-            val alimWithEspeces = foods.filter { it.Especes.isNotEmpty() }
-            val alimWithoutEspeces = foods.filter { it.Especes.isEmpty() }
-
-            diagnosticBuilder.append("Aliments avec espèces: ${alimWithEspeces.size}\n")
-            diagnosticBuilder.append("Aliments sans espèces: ${alimWithoutEspeces.size}\n\n")
-
-            // Statistiques sur les espèces
-            val allEspecesLabels = mutableMapOf<String, Int>()
-
-            alimWithEspeces.forEach { food ->
-                food.Especes.forEach { espece ->
-                    allEspecesLabels[espece] = (allEspecesLabels[espece] ?: 0) + 1
-                }
-            }
-
-            if (allEspecesLabels.isNotEmpty()) {
-                diagnosticBuilder.append("Distribution des espèces:\n")
-                allEspecesLabels.entries.sortedByDescending { it.value }.forEach { (label, count) ->
-                    val especeEnum =
-                            try {
-                                // Essayer de trouver l'énumération correspondante
-                                val espece = Espece.getByLabel(label) ?: Espece.valueOf(label)
-                                "(ID: ${espece.id}, catégorie: ${espece.categorie})"
-                            } catch (e: Exception) {
-                                "(non reconnue dans l'énumération)"
-                            }
-
-                    diagnosticBuilder.append("- $label $especeEnum: $count aliments\n")
-                }
-            }
-
-            // Détails des aliments sans espèces
-            if (alimWithoutEspeces.isNotEmpty()) {
-                diagnosticBuilder.append("\nDétails des aliments sans espèces spécifiées:\n")
-                alimWithoutEspeces.take(10).forEach { food ->
-                    diagnosticBuilder.append(
-                            "- ${food.nom} (ID: ${food.UUID}, espece: ${food.espece})\n"
-                    )
-                }
-
-                if (alimWithoutEspeces.size > 10) {
-                    diagnosticBuilder.append("  ... et ${alimWithoutEspeces.size - 10} autres\n")
-                }
-            }
-
-            // Détails de quelques aliments avec espèces
-            if (alimWithEspeces.isNotEmpty()) {
-                diagnosticBuilder.append("\nExemples d'aliments avec espèces spécifiées:\n")
-                alimWithEspeces.take(10).forEach { food ->
-                    diagnosticBuilder.append("- ${food.nom} (ID: ${food.UUID})\n")
-                    diagnosticBuilder.append("  Espèces: ${food.Especes.joinToString(", ")}\n")
-                    diagnosticBuilder.append("  Champ espece: ${food.espece}\n")
-                }
-            }
-        } catch (e: Exception) {
-            diagnosticBuilder.append("\nErreur lors de l'analyse: ${e.message}\n")
-            e.printStackTrace()
-        }
-
-        return diagnosticBuilder.toString()
     }
 
     /**
@@ -1424,6 +1073,7 @@ object ImportUtils {
 
             return false
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return false
         }
     }
@@ -1488,6 +1138,7 @@ object ImportUtils {
             jsonParser.parseToJsonElement(content)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }
@@ -1505,36 +1156,6 @@ object ImportUtils {
     }
 
     /**
-     * Détermine si un aliment doit être remplacé par une version plus complète.
-     * @param existingFood L'aliment existant
-     * @param newFood Le nouvel aliment
-     * @return true si le nouvel aliment est plus complet et doit remplacer l'existant
-     */
-    private fun shouldReplaceFood(existingFood: AlimentEvJson, newFood: AlimentEvJson): Boolean {
-        var existingScore = 0
-        var newScore = 0
-
-        // Attribuer des points pour chaque attribut non vide
-        if (existingFood.nom.isNotBlank()) existingScore += 1
-        if (newFood.nom.isNotBlank()) newScore += 1
-
-        if (existingFood.ingredients.isNotBlank()) existingScore += 1
-        if (newFood.ingredients.isNotBlank()) newScore += 1
-
-        if (existingFood.marque.isNotBlank()) existingScore += 1
-        if (newFood.marque.isNotBlank()) newScore += 1
-
-        if (existingFood.gamme.isNotBlank()) existingScore += 1
-        if (newFood.gamme.isNotBlank()) newScore += 1
-
-        if (existingFood.valMap.isNotEmpty()) existingScore += existingFood.valMap.size
-        if (newFood.valMap.isNotEmpty()) newScore += newFood.valMap.size
-
-        // Si le nouveau score est meilleur, remplacer
-        return newScore > existingScore
-    }
-
-    /**
      * Importe une liste de références nutritionnelles à partir d'une chaîne JSON Format attendu:
      * .vbnr.json (VetBrain Nutritional Requirements) Structure: Array de NutritionalRequirementData
      * avec reference, allEquations, allBibliographicReferences, nutrientRequirements
@@ -1542,7 +1163,7 @@ object ImportUtils {
      * @param jsonContent Le contenu JSON à désérialiser (.vbnr.json format)
      * @return La liste des références nutritionnelles importées
      */
-    fun importNutritionalRequirementsFromJson(
+    internal fun lireReferencesNutritionnelles(
             jsonContent: String
     ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
 
@@ -1583,17 +1204,10 @@ object ImportUtils {
                 }
             }
 
-            // Afficher un résumé
-            if (references.isNotEmpty()) {
-                references.forEach { ref ->
-                    
-                    if (ref.maladie) {}
-                }
-            }
-
             return references
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return emptyList()
         }
     }
@@ -1728,7 +1342,8 @@ object ImportUtils {
 
             return reference
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return null
         }
     }
@@ -1746,7 +1361,7 @@ object ImportUtils {
                     if (equation != null) {
                         equations.add(equation)
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
             }
         }
 
@@ -1767,56 +1382,25 @@ object ImportUtils {
                             ?: extraireStringDepuisJson(equationObj, "description") ?: ""
             val equationScript = extraireStringDepuisJson(equationObj, "equationScript") ?: "0"
 
-            // Gestion du kind - peut être une string ou un int selon le format JSON
-            val kindValue: Int =
-                    when (val kindRaw = equationObj["kind"]) {
-                        is kotlinx.serialization.json.JsonPrimitive -> {
-                            if (kindRaw.isString) {
-                                // C'est une string comme "ENERGYNEED", convertir en int
-                                when (kindRaw.content.uppercase()) {
-                                    "ENERGYNEED" -> 0
-                                    "ENERGYDENSITY" -> 1
-                                    "MW" -> 2
-                                    "INDICATOR" -> 3
-                                    "NEED" -> 4
-                                    else -> 0
-                                }
-                            } else {
-                                // C'est déjà un int
-                                when (kindRaw) {
-                                    is kotlinx.serialization.json.JsonPrimitive -> {
-                                        if (kindRaw.isString) {
-                                            kindRaw.content.toIntOrNull() ?: 0
-                                        } else {
-                                            try {
-                                                kindRaw.content.toIntOrNull() ?: 0
-                                            } catch (e: Exception) {
-                                                0
-                                            }
-                                        }
-                                    }
-                                    else -> 0
+            // kind : identifiant V2 (0..6) ou nom de l'énumération (« ENERGYNEED », « ENERCOMP »…)
+            val kind =
+                    (equationObj["kind"] as? kotlinx.serialization.json.JsonPrimitive)
+                            ?.content
+                            ?.trim()
+                            ?.let { brut ->
+                                brut.toIntOrNull()?.let { LegacyV2Mappings.equationKindNames[it] }
+                                        ?: brut.uppercase()
+                            }
+                            ?.let { nom ->
+                                fr.vetbrain.vetnutri_mp.Enumer.EquationKind.entries.firstOrNull {
+                                    it.name == nom
                                 }
                             }
-                        }
-                        else -> 0
-                    }
-
+                            ?: fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
             val speciesStr =
                     extraireStringDepuisJson(equationObj, "Specie")
                             ?: extraireStringDepuisJson(equationObj, "specie") ?: "CHIEN"
             val consistent = extraireBooleanDepuisJson(equationObj, "consistent") ?: true
-
-            // Convertir le kind en énumération
-            val kind =
-                    when (kindValue) {
-                        0 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
-                        1 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYDENSITY
-                        2 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.MW
-                        3 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.INDICATOR
-                        4 -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.NEED
-                        else -> fr.vetbrain.vetnutri_mp.Enumer.EquationKind.ENERGYNEED
-                    }
 
             val espece = convertirStringVersEspece(speciesStr)
 
@@ -1846,7 +1430,8 @@ object ImportUtils {
             
             return equation
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return null
         }
     }
@@ -1885,7 +1470,8 @@ object ImportUtils {
             
             return biblioRef
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return creerBiblioRefParDefaut("Erreur lors de la création")
         }
     }
@@ -1932,6 +1518,7 @@ object ImportUtils {
                     completeRef = completeRef
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return null
         }
     }
@@ -1960,7 +1547,7 @@ object ImportUtils {
                     if (nutrientInfo != null) {
                         ajouterNutrientALaReference(reference, nutrientInfo)
                     }
-                } catch (e: Exception) {}
+                } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
             }
         }
     }
@@ -1983,10 +1570,7 @@ object ImportUtils {
             // 🔍 LOG DIAGNOSTIC : Tracer la résolution des nutriments
             
 
-            var finalNutrient =
-                    fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
-                            normalizedNutrientString
-                    )
+            var finalNutrient = resoudreNutrimentExact(normalizedNutrientString)
 
             if (finalNutrient != null) {
                 // 🔍 LOG DIAGNOSTIC : Nutriment résolu avec succès
@@ -2001,10 +1585,7 @@ object ImportUtils {
                 // Essayer avec d'autres variantes courantes
                 val variantes = genererVariantesNutrient(nutrientString)
                 for (variante in variantes) {
-                    finalNutrient =
-                            fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(
-                                    variante
-                            )
+                    finalNutrient = resoudreNutrimentExact(variante)
                     if (finalNutrient != null) {
                         resolutionsProblematiques.add(
                                 "RESOLUTION_PAR_VARIANTE: '$nutrientString' → '$variante' (${finalNutrient::class.simpleName})"
@@ -2033,12 +1614,22 @@ object ImportUtils {
 
             val unit = convertirStringVersUnitEnum(unitStr)
             val unitRequirement = convertirStringVersUnitReqEnum(unitRequirementStr)
+            if (unitRequirement == null) {
+                // Base de calcul inconnue : mieux vaut écarter le besoin que le deviner
+                resolutionsProblematiques.add(
+                        "ECHEC_TOTAL: '$nutrientString (unité de besoin inconnue : $unitRequirementStr)'"
+                )
+                return null
+            }
 
             // Extraire la référence bibliographique
-            val biblioRefElement =
-                    nutrientObj["bibliographicReference"] as? kotlinx.serialization.json.JsonObject
+            val biblioRefBrut = nutrientObj["bibliographicReference"]
+            val biblioRefElement = biblioRefBrut as? kotlinx.serialization.json.JsonObject
             val biblioRef =
-                    if (biblioRefElement != null) {
+                    if (biblioRefBrut is kotlinx.serialization.json.JsonPrimitive && biblioRefBrut.isString) {
+                        // Référence par identifiant vers allBibliographicReferences
+                        biblioIndex[biblioRefBrut.content]
+                    } else if (biblioRefElement != null) {
                         // Chercher d'abord par UUID si présent
                         val biblioUuid = extraireStringDepuisJson(biblioRefElement, "UUID")
                         if (biblioUuid != null && biblioIndex.containsKey(biblioUuid)) {
@@ -2058,9 +1649,71 @@ object ImportUtils {
                     bibliographicReference = biblioRef
             )
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             return null
         }
+    }
+
+    /** Libellés exacts des nutriments standard (et libellés alternatifs des vitamines). */
+    private val libellesNutrimentsStandards: Set<String> by lazy {
+        buildSet {
+            listOf<List<fr.vetbrain.vetnutri_mp.Enumer.Nutrient>>(
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy.entries,
+                            fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries
+                    )
+                    .flatten()
+                    .forEach { add(it.label.uppercase()) }
+            fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries.forEach { vitamine ->
+                vitamine.altLabels.forEach { add(it.uppercase()) }
+            }
+            // Alias traités explicitement par NutrientResolver (cholestérol, fibres)
+            addAll(listOf("CHOL", "FIBRETOT", "FIBRESOL"))
+        }
+    }
+
+    /**
+     * Résolution sans approximation pour un besoin de référentiel. `AllNutrientResolver` ne renvoie
+     * jamais null : un libellé inconnu ou mal orthographié y est rapproché du nutriment le plus
+     * ressemblant, ou de celui dont le libellé contient le sien. Le besoin serait alors rangé
+     * sous un autre nutriment et en écraserait la valeur. Seuls un libellé standard exact ou un
+     * nutriment personnalisé déjà déclaré sont acceptés ; le reste est écarté et signalé.
+     */
+    private fun resoudreNutrimentExact(libelle: String): fr.vetbrain.vetnutri_mp.Enumer.Nutrient? {
+        val normalise = fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.normalizeLabel(libelle).uppercase()
+        val connu =
+                normalise in libellesNutrimentsStandards ||
+                        fr.vetbrain.vetnutri_mp.Enumer.CustomNutrientRegistry.getByLabel(normalise) != null
+        if (connu) return fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver(libelle)
+        // Fichiers V2 : nutriment désigné par son nom d'énumération (PhosphProt pour « PROTP »)
+        return nutrimentsParNomEnum[libelle.trim().uppercase()]
+    }
+
+    /** Nutriments standard par nom d'énumération (sans casse), sauf ceux qui coïncident avec un libellé. */
+    private val nutrimentsParNomEnum: Map<String, fr.vetbrain.vetnutri_mp.Enumer.Nutrient> by lazy {
+        listOf<List<Enum<*>>>(
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMain.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMacro.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientMin.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientLipid.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientVitam.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientOther.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.AAEnum.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientEnergy.entries,
+                        fr.vetbrain.vetnutri_mp.Enumer.NutrientAnalysis.entries
+                )
+                .flatten()
+                .filter { it.name.uppercase() !in libellesNutrimentsStandards }
+                .groupBy { it.name.uppercase() }
+                .filterValues { it.size == 1 } // nom porté par deux énumérations : ambigu
+                .mapValues { it.value.single() as fr.vetbrain.vetnutri_mp.Enumer.Nutrient }
     }
 
     /** Normalise le nom d'un nutriment pour une meilleure résolution */
@@ -2146,7 +1799,7 @@ object ImportUtils {
             "PROTEIN" -> "PROTEINE"
             "LIPIDE", "LIPIDES", "FAT" -> "LIPIDE"
             "GLUCIDE", "GLUCIDES", "CARBOHYDRATE" -> "GLUCIDE"
-            "FIBRE", "FIBRES", "FIBER" -> "FIBRE"
+            "FIBRE", "FIBRES", "FIBER" -> "CELLULOSE"
             "CELLULOSE" -> "CELLULOSE"
             "AMIDON", "STARCH" -> "AMIDON"
             "SUCRE", "SUGAR" -> "SUCRE"
@@ -2253,8 +1906,21 @@ object ImportUtils {
                     nutrientInfo.bibliographicReference ?: fr.vetbrain.vetnutri_mp.Data.BiblioRef()
 
             // Utiliser la méthode publique pour définir le nutriment
+            // Quantité ramenée à l'unité du nutriment (50 mg de K → 0,05 g) : le reste de
+            // l'application lit la valeur dans nutrient.ue
+            val uniteNutriment = nutrientInfo.nutrient.ue
+            val uniteSource = nutrientInfo.unit
+            val quantite =
+                    if (uniteSource != null && uniteSource != uniteNutriment &&
+                                    uniteSource.getIDFamily() == uniteNutriment.getIDFamily() &&
+                                    uniteNutriment.conv > 0.0
+                    ) {
+                        nutrientInfo.quantity * uniteSource.conv / uniteNutriment.conv
+                    } else {
+                        nutrientInfo.quantity
+                    }
             reference.definirNutriment(
-                    valeur = nutrientInfo.quantity,
+                    valeur = quantite,
                     nutrient = nutrientInfo.nutrient,
                     niveauRef = nutrientInfo.referenceLevel,
                     uniteReq = nutrientInfo.unitRequirement,
@@ -2262,14 +1928,9 @@ object ImportUtils {
             )
             
             // 🔍 LOG DIAGNOSTIC : Vérification après ajout
-            val valeurVerifiee = reference.obtenirNutriment(nutrientInfo.nutrient, nutrientInfo.referenceLevel)
             
             
-        } catch (e: Exception) {
-            // 🔍 LOG DIAGNOSTIC : Erreur lors de l'ajout
-            
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
     }
 
     /** Traite les coefficients de modification (modk1-5) si présents */
@@ -2289,11 +1950,11 @@ object ImportUtils {
             val coefArrays = listOf("modk1", "modk2", "modk3", "modk4", "modk5")
             val referenceLists =
                     listOf(
-                            reference.getModk1(),
-                            reference.getModk2(),
-                            reference.getModk3(),
-                            reference.getModk4(),
-                            reference.getModk5()
+                            reference.modk1,
+                            reference.modk2,
+                            reference.modk3,
+                            reference.modk4,
+                            reference.modk5
                     )
 
             coefArrays.forEachIndexed { index, arrayName ->
@@ -2310,7 +1971,10 @@ object ImportUtils {
                     }
                 }
             }
-        } catch (e: Exception) {}
+
+            // Déduplication des coefficients par groupe (même nom et même valeur)
+            reference.deduplicateCoefficients()
+        } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("ImportUtils", "Exception ignorée : ${e.message}") }
     }
 
     /** Crée un objet CoefP à partir d'un objet JSON */
@@ -2332,6 +1996,7 @@ object ImportUtils {
                     groupUUID = groupUUID
             )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return null
         }
     }
@@ -2412,52 +2077,53 @@ object ImportUtils {
     private fun convertirStringVersReflevel(
             reflevel: String
     ): fr.vetbrain.vetnutri_mp.Enumer.Reflevel {
-        return when (reflevel.uppercase()) {
-            "MIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
-            "MAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
-            "OPTIMIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
-            "OPTIMAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
-            else -> {
-                fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
+        reflevel.trim().toIntOrNull()?.let { id ->
+            LegacyV2Mappings.referenceLevelNames[id]?.let {
+                return fr.vetbrain.vetnutri_mp.Enumer.Reflevel.valueOf(it)
             }
+        }
+        return when (reflevel.trim().uppercase()) {
+            "MAX", "MAXIMUM" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MAX
+            "OPTIMIN", "OPTIMUMMIN" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMIN
+            "OPTIMAX", "OPTIMUMMAX" -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.OPTIMAX
+            else -> fr.vetbrain.vetnutri_mp.Enumer.Reflevel.MIN
         }
     }
 
     /** Convertit une chaîne en énumération UnitEnum - amélioration pour les unités JSON réelles */
-    private fun convertirStringVersUnitEnum(unit: String): fr.vetbrain.vetnutri_mp.Enumer.UnitEnum {
-        return when (unit.uppercase()) {
-            // Unités de base existantes
-            "G",
-            "BUG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
+    /** Unité de la quantité ; null quand le fichier n'en précise pas d'exploitable (« NO », « % »). */
+    private fun convertirStringVersUnitEnum(unit: String): fr.vetbrain.vetnutri_mp.Enumer.UnitEnum? {
+        return when (unit.trim().uppercase()) {
+            "G", "BUG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
             "MG", "BUMG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUmg
             "UG", "µG", "BUMU" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUmu
             "IU", "UI", "AUUI" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.AUui
             "DUI", "DUUI" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.DUui
             "KCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.KCAL
-            "NO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg // Par défaut pour "pas d'unité"
-            "PERCENT", "%" -> fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
-            else -> {
-                fr.vetbrain.vetnutri_mp.Enumer.UnitEnum.BUg
-            }
+            else -> null
         }
     }
 
     /**
-     * Convertit une chaîne en énumération UnitReqEnum - amélioration pour les unités de besoin JSON
-     * réelles
+     * Base de calcul d'un besoin : codes V2 (MCAL, KGBW, KGMW, NO, PERC, ou leur numéro, comme
+     * LegacyV2Mappings) ou noms de UnitReqEnum ; null pour un code inconnu.
      */
     private fun convertirStringVersUnitReqEnum(
             unitReq: String
-    ): fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum {
-        return when (unitReq.uppercase()) {
-            "NO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
-            "KGBW", "PERKG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKG
-            "KGMW" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKG
-            "MCAL", "PERKCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKCAL
-            "DM", "PERMS" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERMS
-            else -> {
-                fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
+    ): fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum? {
+        unitReq.trim().toIntOrNull()?.let { id ->
+            return LegacyV2Mappings.unitRequirementIds[id]?.let {
+                fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.getById(it)
             }
+        }
+        return when (unitReq.trim().uppercase()) {
+            "KGBW", "PERKG" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKG
+            "KGMW", "PERMS" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERMS
+            "MCAL", "PERKCAL" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKCAL
+            "PERKJ" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.PERKJ
+            "PERC", "PERCENT", "%", "RATIO" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.RATIO
+            "NO", "ABSOLUTE" -> fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum.ABSOLUTE
+            else -> null
         }
     }
 
@@ -2634,106 +2300,9 @@ object ImportUtils {
 
             return false
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return false
         }
-    }
-
-    /**
-     * Teste l'importation de références nutritionnelles et génère un rapport détaillé
-     * @param jsonContent Le contenu JSON à tester
-     * @return Un rapport détaillé des tests effectués
-     */
-    fun testNutritionalRequirementImport(jsonContent: String): String {
-        val report = StringBuilder()
-        report.append("🧪 TEST D'IMPORTATION DES RÉFÉRENCES NUTRITIONNELLES (.vbnr.json)\n")
-        report.append("=".repeat(70) + "\n\n")
-
-        try {
-            // Analyse préliminaire du contenu
-            report.append("📋 ANALYSE PRÉLIMINAIRE\n")
-            report.append("-".repeat(30) + "\n")
-            report.append("Taille du contenu: ${jsonContent.length} caractères\n")
-
-            if (!isValidJson(jsonContent)) {
-                report.append("❌ ERREUR: Le contenu n'est pas un JSON valide\n")
-                return report.toString()
-            }
-            report.append("✅ Format JSON valide\n")
-
-            if (!isNutritionalRequirementJsonContent(jsonContent)) {
-                report.append("❌ ERREUR: Le contenu ne semble pas être un fichier .vbnr.json\n")
-                report.append(
-                        "Structure attendue: reference, allEquations, allBibliographicReferences, nutrientRequirements\n"
-                )
-                return report.toString()
-            }
-            report.append("✅ Format .vbnr.json détecté\n")
-
-            // Analyse de la structure JSON
-            report.append("\n🔍 ANALYSE DE LA STRUCTURE\n")
-            report.append("-".repeat(30) + "\n")
-
-            val jsonElement = json.parseToJsonElement(jsonContent)
-            when (jsonElement) {
-                is kotlinx.serialization.json.JsonArray -> {
-                    report.append("Format: Tableau de ${jsonElement.size} référence(s)\n")
-                }
-                is kotlinx.serialization.json.JsonObject -> {
-                    report.append("Format: Objet unique de référence\n")
-                }
-                else -> {
-                    report.append("❌ Format JSON non reconnu\n")
-                    return report.toString()
-                }
-            }
-
-            // Tentative d'importation
-            report.append("\n🚀 TENTATIVE D'IMPORTATION\n")
-            report.append("-".repeat(30) + "\n")
-
-            val references = importNutritionalRequirementsFromJson(jsonContent)
-
-            if (references.isEmpty()) {
-                report.append("❌ Aucune référence importée\n")
-            } else {
-                report.append("✅ ${references.size} référence(s) importée(s) avec succès\n\n")
-
-                references.forEachIndexed { index, ref ->
-                    report.append("📄 RÉFÉRENCE ${index + 1}: ${ref.nom}\n")
-                    report.append("   • Espèce: ${ref.espece}\n")
-                    report.append("   • Stade physiologique: ${ref.stadePhysio}\n")
-                    report.append(
-                            "   • Maladie: ${if (ref.maladie) "Oui (${ref.nomMaladie})" else "Non"}\n"
-                    )
-                    report.append("   • Nutriments MIN: ${ref.getRefMapMin().size}\n")
-                    report.append("   • Nutriments MAX: ${ref.getRefMapMax().size}\n")
-                    report.append("   • Équations: ${ref.equationsNut.size}\n")
-
-                    if (ref.equationBEE != null) {
-                        report.append("   • Équation BEE: ${ref.equationBEE!!.name}\n")
-                    }
-                    if (ref.equationBW != null) {
-                        report.append("   • Équation BW: ${ref.equationBW!!.name}\n")
-                    }
-                    if (ref.equationDEraw != null) {
-                        report.append("   • Équation DE raw: ${ref.equationDEraw!!.name}\n")
-                    }
-                    if (ref.equationDEcom != null) {
-                        report.append("   • Équation DE commercial: ${ref.equationDEcom!!.name}\n")
-                    }
-
-                    report.append("\n")
-                }
-
-                report.append("🎉 IMPORTATION RÉUSSIE!\n")
-            }
-        } catch (e: Exception) {
-            report.append("💥 ERREUR DURANT LE TEST:\n")
-            report.append("${e.message}\n")
-            report.append("${e.stackTraceToString()}\n")
-        }
-
-        return report.toString()
     }
 
     /** Sauvegarde automatiquement tous les éléments importés dans la base de données */
@@ -2815,6 +2384,7 @@ object ImportUtils {
                             bibliographiesAjoutees++
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         erreurs.add(
                                 "Erreur bibliographie ${bibliographie.firstAuthor}: ${e.message}"
                         )
@@ -2882,6 +2452,7 @@ object ImportUtils {
                             equationsAjoutees++
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         erreurs.add("Erreur équation ${equation.name}: ${e.message}")
                     }
                 }
@@ -2904,11 +2475,13 @@ object ImportUtils {
                             
                         }
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         erreurs.add("Erreur référence ${reference.nom}: ${e.message}")
                     }
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             erreurs.add("Erreur générale de sauvegarde: ${e.message}")
         }
 
@@ -2943,80 +2516,18 @@ object ImportUtils {
             biblioRefRepository: fr.vetbrain.vetnutri_mp.Repository.BiblioRefRepository? = null,
             sauvegarderEnBase: Boolean = true
     ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
-
-        try {
-            // Vérifier si le contenu est un JSON valide
-            if (!isValidJson(jsonContent)) {
-                return emptyList()
-            }
-
-            // Vérifier si le contenu correspond à un fichier de références nutritionnelles
-            if (!isNutritionalRequirementJsonContent(jsonContent)) {
-                return emptyList()
-            }
-
-            val references = mutableListOf<fr.vetbrain.vetnutri_mp.Data.ReferenceEv>()
-            val jsonElement = json.parseToJsonElement(jsonContent)
-
-            when (jsonElement) {
-                is kotlinx.serialization.json.JsonArray -> {
-
-                    jsonElement.forEachIndexed { index, element ->
-                        if (element is kotlinx.serialization.json.JsonObject) {
-                            val ref = creerReferenceDepuisNutritionalRequirementData(element, index)
-                            if (ref != null) {
-                                references.add(ref)
-                            } else {}
-                        }
-                    }
-                }
-                is kotlinx.serialization.json.JsonObject -> {
-                    val ref = creerReferenceDepuisNutritionalRequirementData(jsonElement, 0)
-                    if (ref != null) {
-                        references.add(ref)
-                    } else {}
-                }
-                else -> {
-                    return emptyList()
-                }
-            }
-
-            // Afficher un résumé
-            if (references.isNotEmpty()) {
-                references.forEach { ref ->
-                    
-                    if (ref.maladie) {}
-                }
-            }
-
-            if (sauvegarderEnBase) {
-                val result =
-                        sauvegarderDonneesImportees(
-                                references,
-                                databaseReferenceEvRepository,
-                                equationRepository,
-                                biblioRefRepository
-                        )
-            }
-
-            return references
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return emptyList()
+        val references = lireReferencesNutritionnelles(jsonContent)
+        if (sauvegarderEnBase && references.isNotEmpty()) {
+            val resultat =
+                    sauvegarderDonneesImportees(
+                            references,
+                            databaseReferenceEvRepository,
+                            equationRepository,
+                            biblioRefRepository
+                    )
+            resultat.erreurs.forEach { AppLog.w("ImportUtils", it) }
         }
-    }
-
-    /**
-     * Version de compatibilité pour l'importation des références nutritionnelles (non-suspend)
-     * @deprecated Utiliser la version suspend importNutritionalRequirementsFromJson
-     */
-    fun importNutritionalRequirementsFromJsonLegacy(
-            jsonContent: String
-    ): List<fr.vetbrain.vetnutri_mp.Data.ReferenceEv> {
-        // Implementation of the legacy importNutritionalRequirementsFromJson function
-        // This function is deprecated and should not be used in the new code
-        // You can implement the legacy import logic here if needed
-        return emptyList()
+        return references
     }
 
     /**
@@ -3049,7 +2560,8 @@ object ImportUtils {
                 Pair(emptyList(), "")
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("ImportUtils", e.message ?: "Erreur", e)
             Pair(emptyList(), "")
         }
     }
@@ -3071,13 +2583,10 @@ data class NutrientRequirementInfo(
         val nutrient: fr.vetbrain.vetnutri_mp.Enumer.Nutrient,
         val referenceLevel: fr.vetbrain.vetnutri_mp.Enumer.Reflevel,
         val quantity: Double,
-        val unit: fr.vetbrain.vetnutri_mp.Enumer.UnitEnum,
+        val unit: fr.vetbrain.vetnutri_mp.Enumer.UnitEnum?,
         val unitRequirement: fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum,
         val bibliographicReference: fr.vetbrain.vetnutri_mp.Data.BiblioRef?
 )
-
-/** Extension pour répéter une chaîne (comme Python * operator) */
-operator fun String.times(n: Int): String = repeat(n)
 
 /** Résultat d'une opération de sauvegarde automatique */
 data class SauvegardeResult(

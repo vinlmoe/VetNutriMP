@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,22 +18,23 @@ import fr.vetbrain.vetnutri_mp.Components.RichTextEditor
 import fr.vetbrain.vetnutri_mp.Components.TopBarSimple
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Export.*
-import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
+import kotlinx.datetime.Clock
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
 
 /**
  * Vue pour éditer un conseil personnalisé
  *
- * @param conseilRepository Repository pour la gestion des conseils
+ * @param viewModel Accès aux conseils (lecture et enregistrement)
  * @param conseilId ID du conseil à éditer (null pour création)
  * @param onNavigateBack Callback pour revenir à l'écran précédent
  * @param modifier Modifier à appliquer à la vue
  */
 @Composable
 fun ConseilEditView(
-        conseilRepository: ConseilRepository,
+        viewModel: ConseilsViewModel,
         conseilId: String?,
         onNavigateBack: () -> Unit,
         modifier: Modifier = Modifier
@@ -56,7 +59,7 @@ fun ConseilEditView(
     LaunchedEffect(conseilId) {
         if (conseilId != null) {
             try {
-                val result = conseilRepository.getConseilsActifs()
+                val result = viewModel.getActiveAdvices()
                 if (result.isSuccess) {
                     val conseil = result.getOrThrow().find { it.id == conseilId }
                     if (conseil != null) {
@@ -76,15 +79,16 @@ fun ConseilEditView(
 
                         content = conseil.content
                     } else {
-                        errorMessage = "Conseil non trouvé"
+                        errorMessage = translate("conseil.edit.notFoundError")
                         showErrorDialog = true
                     }
                 } else {
-                    errorMessage = "Erreur lors du chargement du conseil"
+                    errorMessage = translate("conseil.edit.loadError")
                     showErrorDialog = true
                 }
             } catch (e: Exception) {
-                errorMessage = "Erreur: ${e.message}"
+                e.rethrowIfCancellation()
+                errorMessage = translate("conseil.edit.exceptionErrorFormat", e.message.orEmpty())
                 showErrorDialog = true
             }
         }
@@ -93,7 +97,7 @@ fun ConseilEditView(
 
     // Mode d'édition ou de création
     val isEditMode = conseilId != null
-    val screenTitle = if (isEditMode) "Modifier le conseil" else "Nouveau conseil"
+    val screenTitle = if (isEditMode) translate("conseil.edit.titleEdit") else translate("conseil.edit.titleCreate")
 
     Scaffold(topBar = { TopBarSimple(title = screenTitle, onNavigateBack = onNavigateBack) }) {
             paddingValues ->
@@ -115,7 +119,7 @@ fun ConseilEditView(
                 Card(elevation = 4.dp, shape = MaterialTheme.shapes.medium) {
                     Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Text(
-                                text = "Informations générales",
+                                text = translate("conseil.edit.generalInfoTitle"),
                                 style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -127,7 +131,7 @@ fun ConseilEditView(
                         OutlinedTextField(
                                 value = conseilTitle,
                                 onValueChange = { conseilTitle = it },
-                                label = { Text("Titre du conseil") },
+                                label = { Text(translate("conseil.edit.conseilTitleLabel")) },
                                 modifier = Modifier.fillMaxWidth(),
                                 colors =
                                         TextFieldDefaults.outlinedTextFieldColors(
@@ -142,12 +146,12 @@ fun ConseilEditView(
                         DropdownField(
                                 selectedValue = category,
                                 onValueChange = { category = it },
-                                label = "Catégorie",
+                                label = translate("conseil.edit.categoryLabel"),
                                 options =
                                         SectionCategory.values().filter {
-                                            it.name.contains("CONSEIL")
+                                            it.name.startsWith("CONSEIL_")
                                         },
-                                valueToString = { cat -> cat.name.replace("CONSEIL_", "") },
+                                valueToString = { cat -> cat.libelle() },
                                 modifier = Modifier.fillMaxWidth()
                         )
 
@@ -163,7 +167,7 @@ fun ConseilEditView(
                                                     checkedColor = VetNutriColors.Primary
                                             )
                             )
-                            Text("Actif")
+                            Text(translate("auto.view.conseileditview.actif"))
                         }
                     }
                 }
@@ -183,7 +187,7 @@ fun ConseilEditView(
                 Card(elevation = 4.dp, shape = MaterialTheme.shapes.medium) {
                     Column(modifier = Modifier.padding(AppSizes.paddingMedium)) {
                         Text(
-                                text = "Contenu du conseil",
+                                text = translate("auto.view.conseileditview.contenu_du_conseil"),
                                 style = MaterialTheme.typography.h6,
                                 fontWeight = FontWeight.Bold,
                                 color = VetNutriColors.Primary
@@ -211,7 +215,7 @@ fun ConseilEditView(
                                     ButtonDefaults.outlinedButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("Annuler") }
+                    ) { Text(translate("general.cancel")) }
 
                     Button(
                             onClick = {
@@ -222,7 +226,7 @@ fun ConseilEditView(
                                         val conseil =
                                                 HtmlSection(
                                                         id = conseilId
-                                                                        ?: "conseil_${System.currentTimeMillis()}",
+                                                                        ?: "conseil_${Clock.System.now().toEpochMilliseconds()}",
                                                         title = conseilTitle,
                                                         content = content,
                                                         category = category,
@@ -237,7 +241,7 @@ fun ConseilEditView(
                                                                 emptyList() // Plus de groupes d'âge
                                                 )
 
-                                        val result = conseilRepository.sauvegarderConseil(conseil)
+                                        val result = viewModel.saveAdvice(conseil)
                                         if (result.isSuccess) {
                                             showSuccessDialog = true
                                         } else {
@@ -245,7 +249,8 @@ fun ConseilEditView(
                                             showErrorDialog = true
                                         }
                                     } catch (e: Exception) {
-                                        errorMessage = "Erreur: ${e.message}"
+                                        e.rethrowIfCancellation()
+                                        errorMessage = "Erreur : ${e.message}"
                                         showErrorDialog = true
                                     } finally {
                                         isSaving = false
@@ -277,7 +282,7 @@ fun ConseilEditView(
     if (showErrorDialog) {
         AlertDialog(
                 onDismissRequest = { showErrorDialog = false },
-                title = { Text("Erreur") },
+                title = { Text(translate("general.error")) },
                 text = { Text(errorMessage) },
                 confirmButton = {
                     TextButton(
@@ -286,7 +291,7 @@ fun ConseilEditView(
                                     ButtonDefaults.textButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("OK") }
+                    ) { Text(translate("general.ok")) }
                 }
         )
     }
@@ -298,9 +303,9 @@ fun ConseilEditView(
                     showSuccessDialog = false
                     onNavigateBack()
                 },
-                title = { Text("Succès") },
+                title = { Text(translate("general.success")) },
                 text = {
-                    Text("Le conseil a été ${if (isEditMode) "modifié" else "créé"} avec succès.")
+                    Text(translate(if (isEditMode) "auto.view.conseileditview.success_updated" else "auto.view.conseileditview.success_created"))
                 },
                 confirmButton = {
                     TextButton(
@@ -312,7 +317,7 @@ fun ConseilEditView(
                                     ButtonDefaults.textButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("OK") }
+                    ) { Text(translate("general.ok")) }
                 }
         )
     }

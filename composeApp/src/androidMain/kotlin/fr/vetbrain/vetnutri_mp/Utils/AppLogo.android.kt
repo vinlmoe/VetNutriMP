@@ -21,8 +21,10 @@ actual fun AppLogo(
     contentDescription: String?
 ) {
     Image(
-        painter = painterResource(R.mipmap.ic_launcher),
+        // `ic_launcher` is an adaptive icon XML; Compose painterResource on Android
+        // supports vector drawables or rasterized assets, so use raster icon.
+        painter = painterResource(R.mipmap.icon),
         contentDescription = contentDescription,
         modifier = modifier.size(size)
     )
-} 
+}

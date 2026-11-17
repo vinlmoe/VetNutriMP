@@ -39,75 +39,71 @@ data class AlimentRation(
         }
 
         /**
+         * Version optimisée pour éviter les calculs répétés de l'énergie
+         * Cache le résultat du calcul d'énergie pour éviter la redondance
+         */
+        private var cachedEnergie: Double? = null
+        private var cachedEnergieParams: Pair<ReferenceEv?, EquationSource?>? = null
+
+        /**
+         * Calcule la quantité d'énergie fournie par cet aliment avec cache
+         *
+         * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
+         * @param equationRepository Repository des équations pour les équations énergétiques
+         * @return La quantité d'énergie
+         */
+        suspend fun getEnergieWithCache(
+                referenceEv: ReferenceEv? = null,
+                equationRepository: EquationSource? = null
+        ): Double {
+                val currentParams = Pair(referenceEv, equationRepository)
+
+                // Retourner la valeur cachée si les paramètres sont identiques
+                if (cachedEnergie != null && cachedEnergieParams == currentParams) {
+                        return cachedEnergie!!
+                }
+
+                val result = getEnergie(referenceEv, equationRepository)
+
+                // Mettre en cache le résultat
+                cachedEnergie = result
+                cachedEnergieParams = currentParams
+
+                return result
+        }
+
+        /**
          * Obtient la valeur d'un nutriment dans cet aliment, en utilisant une équation
-         * complémentaire si nécessaire
+         * complémentaire du référentiel si nécessaire
          *
          * @param nutrient Le nutriment à rechercher
-         * @param preferences Les préférences de l'espèce (pour les équations complémentaires)
          * @param equationRepository Le repository des équations (pour les équations
          * complémentaires)
+         * @param referenceEv Le référentiel dont les équations complémentaires (equationsNut)
+         * pilotent seules le calcul — sans référentiel, aucune équation complémentaire n'est
+         * appliquée
          * @return La valeur du nutriment ou null si non trouvé et pas d'équation complémentaire
          */
         suspend fun getNutrientWithComplementary(
                 nutrient: Nutrient,
-                preferences: fr.vetbrain.vetnutri_mp.Data.PreferencesEspece? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null,
+                equationRepository: EquationSource? = null,
                 referenceEv: ReferenceEv? = null
         ): Double? {
                 // D'abord, essayer d'obtenir la valeur directement (avec calcul d'énergie si
                 // nécessaire)
                 val valeurDirecte = getNutrient(nutrient, referenceEv)
-                if (valeurDirecte != null && valeurDirecte > 0.0) {
+                if (valeurDirecte != null) {
                         return valeurDirecte
                 }
 
                 // Si pas de valeur directe et qu'on a les dépendances pour les équations
-                // complémentaires
-                if ((preferences != null || referenceEv != null) && equationRepository != null) {
-                        // 1) Essayer via mapping direct nutriment -> uuid (anciens prefs)
-                        val eqUuidDirect = preferences?.getEquationComplementaire(nutrient.label)
-                        if (eqUuidDirect != null) {
-                                val eq = equationRepository.getEquationById(eqUuidDirect)
-                                if (eq != null) {
-                                        val res =
-                                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
-                                                        .evaluerBesoinNutritionnelPourAliment(
-                                                                expression = eq.equationScript,
-                                                                aliment = this,
-                                                                preferences = preferences,
-                                                                equationRepository =
-                                                                        equationRepository,
-                                                                referenceEv = referenceEv
-                                                        )
-                                        if (res != null) return res
-                                }
-                        }
-
-                        // 2) Sinon, utiliser la sélection actuelle (liste d'UUID) et filtrer par
-                        // nutriment/espèce. On combine ReferenceEv (si fournie) et Préférences.
-                        val selectedUuids =
-                                buildList {
-                                                referenceEv?.equationsNut?.let { list ->
-                                                        addAll(list.map { it.uuid })
-                                                }
-                                                preferences?.getSelectedEquationUuids()?.let {
-                                                        addAll(it)
-                                                }
-                                        }
-                                        .distinct()
+                // complémentaires du référentiel
+                if (referenceEv != null && equationRepository != null) {
+                        val selectedUuids = referenceEv.equationsNut.map { it.uuid }.distinct()
 
                         if (selectedUuids.isNotEmpty()) {
                                 var accum: Double? = null
-                                val especePref =
-                                        try {
-                                                referenceEv?.espece
-                                                        ?: preferences?.let {
-                                                                fr.vetbrain.vetnutri_mp.Enumer
-                                                                        .Espece.valueOf(it.espece)
-                                                        }
-                                        } catch (e: Exception) {
-                                                null
-                                        }
+                                val especePref = referenceEv.espece
                                 selectedUuids.forEach { uuid ->
                                         val eq = equationRepository.getEquationById(uuid)
                                         if (eq != null) {
@@ -120,14 +116,10 @@ data class AlimentRation(
                                                         eq.nutrient == nutrient ||
                                                                 eq.nutrient?.label == nutrient.label
                                                 val specieOk =
-                                                        especePref == null ||
                                                                 eq.specie == especePref ||
                                                                 eq.specie ==
                                                                         fr.vetbrain.vetnutri_mp
                                                                                 .Enumer.Espece.CH
-                                                if (!kindOk || !nutrientOk || !specieOk) {
-                                                        
-                                                }
                                                 if (kindOk && nutrientOk && specieOk) {
                                                         val res =
                                                                 fr.vetbrain.vetnutri_mp.Utils
@@ -136,15 +128,13 @@ data class AlimentRation(
                                                                                 expression =
                                                                                         eq.equationScript,
                                                                                 aliment = this,
-                                                                                preferences =
-                                                                                        preferences,
                                                                                 equationRepository =
                                                                                         equationRepository,
                                                                                 referenceEv =
                                                                                         referenceEv
                                                                         )
                                                                         ?: 0.0
-                                                        
+
                                                         accum =
                                                                 if (eq.ratio) res
                                                                 else (accum ?: 0.0) + res
@@ -154,19 +144,8 @@ data class AlimentRation(
 
                                 // Si ratio: la dernière valeur res est la valeur par 100g
                                 // Si somme: accum contient la somme des contributions par 100g
-                                if (accum != null) return accum
+                                if (accum != null) return if (accum < 0.0) 0.0 else accum
                         }
-
-                        // 3) Fallback: calculateur existant (micro-ration)
-                        return if (preferences != null) {
-                                fr.vetbrain.vetnutri_mp.Utils.ComplementaryNutrientCalculator
-                                        .calculerNutrimentComplementaire(
-                                                nutrient,
-                                                this,
-                                                preferences,
-                                                equationRepository
-                                        )
-                        } else null
                 }
 
                 return null
@@ -176,24 +155,32 @@ data class AlimentRation(
          * Calcule la quantité d'énergie fournie par cet aliment
          *
          * @param referenceEv Référence optionnelle pour calculer l'énergie via les équations
-         * @param preferences Préférences de l'espèce pour les équations complémentaires
-         * @param equationRepository Repository des équations pour les équations complémentaires
+         * @param equationRepository Repository des équations pour les équations énergétiques
          * @return La quantité d'énergie
          */
         suspend fun getEnergie(
                 referenceEv: ReferenceEv? = null,
-                preferences: PreferencesEspece? = null,
-                equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository? = null
+                equationRepository: EquationSource? = null
         ): Double {
-                // Si on a les dépendances, utiliser getNutrientWithComplementary pour l'énergie
-                if (referenceEv != null || (preferences != null && equationRepository != null)) {
+                // Si on a le référentiel et le repository, utiliser
+                // EquationEvaluator.calculerEnergiePour100g() qui utilise correctement
+                // l'équation énergétique du référentiel (equationDEcom ou equationDEraw)
+                // avec les valeurs directes de l'aliment (sans équations complémentaires des préférences)
+                if (referenceEv != null && equationRepository != null) {
                         val energiePour100g =
-                                getNutrientWithComplementary(
-                                        nutrient = NutrientMain.ENERGIE,
-                                        preferences = preferences,
+                                fr.vetbrain.vetnutri_mp.Utils.EquationEvaluator
+                                        .calculerEnergiePour100g(
+                                                aliment = this,
                                         equationRepository = equationRepository,
                                         referenceEv = referenceEv
                                 )
+                        return (energiePour100g * quantite) / 100.0
+                }
+
+                // Sinon, utiliser getNutrient pour l'énergie (sans équations complémentaires)
+                if (referenceEv != null) {
+                        val energiePour100g =
+                                aliment?.getNutrient(NutrientMain.ENERGIE, referenceEv)
                                         ?: 0.0
                         return (energiePour100g * quantite) / 100.0
                 }
@@ -239,4 +226,18 @@ data class AlimentRation(
                 // Dans une implémentation réelle, il faudrait utiliser une map pour stocker
                 // les densités par équation
         }
+}
+
+/**
+ * Ajoute [nouveau] aux aliments d'une ration. Si le même aliment y figure déjà, sa quantité est
+ * cumulée sur la ligne existante : la base n'accepte qu'une ligne par aliment et par ration
+ * (index unique refAlimUnif + refRation), une seconde ligne serait écrasée à l'enregistrement.
+ */
+fun ajouterOuCumulerAliment(aliments: List<AlimentRation>, nouveau: AlimentRation): List<AlimentRation> {
+    val cle = nouveau.refAlimUnif ?: return aliments + nouveau
+    val index = aliments.indexOfFirst { it.refAlimUnif == cle }
+    if (index < 0) return aliments + nouveau
+    return aliments.toMutableList().also {
+        it[index] = it[index].copy(quantite = it[index].quantite + nouveau.quantite)
+    }
 }

@@ -18,6 +18,7 @@ object ExpressionEvaluator {
             // Utiliser le nouveau parser mathématique
             ExpressionMathematique.evaluer(expression, variables)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             null
         }
     }

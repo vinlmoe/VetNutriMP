@@ -1,14 +1,23 @@
 package fr.vetbrain.vetnutri_mp.DataBase
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import androidx.room.ConstructedBy
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
+import androidx.room.useReaderConnection
+import androidx.sqlite.SQLiteException
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import fr.vetbrain.vetnutri_mp.DataBase.*
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
+import kotlinx.coroutines.withContext
+
+/** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
+const val DATABASE_SCHEMA_VERSION = 43
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -30,14 +39,23 @@ import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
                         FoodEntity::class,
                         NutrientValueEntity::class,
                         BiblioRefEntity::class,
+                        AlimentBiblioRefEntity::class,
                         EquationEntity::class,
+                        ConsultationKeywordEntity::class,
                         ReferenceEvEntity::class,
                         ReferenceEvEquationEntity::class,
                         ReferenceEvCoefficientEntity::class,
                         ReferenceEvNutrientEntity::class,
+                        ExamGradingRuleEntity::class,
+                        ExamGradeEntity::class,
                         HtmlSectionEntity::class,
-                        HtmlSectionLibraryEntity::class],
-        version = 24,
+                        HtmlSectionLibraryEntity::class,
+                        CustomNutrientEntity::class,
+                        EnergyPerSpeciesEntity::class,
+                        RationSupplementalVariableEntity::class,
+                        MultiRationExplorationEntity::class,
+                        WeightForecastLogEntity::class],
+        version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -48,10 +66,16 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun consultationDao(): ConsultationDao
     abstract fun recipeDao(): RecipeDao
     abstract fun nutrientValueDao(): NutrientValueDao
+    abstract fun customNutrientDao(): CustomNutrientDao
     abstract fun biblioRefDao(): BiblioRefDao
+    abstract fun alimentBiblioRefDao(): AlimentBiblioRefDao
     abstract fun equationDao(): EquationDao
     abstract fun referenceEvDao(): ReferenceEvDao
     abstract fun htmlSectionDao(): HtmlSectionDao
+    abstract fun examGradingDao(): ExamGradingDao
+    abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
+    abstract fun multiRationExplorationDao(): MultiRationExplorationDao
+    abstract fun weightForecastLogDao(): WeightForecastLogDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -72,11 +96,38 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
  *
  * IMPORTANT: Cette configuration remplace la stratégie destructive précédente qui détruisait toutes
  * les données en cas d'erreur de migration.
+ *
+ * Copie de sauvegarde, contrôle du fichier et migrations s'exécutent sur [AppDispatchers.IO] :
+ * jamais sur le thread de l'interface.
  */
-fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
+suspend fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase =
+        withContext(AppDispatchers.IO) { openRoomDatabase(builder, dbPath) }
+
+private suspend fun openRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>, dbPath: String): AppDatabase {
+    // Base créée par une version plus récente (ou retour sur une branche plus ancienne) : la mettre
+    // de côté AVANT la sauvegarde .bak et l'ouverture Room, pour ne jamais la perdre.
+    protectDatabaseAgainstVersionChange(dbPath, DATABASE_SCHEMA_VERSION)?.let { message ->
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.DATABASE_VERSION_UPDATED,
+                message
+        )
+    }
+    backupDatabaseFiles(dbPath)
+
+    // Room ouvre la connexion de façon paresseuse : valider explicitement le fichier ici afin que
+    // la récupération ait lieu avant que la première requête DAO ne sorte de cette fonction.
+    if (!isDatabaseReadable(dbPath)) {
+        rotateCorruptDatabaseFiles(dbPath)
+        DatabaseChangeNotifier.notifyChange(
+                DatabaseChangeNotifier.ChangeType.DATABASE_CORRUPTION_DETECTED,
+                "Le fichier SQLite est illisible et a été préservé sous .corrupt"
+        )
+    }
+
+    var opened: AppDatabase? = null
     return try {
         // ✅ Configuration sécurisée avec migrations explicites
-        builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+        val database = builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                 .addMigrations(
                         // Migration 17→18 : Test de montée de version sécurisée
                         createMigration17to18(),
@@ -92,20 +143,71 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
                         createMigration22to23(),
                         // Migration 23→24 : Ajout des tables HTML_SECTIONS et
                         // HTML_SECTION_LIBRARIES
-                        createMigration23to24()
+                        createMigration23to24(),
+                        // Migration 24→25 : Ajout du champ jsonbinId à la table ANIMALS
+                        createMigration24to25(),
+                        // Migration 25→26 : Ajout des mots-clés pour les consultations
+                        createMigration25to26(),
+                        // Migration 26→27 : Ajout des champs de mise à jour et image produit
+                        createMigration26to27(),
+                        // Migration 27→28 : Ajout des champs ordonnance pour les consultations
+                        createMigration27to28(),
+                        // Migration 28→29 : Ajout des champs examen pour les animaux
+                        createMigration28to29(),
+                        createMigration29to30(),
+                        createMigration30to31(),
+                        createMigration31to32(),
+                        // Migration 32→33 : CASCADE DELETE sur NUTRIENT_VALUES (clé étrangère vers FOOD)
+                        createMigration32to33(),
+                        // Migration 33→34 : Table de jonction aliment ↔ références bibliographiques
+                        createMigration33to34(),
+                        // Migration 34→35 : Table CUSTOM_NUTRIENTS pour persister les métadonnées des nutriments personnalisés
+                        createMigration34to35(),
+                        // Migration 35→36 : Table ENERGY_PER_SPECIES pour l'énergie par espèce
+                        createMigration35to36(),
+                        // Migration 36→37 : Consultation évolutive (type, étapes, variables par étape)
+                        createMigration36to37(),
+                        // Migration 37→38 : plan évolutif rangé sous une ration (ration parente)
+                        createMigration37to38(),
+                        // Migration 38→39 : nom libre des étapes de plan évolutif
+                        createMigration38to39(),
+                        // Migration 39→40 : configurations d'exploration multiration enregistrées
+                        createMigration39to40(),
+                        // Migration 40→41 : troupeaux (types d'animaux, paramètres par consultation)
+                        createMigration40to41(),
+                        // Migration 41→42 : cellulose approchée par la fibre totale
+                        createMigration41to42(),
+                        // Migration 42→43 : prévision du poids (rations retenues, journal des calculs)
+                        createMigration42to43()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
                 // ❌ SUPPRIMÉ: .fallbackToDestructiveMigration(true)
-                // ✅ Seulement en cas de downgrade de version explicite
-                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = false)
+                // ❌ SUPPRIMÉ: .fallbackToDestructiveMigrationOnDowngrade() — une base plus récente
+                // est mise de côté par protectDatabaseAgainstVersionChange ; si elle arrivait
+                // quand même ici, l'échec est traité par rotation (jamais d'effacement).
                 .build()
+        opened = database
+        // Room n'ouvre la base (et ne lance les migrations) qu'à la première requête : l'ouvrir ici
+        // pour qu'un échec de migration soit traité par ce catch, et non par l'écran de démarrage
+        // qui proposait alors une réinitialisation.
+        database.useReaderConnection { connection ->
+            connection.usePrepared("PRAGMA user_version") { it.step() }
+        }
+        database
     } catch (e: Exception) {
-
-        // ⚠️ En dernier recours seulement, avec avertissement explicite
-
+        e.rethrowIfCancellation()
+        // ⚠️ Migration ou initialisation échouée : la base est mise de côté, jamais effacée
+        try {
+            opened?.close()
+        } catch (ignored: Exception) { ignored.rethrowIfCancellation(); AppLog.d("AppDatabase", "Exception ignorée : ${ignored.message}") }
+        setAsideDatabaseFiles(dbPath, "migration-failed")
+        DatabaseChangeNotifier.notifyChange(
+            DatabaseChangeNotifier.ChangeType.DATABASE_MIGRATION_FAILED,
+            e.message
+        )
+        // Ouvre une base vide propre (version courante). Le .bak binaire + les JSON backups permettent la restauration.
         builder.setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                .fallbackToDestructiveMigration(true)
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
                 .build()
@@ -113,19 +215,18 @@ fun getRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>): AppDatabase {
 }
 
 /**
- * TODO: Implémenter une stratégie de sauvegarde automatique
- *
- * Cette fonction devrait être appelée périodiquement pour sauvegarder les données importantes de
- * l'utilisateur.
+ * Vérifie l'intégrité structurelle de la base via PRAGMA integrity_check.
+ * Retourne false si la base est corrompue ou inaccessible.
  */
-fun createDatabaseBackup(database: AppDatabase): Boolean {
-    return try {
-        // TODO: Implémenter l'export JSON des données critiques
-        // - Exporter tous les animaux avec leurs consultations
-        // - Exporter les rations personnalisées
-        // - Exporter les références nutritionnelles custom
-        true
-    } catch (e: Exception) {
+suspend fun AppDatabase.checkIntegrity(): Boolean = withContext(AppDispatchers.IO) {
+    try {
+        useReaderConnection { connection ->
+            connection.usePrepared("PRAGMA integrity_check") { stmt ->
+                stmt.step() && stmt.getText(0) == "ok"
+            }
+        }
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         false
     }
 }
@@ -157,6 +258,7 @@ fun createMigration17to18(): Migration {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -202,6 +304,7 @@ fun createMigration18to19(): Migration {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -225,6 +328,7 @@ fun createMigration19to20(): Migration {
                     statement.step()
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
                 throw e
             }
@@ -243,6 +347,7 @@ fun createMigration20to21(): Migration {
                         )
                         .use { statement -> statement.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
                 throw e
             }
@@ -279,6 +384,7 @@ fun createMigration21to22(): Migration {
                         )
                         .use { it.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
@@ -324,6 +430,7 @@ fun createMigration22to23(): Migration {
                         )
                         .use { it.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
 
                 throw e
             }
@@ -401,8 +508,442 @@ fun createMigration23to24(): Migration {
                 connection.prepare("CREATE INDEX index_HTML_SECTIONS_title ON HTML_SECTIONS(title)")
                         .use { it.step() }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 throw e
             }
         }
     }
+}
+
+/** Migration 24 → 25 : Ajout du champ jsonbinId à la table ANIMALS */
+fun createMigration24to25(): Migration {
+    return object : Migration(24, 25) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                // Ajouter la colonne jsonbinId (nullable TEXT)
+                connection.prepare(
+                    "ALTER TABLE ANIMALS ADD COLUMN jsonbinId TEXT"
+                ).use { statement -> 
+                    statement.step() 
+                }
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 25 → 26 : Ajout des mots-clés pour les consultations */
+fun createMigration25to26(): Migration {
+    return object : Migration(25, 26) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN keywordsJson TEXT"
+                )
+
+                runStatementIgnoreIfExists(
+                        connection,
+                        """
+                        CREATE TABLE CONSULTATION_KEYWORDS (
+                            uuid TEXT NOT NULL PRIMARY KEY,
+                            label TEXT NOT NULL
+                        )
+                        """
+                )
+
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE UNIQUE INDEX index_CONSULTATION_KEYWORDS_label ON CONSULTATION_KEYWORDS(label)"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 26 → 27 : Ajout de la date de mise à jour et de la référence image */
+fun createMigration26to27(): Migration {
+    return object : Migration(26, 27) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE FOOD ADD COLUMN lastUpdateDate TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE FOOD ADD COLUMN imageRef TEXT"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 27 → 28 : Ajout des champs ordonnance pour les consultations */
+fun createMigration27to28(): Migration {
+    return object : Migration(27, 28) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionAdditionalText TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedConseilIdsJson TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionLocalHtmlSectionsJson TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionSelectedRationIdsJson TEXT"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 28 → 29 : Ajout des champs examen pour les animaux */
+fun createMigration28to29(): Migration {
+    return object : Migration(28, 29) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN exam INTEGER NOT NULL DEFAULT 0"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examStudentId TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examStudentNumber TEXT"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 29 → 30 : Ajout de l'ID d'exercice pour les animaux */
+fun createMigration29to30(): Migration {
+    return object : Migration(29, 30) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE ANIMALS ADD COLUMN examExerciseId TEXT"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 30 → 31 : Ajout des tables de notation d'examen */
+fun createMigration30to31(): Migration {
+    return object : Migration(30, 31) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE TABLE IF NOT EXISTS EXAM_GRADING_RULES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, rulesJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId))"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "CREATE TABLE IF NOT EXISTS EXAM_GRADES (examId TEXT NOT NULL, exerciseId TEXT NOT NULL, studentId TEXT NOT NULL, animalId TEXT, animalName TEXT NOT NULL, consultationId TEXT, autoScore REAL NOT NULL, manualScore REAL, finalScore REAL NOT NULL, detailsJson TEXT NOT NULL, updatedAtEpochMs INTEGER NOT NULL, PRIMARY KEY(examId, exerciseId, studentId))"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+/** Migration 31 → 32 : Ajout de champs CR ordonnance pour les consultations */
+fun createMigration31to32(): Migration {
+    return object : Migration(31, 32) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            try {
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionAnamnese TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionExamenClinique TEXT"
+                )
+                runStatementIgnoreIfExists(
+                        connection,
+                        "ALTER TABLE CONSULTATIONS ADD COLUMN prescriptionFacteurNutritionnelClef TEXT"
+                )
+            } catch (e: Exception) {
+                e.rethrowIfCancellation()
+                throw e
+            }
+        }
+    }
+}
+
+fun createMigration32to33(): Migration {
+    return object : Migration(32, 33) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            // Recréer NUTRIENT_VALUES avec ON DELETE CASCADE sur la clé étrangère vers FOOD
+            connection.prepare("ALTER TABLE NUTRIENT_VALUES RENAME TO NUTRIENT_VALUES_OLD").use { it.step() }
+            connection.prepare("""
+                CREATE TABLE NUTRIENT_VALUES (
+                    refAliment TEXT NOT NULL,
+                    nutrientLabel TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(refAliment, nutrientLabel),
+                    FOREIGN KEY(refAliment) REFERENCES FOOD(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare(
+                "INSERT INTO NUTRIENT_VALUES SELECT * FROM NUTRIENT_VALUES_OLD"
+            ).use { it.step() }
+            connection.prepare("DROP TABLE NUTRIENT_VALUES_OLD").use { it.step() }
+            connection.prepare(
+                "CREATE INDEX IF NOT EXISTS index_NUTRIENT_VALUES_refAliment ON NUTRIENT_VALUES(refAliment)"
+            ).use { it.step() }
+        }
+    }
+}
+
+fun createMigration33to34(): Migration {
+    return object : Migration(33, 34) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS ALIMENT_BIBLIO_REFS (
+                    alimentUuid TEXT NOT NULL,
+                    biblioRefUuid TEXT NOT NULL,
+                    PRIMARY KEY(alimentUuid, biblioRefUuid),
+                    FOREIGN KEY(alimentUuid) REFERENCES FOOD(uuid) ON DELETE CASCADE,
+                    FOREIGN KEY(biblioRefUuid) REFERENCES BIBLIO_REFS(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ALIMENT_BIBLIO_REFS_alimentUuid ON ALIMENT_BIBLIO_REFS(alimentUuid)").use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ALIMENT_BIBLIO_REFS_biblioRefUuid ON ALIMENT_BIBLIO_REFS(biblioRefUuid)").use { it.step() }
+        }
+    }
+}
+
+fun createMigration34to35(): Migration {
+    return object : Migration(34, 35) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS CUSTOM_NUTRIENTS (
+                    label TEXT NOT NULL PRIMARY KEY,
+                    displayName TEXT NOT NULL,
+                    unite TEXT NOT NULL,
+                    ueCode TEXT NOT NULL,
+                    categoryCode TEXT NOT NULL
+                )
+            """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+fun createMigration35to36(): Migration {
+    return object : Migration(35, 36) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS ENERGY_PER_SPECIES (
+                    refAliment TEXT NOT NULL,
+                    espece TEXT NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(refAliment, espece),
+                    FOREIGN KEY(refAliment) REFERENCES FOOD(uuid) ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare("CREATE INDEX IF NOT EXISTS index_ENERGY_PER_SPECIES_refAliment ON ENERGY_PER_SPECIES(refAliment)").use { it.step() }
+
+            // Rétrocompatibilité : propager la valeur générique Énergie vers toutes les espèces
+            // déclarées sur l'aliment. Seuls les aliments avec une énergie > 0 ET au moins
+            // une espèce dans ESPECES_ALIMENTS sont concernés.
+            connection.prepare("""
+                INSERT OR IGNORE INTO ENERGY_PER_SPECIES (refAliment, espece, value)
+                SELECT ea.refAliment, ea.espece, nv.value
+                FROM ESPECES_ALIMENTS ea
+                INNER JOIN NUTRIENT_VALUES nv ON nv.refAliment = ea.refAliment
+                WHERE nv.nutrientLabel = 'Énergie'
+                  AND nv.value > 0
+            """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+/**
+ * Migration 36→37 : consultation évolutive.
+ * - CONSULTATIONS : type de consultation (STANDARD/EVOLUTIVE) + profil évolutif.
+ * - RATIONS : marqueur d'étape évolutive + poids propre de l'étape (NULL = poids réel).
+ * - RATION_SUPPLEMENTAL_VARIABLES : variables d'énergie propres à chaque étape.
+ */
+fun createMigration36to37(): Migration {
+    return object : Migration(36, 37) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN typeConsultation TEXT NOT NULL DEFAULT 'STANDARD'"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE CONSULTATIONS ADD COLUMN profilEvolutif TEXT"
+            )
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN etapeEvolutive INTEGER NOT NULL DEFAULT 0"
+            )
+            runStatementIgnoreIfExists(connection, "ALTER TABLE RATIONS ADD COLUMN poids REAL")
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS RATION_SUPPLEMENTAL_VARIABLES (
+                    idRation TEXT NOT NULL,
+                    variableKind INTEGER NOT NULL,
+                    value REAL NOT NULL,
+                    PRIMARY KEY(idRation, variableKind),
+                    FOREIGN KEY(idRation) REFERENCES RATIONS(uuid) ON UPDATE NO ACTION ON DELETE CASCADE
+                )
+            """.trimIndent()).use { it.step() }
+            connection.prepare(
+                    "CREATE INDEX IF NOT EXISTS index_RATION_SUPPLEMENTAL_VARIABLES_idRation ON RATION_SUPPLEMENTAL_VARIABLES(idRation)"
+            ).use { it.step() }
+        }
+    }
+}
+
+/** Migration 37→38 : les étapes d'un plan évolutif sont rangées sous une ration parente. */
+fun createMigration37to38(): Migration {
+    return object : Migration(37, 38) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN refRationParente TEXT"
+            )
+        }
+    }
+}
+
+/** Migration 38→39 : nom libre d'une étape de plan évolutif. */
+fun createMigration38to39(): Migration {
+    return object : Migration(38, 39) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(
+                    connection,
+                    "ALTER TABLE RATIONS ADD COLUMN nomLibre TEXT"
+            )
+        }
+    }
+}
+
+/** Migration 39→40 : table des configurations d'exploration multiration. */
+fun createMigration39to40(): Migration {
+    return object : Migration(39, 40) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS `MULTI_RATION_EXPLORATIONS` (
+                    `uuid` TEXT NOT NULL,
+                    `nom` TEXT NOT NULL,
+                    `espece` TEXT NOT NULL,
+                    `configurationJson` TEXT NOT NULL,
+                    `updatedAt` INTEGER NOT NULL,
+                    PRIMARY KEY(`uuid`)
+                )
+            """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+/**
+ * Migration 40→41 : un animal peut être un troupeau (types d'animaux en JSON, null = individu) ;
+ * chaque consultation porte les paramètres de chaque type (effectif, poids, référentiel, K).
+ */
+fun createMigration40to41(): Migration {
+    return object : Migration(40, 41) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(connection, "ALTER TABLE ANIMALS ADD COLUMN herdTypesJson TEXT")
+            runStatementIgnoreIfExists(connection, "ALTER TABLE CONSULTATIONS ADD COLUMN herdParamsJson TEXT")
+        }
+    }
+}
+
+/**
+ * Migration 41→42 : l'équation « Fibretotale approximation sur cellulose » se citait elle-même
+ * (`CELLULOSE`) et valait donc 0 ; elle approche la cellulose par la fibre totale. Une équation
+ * modifiée par l'utilisateur n'est pas touchée.
+ */
+fun createMigration41to42(): Migration {
+    return object : Migration(41, 42) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            connection.prepare(
+                    "UPDATE EQUATIONS SET equationScript = 'FIBRETOT' " +
+                            "WHERE uuid = '$EQUATION_CELLULOSE_APPROCHEE' AND equationScript = 'CELLULOSE'"
+            ).use { it.step() }
+        }
+    }
+}
+
+/**
+ * Migration 42→43 : prévision du poids du chien (modèle chien-v2) : rations retenues par
+ * consultation, et journal local des calculs (entrées et résultats).
+ */
+fun createMigration42to43(): Migration {
+    return object : Migration(42, 43) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(connection, "ALTER TABLE CONSULTATIONS ADD COLUMN weightForecastJson TEXT")
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS `WEIGHT_FORECAST_LOGS` (
+                    `uuid` TEXT NOT NULL,
+                    `animalUuid` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `modelVersion` TEXT NOT NULL,
+                    `moduleState` TEXT NOT NULL,
+                    `inputsJson` TEXT NOT NULL,
+                    `resultsJson` TEXT NOT NULL,
+                    PRIMARY KEY(`uuid`)
+                )
+            """.trimIndent()).use { it.step() }
+        }
+    }
+}
+
+/** Équation complémentaire des données initiales : cellulose approchée par la fibre totale. */
+const val EQUATION_CELLULOSE_APPROCHEE = "fa47fac5-0423-483e-9e1a-87416ed2f942"
+
+private fun runStatementIgnoreIfExists(
+        connection: androidx.sqlite.SQLiteConnection,
+        sql: String
+) {
+    try {
+        connection.prepare(sql).use { statement ->
+            statement.step()
+        }
+    } catch (e: SQLiteException) {
+        if (!shouldIgnoreSqliteExistsError(e)) {
+            throw e
+        }
+    }
+}
+
+private fun shouldIgnoreSqliteExistsError(e: SQLiteException): Boolean {
+    val message = e.message?.lowercase() ?: return false
+    return message.contains("already exists") || message.contains("duplicate column")
 }

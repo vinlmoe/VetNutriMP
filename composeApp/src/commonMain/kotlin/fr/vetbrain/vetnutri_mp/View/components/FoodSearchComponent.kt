@@ -1,46 +1,56 @@
-package fr.vetbrain.vetnutri_mp.View.components
+package fr.vetbrain.vetnutri_mp.View.Components
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.BubbleChart
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Compare
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Components.DropdownField
 import fr.vetbrain.vetnutri_mp.Components.MultiSelectDropdownField
 import fr.vetbrain.vetnutri_mp.Data.AlimentEv
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
+import fr.vetbrain.vetnutri_mp.Data.FoodSearchFilters
+import fr.vetbrain.vetnutri_mp.Data.NutrientFilter
+import fr.vetbrain.vetnutri_mp.Data.NutrientOperator
+import fr.vetbrain.vetnutri_mp.Data.SortCriteria
+import fr.vetbrain.vetnutri_mp.Data.SortOrder
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Repository.EquationRepository
 import fr.vetbrain.vetnutri_mp.Utils.DataB
 import fr.vetbrain.vetnutri_mp.Utils.DataBMapping
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
-
-/** État partagé pour les filtres de recherche d'aliments */
-data class FoodSearchFilters(
-        val searchQuery: String = "",
-        val selectedFoodType: FoodKind? = null,
-        val selectedFoodGroup: GroupAlim? = null,
-        val selectedEspece: Espece? = null,
-        val selectedIndications: Set<AlimIndic> = emptySet(),
-        val dataB: String? = null
-)
+import fr.vetbrain.vetnutri_mp.Components.IconButtonWithTooltip
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 /** Configuration du composant de recherche d'aliments */
 data class FoodSearchConfig(
@@ -53,7 +63,10 @@ data class FoodSearchConfig(
         val onFoodAction: ((AlimentEv, String) -> Unit)? = null,
         val availableActions: List<String> = emptyList(),
         val isLoading: Boolean = false,
-        val selectedFood: AlimentEv? = null
+        val selectedFood: AlimentEv? = null,
+        val referenceEv: ReferenceEv? = null,
+        val equationRepository: EquationRepository? = null,
+        val onLoadNutrients: (suspend (List<String>, List<Nutrient>) -> Map<String, Map<Nutrient, Double>>)? = null
 )
 
 /** Types de layout disponibles */
@@ -78,62 +91,100 @@ fun FoodSearchComponent(
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
         config: FoodSearchConfig = FoodSearchConfig(),
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        allFoods: List<AlimentEv>? = null,
+        onSearchSubmit: (() -> Unit)? = null
 ) {
+        // État pour stocker les nutriments chargés depuis la base de données
+        var loadedNutrients by remember { 
+                mutableStateOf<Map<String, Map<Nutrient, Double>>>(emptyMap()) 
+        }
+        
+        // Charger les nutriments nécessaires depuis la base de données si on a des filtres par nutriments, un tri par nutriment ou le filtre AA
+        LaunchedEffect(filters.nutrientFilters, filters.sortCriteria, filters.aminoOnly, foods.map { it.uuid }) {
+                val nutrientsForFilters = filters.nutrientFilters.mapNotNull { it.nutrient }
+                val nutrientForSort = when (filters.sortCriteria) {
+                        SortCriteria.PROTEIN -> listOf(NutrientMain.PROTEINE)
+                        SortCriteria.FAT -> listOf(NutrientMain.LIPIDE)
+                        SortCriteria.CARBOHYDRATE -> listOf(NutrientMain.GLUCIDE)
+                        SortCriteria.FIBER -> listOf(NutrientMain.CELLULOSE)
+                        SortCriteria.ENERGY -> listOf(NutrientMain.ENERGIE)
+                        SortCriteria.CALCIUM -> listOf(NutrientMacro.CAL)
+                        SortCriteria.PHOSPHORUS -> listOf(NutrientMacro.PHOS)
+                        else -> emptyList()
+                }
+                val aminoNutrients = if (filters.aminoOnly) listOf(AAEnum.LYSINE, AAEnum.METHIONINE) else emptyList()
+                val requiredNutrients = (nutrientsForFilters + nutrientForSort + aminoNutrients).distinct()
+                
+                if (requiredNutrients.isNotEmpty() && config.onLoadNutrients != null) {
+                        val foodUuids = foods.map { it.uuid }
+                        val nutrientsMap = config.onLoadNutrients!!(foodUuids, requiredNutrients)
+                        loadedNutrients = nutrientsMap
+                } else {
+                        loadedNutrients = emptyMap()
+                }
+        }
+        
+        // Créer une version enrichie des aliments avec les nutriments chargés
+        val enrichedFoods = remember(foods, loadedNutrients) {
+                foods.map { aliment ->
+                        val nutrients = loadedNutrients[aliment.uuid]
+                        if (nutrients != null && nutrients.isNotEmpty()) {
+                                // Créer une copie de l'aliment avec les nutriments chargés
+                                val enrichedValMap = aliment.valMap.toMutableMap()
+                                nutrients.forEach { (nutrient, value) ->
+                                        enrichedValMap[nutrient] = fr.vetbrain.vetnutri_mp.Data.NutrientQuantity(
+                                                value, 
+                                                nutrient.label
+                                        )
+                                }
+                                aliment.copy(valMap = enrichedValMap)
+                        } else {
+                                aliment
+                        }
+                }
+        }
+
+        // Texte de recherche normalisé, calculé une fois par liste plutôt qu'à chaque frappe
+        val textesRecherche = remember(foods) {
+                foods.associate { it.uuid to Recherche.indexer(it.nom, it.brand, it.gamme, it.ingredients) }
+        }
 
         // Filtrer les aliments selon les critères
         val filteredFoods =
                 remember(
-                        foods,
+                        enrichedFoods,
                         filters.searchQuery,
                         filters.selectedFoodType,
                         filters.selectedFoodGroup,
                         filters.selectedEspece,
                         filters.selectedIndications,
-                        filters.dataB
+                        filters.excludedIndications,
+                        filters.dataB,
+                        filters.includeDeprecated,
+                        filters.aminoOnly,
+                        filters.nutrientFilters,
+                        filters.sortCriteria,
+                        filters.sortOrder,
+                        config.referenceEv
                 ) {
-                        val result =
-                                foods.filter { aliment ->
-                                        // Filtre par recherche textuelle avec recherche multi-mots
-                                        // (AND)
+                        val motsRecherche = Recherche.mots(filters.searchQuery)
+                        var result =
+                                enrichedFoods.filter { aliment ->
+                                        // Recherche multi-mots (chaque mot dans au moins un champ),
+                                        // sans casse, accents ni ligatures
                                         val matchesSearch =
-                                                if (filters.searchQuery.isEmpty()) true
-                                                else {
-                                                        val searchWords =
-                                                                filters.searchQuery
-                                                                        .trim()
-                                                                        .split("\\s+".toRegex())
-                                                                        .filter { it.isNotEmpty() }
-                                                                        .map { it.lowercase() }
-
-                                                        if (searchWords.isEmpty()) true
-                                                        else {
-                                                                // Chaque mot doit être trouvé dans
-                                                                // au moins un des
-                                                                // champs
-                                                                searchWords.all { word ->
-                                                                        aliment.nom
-                                                                                ?.lowercase()
-                                                                                ?.contains(word) ==
-                                                                                true ||
-                                                                                aliment.brand
-                                                                                        ?.lowercase()
-                                                                                        ?.contains(
-                                                                                                word
-                                                                                        ) == true ||
-                                                                                aliment.gamme
-                                                                                        ?.lowercase()
-                                                                                        ?.contains(
-                                                                                                word
-                                                                                        ) == true ||
+                                                motsRecherche.isEmpty() ||
+                                                        Recherche.correspond(
+                                                                motsRecherche,
+                                                                textesRecherche[aliment.uuid]
+                                                                        ?: Recherche.indexer(
+                                                                                aliment.nom,
+                                                                                aliment.brand,
+                                                                                aliment.gamme,
                                                                                 aliment.ingredients
-                                                                                        ?.lowercase()
-                                                                                        ?.contains(
-                                                                                                word
-                                                                                        ) == true
-                                                                }
-                                                        }
-                                                }
+                                                                        )
+                                                        )
 
                                         // Filtre par type d'aliment (ALL = pas de filtre)
                                         val matchesType =
@@ -179,20 +230,12 @@ fun FoodSearchComponent(
                                                 }
 
                                         // Filtre par indications (ALL = pas de filtre)
+                                        val includedIndications = filters.selectedIndications - AlimIndic.ALL
+                                        val excludedIndications = filters.excludedIndications - AlimIndic.ALL
                                         val matchesIndications =
-                                                if (filters.selectedIndications.isEmpty() ||
-                                                                filters.selectedIndications
-                                                                        .contains(
-                                                                                AlimIndic.ALL
-                                                                        ) // "ALL" = pas de filtre,
-                                                // toutes les
-                                                // indications acceptées
-                                                ) true
-                                                else
-                                                        filters.selectedIndications.any { indication
-                                                                ->
-                                                                aliment.indicat.contains(indication)
-                                                        }
+                                                (includedIndications.isEmpty() ||
+                                                        aliment.indicat.any { it in includedIndications }) &&
+                                                        excludedIndications.none { it in aliment.indicat }
 
                                         // Filtre par base de données (null/"" = pas de filtre)
                                         val matchesDataB =
@@ -205,47 +248,152 @@ fun FoodSearchComponent(
                                                         }
                                                 }
 
+                                        // Filtre par nutriments
+                                        val matchesNutrients =
+                                                if (filters.nutrientFilters.isEmpty()) true
+                                                else {
+                                                        filters.nutrientFilters.all { nutrientFilter ->
+                                                                if (nutrientFilter.nutrient == null || nutrientFilter.value == null) true
+                                                                else {
+                                                                        val nutrientValue = aliment.getNutrient(nutrientFilter.nutrient, config.referenceEv)
+                                                                        // Si le nutriment n'est pas disponible, on accepte l'aliment
+                                                                        // (car c'est peut-être une version légère)
+                                                                        if (nutrientValue == null) true
+                                                                        else {
+                                                                                when (nutrientFilter.operator) {
+                                                                                        NutrientOperator.GREATER_OR_EQUAL -> nutrientValue >= nutrientFilter.value!!
+                                                                                        NutrientOperator.LESS_OR_EQUAL -> nutrientValue <= nutrientFilter.value!!
+                                                                                }
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+
+                                        val matchesAmino =
+                                                if (!filters.aminoOnly) true
+                                                else {
+                                                        val lysine = aliment.getNutrient(AAEnum.LYSINE, config.referenceEv)
+                                                        val methionine = aliment.getNutrient(AAEnum.METHIONINE, config.referenceEv)
+                                                        lysine != null && lysine > 0.0 && methionine != null && methionine > 0.0
+                                                }
+
+                                        val matchesDeprecated =
+                                                filters.includeDeprecated || !aliment.deprecated
+
                                         matchesSearch &&
                                                 matchesType &&
                                                 matchesGroup &&
                                                 matchesEspece &&
                                                 matchesIndications &&
-                                                matchesDataB
+                                                matchesDataB &&
+                                                matchesNutrients &&
+                                                matchesAmino &&
+                                                matchesDeprecated
                                 }
+
+                        // Trier les résultats
+                        result = if (filters.sortCriteria != null) {
+                                val sortedList = when (filters.sortCriteria) {
+                                        SortCriteria.NAME -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.nom ?: "" }
+                                                } else {
+                                                        result.sortedByDescending { it.nom ?: "" }
+                                                }
+                                        }
+                                        SortCriteria.PROTEIN -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.PROTEINE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.PROTEINE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.FAT -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.LIPIDE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.LIPIDE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.CARBOHYDRATE -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.GLUCIDE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.GLUCIDE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.FIBER -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.CELLULOSE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.CELLULOSE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.ENERGY -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMain.ENERGIE, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMain.ENERGIE, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.CALCIUM -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMacro.CAL, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.CAL, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                        SortCriteria.PHOSPHORUS -> {
+                                                if (filters.sortOrder == SortOrder.ASCENDING) {
+                                                        result.sortedBy { it.getNutrient(NutrientMacro.PHOS, config.referenceEv) ?: 0.0 }
+                                                } else {
+                                                        result.sortedByDescending { it.getNutrient(NutrientMacro.PHOS, config.referenceEv) ?: 0.0 }
+                                                }
+                                        }
+                                }
+                                sortedList
+                        } else {
+                                result
+                        }
 
                         result
                 }
 
+        val foodsForFilters = allFoods ?: foods
         when (config.layout) {
                 FoodSearchLayout.VERTICAL ->
                         VerticalLayout(
-                                allFoods = foods,
+                                allFoods = foodsForFilters,
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
                                 config = config,
                                 modifier = modifier
                         )
                 FoodSearchLayout.HORIZONTAL ->
                         HorizontalLayout(
-                                allFoods = foods,
+                                allFoods = foodsForFilters,
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
                                 config = config,
                                 modifier = modifier
                         )
                 FoodSearchLayout.COMPACT ->
                         CompactLayout(
-                                allFoods = foods,
+                                allFoods = foodsForFilters,
                                 filteredFoods = filteredFoods,
                                 filters = filters,
                                 onFiltersChange = onFiltersChange,
+                                onSearchSubmit = onSearchSubmit,
                                 config = config,
                                 modifier = modifier
                         )
         }
 }
+
 
 /** Layout vertical simple (comme FoodListView) */
 @Composable
@@ -254,6 +402,7 @@ private fun VerticalLayout(
         filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         config: FoodSearchConfig,
         modifier: Modifier
 ) {
@@ -268,6 +417,7 @@ private fun VerticalLayout(
                                 onSearchQueryChange = {
                                         onFiltersChange(filters.copy(searchQuery = it))
                                 },
+                                onSearch = onSearchSubmit,
                                 modifier = Modifier.fillMaxWidth()
                         )
                 }
@@ -282,15 +432,6 @@ private fun VerticalLayout(
                         )
                 }
 
-                // Compteur de résultats
-                if (config.showResultsCount) {
-                        ResultsCount(
-                                totalCount = allFoods.size,
-                                filteredCount = filteredFoods.size,
-                                modifier = Modifier.fillMaxWidth()
-                        )
-                }
-
                 // Liste des résultats
                 FoodSearchResults(
                         foods = filteredFoods,
@@ -300,6 +441,7 @@ private fun VerticalLayout(
         }
 }
 
+
 /** Layout horizontal à deux colonnes (comme AddAlimentView) */
 @Composable
 private fun HorizontalLayout(
@@ -307,6 +449,7 @@ private fun HorizontalLayout(
         filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         config: FoodSearchConfig,
         modifier: Modifier
 ) {
@@ -325,6 +468,7 @@ private fun HorizontalLayout(
                                         foods = allFoods,
                                         filters = filters,
                                         onFiltersChange = onFiltersChange,
+                                        onSearchSubmit = onSearchSubmit,
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         }
@@ -348,6 +492,7 @@ private fun HorizontalLayout(
         }
 }
 
+
 /** Layout compact pour les petits espaces */
 @Composable
 private fun CompactLayout(
@@ -355,6 +500,7 @@ private fun CompactLayout(
         filteredFoods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         config: FoodSearchConfig,
         modifier: Modifier
 ) {
@@ -373,6 +519,7 @@ private fun CompactLayout(
                                         onSearchQueryChange = {
                                                 onFiltersChange(filters.copy(searchQuery = it))
                                         },
+                                        onSearch = onSearchSubmit,
                                         modifier = Modifier.weight(1f)
                                 )
                         }
@@ -396,25 +543,30 @@ private fun CompactLayout(
         }
 }
 
+
 /** Barre de recherche */
 @Composable
 private fun SearchBar(
         searchQuery: String,
         onSearchQueryChange: (String) -> Unit,
+        onSearch: (() -> Unit)? = null,
         modifier: Modifier = Modifier
 ) {
         BasicAppTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
-                placeholder = "Nom, marque, ingrédients...",
+                placeholder = translate(LocalizationKeys.Chart.SEARCH_PLACEHOLDER),
                 leadingIcon = Icons.Default.Search,
                 trailingIcon = if (searchQuery.isNotEmpty()) Icons.Default.Clear else null,
                 onTrailingIconClick = { onSearchQueryChange("") },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke() }),
                 modifier = modifier.height(40.dp)
         )
 }
 
 /** Section des filtres */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FiltersSection(
         foods: List<AlimentEv>,
@@ -422,19 +574,18 @@ private fun FiltersSection(
         onFiltersChange: (FoodSearchFilters) -> Unit,
         modifier: Modifier = Modifier
 ) {
-        Column(
-                modifier = modifier,
-                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-        ) {
-                // Première ligne : Type d'aliment et Indications
-                Row(
+        // Deux filtres par ligne, un seul sur téléphone pour que les valeurs restent lisibles
+        BoxWithConstraints(modifier = modifier) {
+                FlowRow(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        maxItemsInEachRow = if (maxWidth < AppSizes.breakpointCompact) 1 else 2
                 ) {
                         // Type d'aliment
                         Box(modifier = Modifier.weight(1f)) {
                                 DropdownField(
-                                        label = "Type",
+                                        label = translate("recipe.type"),
                                         selectedValue = filters.selectedFoodType,
                                         options = FoodKind.entries,
                                         onValueChange = {
@@ -452,14 +603,20 @@ private fun FiltersSection(
                         // Indications
                         Box(modifier = Modifier.weight(1f)) {
                                 MultiSelectDropdownField(
-                                        label = "Indications",
+                                        label = translate("food_edit.field.indications"),
                                         selectedValues = filters.selectedIndications,
-                                        options = AlimIndic.entries,
-                                        onValuesChange = {
+                                        excludedValues = filters.excludedIndications,
+                                        options = AlimIndic.entries.filter { it != AlimIndic.ALL },
+                                        onValuesChange = {},
+                                        onTriStateValuesChange = { included, excluded ->
                                                 onFiltersChange(
-                                                        filters.copy(selectedIndications = it)
+                                                        filters.copy(
+                                                                selectedIndications = included,
+                                                                excludedIndications = excluded
+                                                        )
                                                 )
                                         },
+                                        triState = true,
                                         valueToString = { it.translateEnum() },
                                         modifier = Modifier.fillMaxWidth(),
                                         height = 40.dp,
@@ -468,17 +625,11 @@ private fun FiltersSection(
                                         borderWidth = 0.5.dp
                                 )
                         }
-                }
 
-                // Deuxième ligne : Espèce et Base de données
-                Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
-                ) {
                         // Espèce
                         Box(modifier = Modifier.weight(1f)) {
                                 DropdownField(
-                                        label = "Espèce",
+                                        label = translate("new_reference.field.species"),
                                         selectedValue = filters.selectedEspece,
                                         options = Espece.entries,
                                         onValueChange = {
@@ -511,27 +662,12 @@ private fun FiltersSection(
                                 val selectedDataB = filters.dataB ?: ""
 
                                 DropdownField(
-                                        label = "Base de données",
+                                        label = translate("food_edit.field.database"),
                                         selectedValue = selectedDataB,
                                         options = dataBOptions,
                                         onValueChange = {
                                                 val newDataB = if (it.isEmpty()) null else it
-                                                // Créer un nouvel objet complètement différent pour
-                                                // forcer le re-rendu
-                                                val newFilters =
-                                                        FoodSearchFilters(
-                                                                searchQuery = filters.searchQuery,
-                                                                selectedFoodType =
-                                                                        filters.selectedFoodType,
-                                                                selectedFoodGroup =
-                                                                        filters.selectedFoodGroup,
-                                                                selectedEspece =
-                                                                        filters.selectedEspece,
-                                                                selectedIndications =
-                                                                        filters.selectedIndications,
-                                                                dataB = newDataB
-                                                        )
-                                                onFiltersChange(newFilters)
+                                                onFiltersChange(filters.copy(dataB = newDataB))
                                         },
                                         valueToString = {
                                                 if (it.isEmpty()) "Toutes"
@@ -553,33 +689,63 @@ private fun FiltersSection(
         }
 }
 
+
 /** Carte des filtres (pour le layout horizontal) */
 @Composable
 private fun FiltersCard(
         foods: List<AlimentEv>,
         filters: FoodSearchFilters,
         onFiltersChange: (FoodSearchFilters) -> Unit,
+        onSearchSubmit: (() -> Unit)? = null,
         modifier: Modifier = Modifier
 ) {
+        var showAdvancedSortDialog by remember { mutableStateOf(false) }
         Card(modifier = modifier, elevation = AppSizes.elevationSmall) {
                 Column(
                         modifier = Modifier.padding(AppSizes.paddingMedium),
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
-                        Text(
-                                text = "Filtres de recherche",
-                                style = MaterialTheme.typography.subtitle2,
-                                color = VetNutriColors.Primary
-                        )
-
-                        // Barre de recherche
-                        SearchBar(
-                                searchQuery = filters.searchQuery,
-                                onSearchQueryChange = {
-                                        onFiltersChange(filters.copy(searchQuery = it))
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                        )
+                        // Barre de recherche + raccourci Ac. Aminé avec disposition adaptative
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                                val isCompact = maxWidth < 600.dp
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        SearchBar(
+                                                searchQuery = filters.searchQuery,
+                                                onSearchQueryChange = {
+                                                        onFiltersChange(filters.copy(searchQuery = it))
+                                                },
+                                                onSearch = onSearchSubmit,
+                                                modifier = Modifier.weight(1f)
+                                        )
+                                        IconButtonWithTooltip(
+                                                imageVector = Icons.Default.BubbleChart,
+                                                contentDescription = translate("auto.view.components.foodsearchcomponent.filtrer_acides_amines"),
+                                                tooltip = translate("auto.view.components.foodsearchcomponent.basculer_le_filtre_acides_amines"),
+                                                onClick = { onFiltersChange(filters.copy(aminoOnly = !filters.aminoOnly)) },
+                                                tint = if (filters.aminoOnly) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
+                                                iconModifier = Modifier.size(18.dp)
+                                        )
+                                        IconButtonWithTooltip(
+                                                imageVector = Icons.AutoMirrored.Default.Sort,
+                                                contentDescription = translate("chart.advancedSortContentDesc"),
+                                                tooltip = translate("chart.advancedSortTooltip"),
+                                                onClick = { showAdvancedSortDialog = true },
+                                                tint = if (filters.nutrientFilters.isNotEmpty() || filters.sortCriteria != null || filters.includeDeprecated) VetNutriColors.Primary else MaterialTheme.colors.onSurface,
+                                                iconModifier = Modifier.size(18.dp)
+                                        )
+                                }
+                        }
+                        if (showAdvancedSortDialog) {
+                                AdvancedSortDialog(
+                                        filters = filters,
+                                        onFiltersChange = onFiltersChange,
+                                        onDismiss = { showAdvancedSortDialog = false }
+                                )
+                        }
 
                         // Filtres
                         FiltersSection(
@@ -594,10 +760,11 @@ private fun FiltersCard(
                                         filters.selectedFoodGroup != null ||
                                         filters.selectedEspece != null ||
                                         filters.selectedIndications.isNotEmpty() ||
-                                        !filters.dataB.isNullOrEmpty()
+                                        !filters.dataB.isNullOrEmpty() ||
+                                        filters.includeDeprecated
                         ) {
                                 Text(
-                                        text = "Filtres actifs",
+                                        text = translate("auto.view.components.foodsearchcomponent.filtres_actifs"),
                                         style = MaterialTheme.typography.caption,
                                         color = VetNutriColors.Primary
                                 )
@@ -605,6 +772,7 @@ private fun FiltersCard(
                 }
         }
 }
+
 
 /** Filtres compacts (pour le layout compact) */
 @Composable
@@ -621,7 +789,7 @@ private fun CompactFilters(
         ) {
                 // Type d'aliment
                 DropdownField(
-                        label = "Type",
+                        label = translate("recipe.type"),
                         selectedValue = filters.selectedFoodType,
                         options = FoodKind.entries,
                         onValueChange = { onFiltersChange(filters.copy(selectedFoodType = it)) },
@@ -635,7 +803,7 @@ private fun CompactFilters(
 
                 // Espèce
                 DropdownField(
-                        label = "Espèce",
+                        label = translate("new_reference.field.species"),
                         selectedValue = filters.selectedEspece,
                         options = Espece.entries,
                         onValueChange = { onFiltersChange(filters.copy(selectedEspece = it)) },
@@ -662,23 +830,12 @@ private fun CompactFilters(
                 val selectedDataB = filters.dataB ?: ""
 
                 DropdownField(
-                        label = "Base",
+                        label = translate("chart.filterDatabaseLabel"),
                         selectedValue = selectedDataB,
                         options = dataBOptions,
                         onValueChange = {
                                 val newDataB = if (it.isEmpty()) null else it
-                                // Créer un nouvel objet complètement différent pour forcer le
-                                // re-rendu
-                                val newFilters =
-                                        FoodSearchFilters(
-                                                searchQuery = filters.searchQuery,
-                                                selectedFoodType = filters.selectedFoodType,
-                                                selectedFoodGroup = filters.selectedFoodGroup,
-                                                selectedEspece = filters.selectedEspece,
-                                                selectedIndications = filters.selectedIndications,
-                                                dataB = newDataB
-                                        )
-                                onFiltersChange(newFilters)
+                                onFiltersChange(filters.copy(dataB = newDataB))
                         },
                         valueToString = {
                                 if (it.isEmpty()) "Toutes"
@@ -709,16 +866,6 @@ private fun CompactFilters(
         }
 }
 
-/** Compteur de résultats */
-@Composable
-private fun ResultsCount(totalCount: Int, filteredCount: Int, modifier: Modifier = Modifier) {
-        Text(
-                text = "Aliments disponibles (${filteredCount})",
-                style = MaterialTheme.typography.subtitle2,
-                color = VetNutriColors.Primary,
-                modifier = modifier
-        )
-}
 
 /** Liste des résultats de recherche */
 @Composable
@@ -727,16 +874,20 @@ private fun FoodSearchResults(
         config: FoodSearchConfig,
         modifier: Modifier = Modifier
 ) {
+        // État pour conserver la position de scroll
+        val listState = rememberLazyListState()
+        
         if (config.isLoading) {
                 Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                 }
         } else if (foods.isEmpty()) {
                 Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Aucun aliment trouvé avec ces critères")
+                        Text(translate("auto.view.components.foodsearchcomponent.aucun_aliment_trouve_avec_ces_criteres"))
                 }
         } else {
                 LazyColumn(
+                        state = listState,
                         modifier = modifier,
                         verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
@@ -751,7 +902,9 @@ private fun FoodSearchResults(
         }
 }
 
+
 /** Élément de liste d'aliment */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FoodListItem(
         aliment: AlimentEv,
@@ -772,67 +925,17 @@ private fun FoodListItem(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
                 ) {
-                        // Actions disponibles (icônes à gauche)
-                        if (config.availableActions.isNotEmpty() && config.onFoodAction != null) {
-                                Column(
-                                        modifier =
-                                                Modifier.padding(
-                                                        start = AppSizes.paddingSmall,
-                                                        top = AppSizes.paddingSmall
-                                                ),
-                                        verticalArrangement =
-                                                Arrangement.spacedBy(AppSizes.paddingXSmall)
-                                ) {
-                                        config.availableActions.forEach { action ->
-                                                val icon =
-                                                        when (action) {
-                                                                "Éditer" -> Icons.Default.Edit
-                                                                "Supprimer" -> Icons.Default.Delete
-                                                                "Analyser" ->
-                                                                        Icons.Default.Analytics
-                                                                "Comparer" -> Icons.Default.Compare
-                                                                "Ajouter" -> Icons.Default.Add
-                                                                else -> Icons.Default.MoreVert
-                                                        }
-
-                                                val iconColor =
-                                                        when (action) {
-                                                                "Éditer" -> VetNutriColors.Primary
-                                                                "Supprimer" ->
-                                                                        MaterialTheme.colors.error
-                                                                "Analyser" ->
-                                                                        VetNutriColors.Secondary
-                                                                "Comparer" -> VetNutriColors.Primary
-                                                                "Ajouter" -> VetNutriColors.Primary
-                                                                else ->
-                                                                        MaterialTheme.colors
-                                                                                .onSurface.copy(
-                                                                                alpha = 0.6f
-                                                                        )
-                                                        }
-
-                                                IconButton(
-                                                        onClick = {
-                                                                config.onFoodAction?.invoke(
-                                                                        aliment,
-                                                                        action
-                                                                )
-                                                        },
-                                                        modifier = Modifier.size(24.dp)
-                                                ) {
-                                                        Icon(
-                                                                imageVector = icon,
-                                                                contentDescription = action,
-                                                                modifier = Modifier.size(16.dp),
-                                                                tint = iconColor
-                                                        )
-                                                }
-                                        }
-                                }
-                        }
-
-                        // Contenu principal de l'aliment
-                        Column(modifier = Modifier.weight(1f).padding(AppSizes.paddingMedium)) {
+                        // Deux colonnes lorsque la largeur permet de garder les textes lisibles.
+                        BoxWithConstraints(modifier = Modifier.weight(1f).padding(AppSizes.paddingSmall)) {
+                            val spacing = AppSizes.paddingMedium
+                            val twoColumns = maxWidth >= 360.dp
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(spacing),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall),
+                                maxItemsInEachRow = if (twoColumns) 2 else 1
+                            ) {
+                              Column(modifier = Modifier.weight(0.55f)) {
                                 Text(
                                         text = aliment.nom ?: "Sans nom",
                                         style = MaterialTheme.typography.subtitle1,
@@ -854,7 +957,7 @@ private fun FoodListItem(
 
                                 if (!aliment.gamme.isNullOrEmpty()) {
                                         Text(
-                                                text = "Gamme: ${aliment.gamme}",
+                                                text = translate("aliment.gamme", aliment.gamme.toString()),
                                                 style = MaterialTheme.typography.caption,
                                                 color =
                                                         MaterialTheme.colors.onSurface.copy(
@@ -863,9 +966,11 @@ private fun FoodListItem(
                                         )
                                 }
 
+                              }
+                              Column(modifier = Modifier.weight(0.45f)) {
                                 // Afficher quelques infos clés (type et groupe) en ignorant les
                                 // valeurs ALL
-                                Row(
+                                FlowRow(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingSmall)
                                 ) {
@@ -935,10 +1040,62 @@ private fun FoodListItem(
                                                 )
                                         }
                                 }
+                              }
+                            }
                         }
+                        // Actions à droite, en ligne, comme dans les autres listes
+                        if (config.availableActions.isNotEmpty() && config.onFoodAction != null) {
+                                Row(modifier = Modifier.padding(end = AppSizes.paddingXSmall)) {
+                                        config.availableActions.forEach { actionKey ->
+                                                val icon =
+                                                        when (actionKey) {
+                                                                LocalizationKeys.General.EDIT -> Icons.Default.Edit
+                                                                LocalizationKeys.General.DELETE -> Icons.Default.Delete
+                                                                LocalizationKeys.General.ANALYSE ->
+                                                                        Icons.Default.Analytics
+                                                                LocalizationKeys.General.COMPARE -> Icons.Default.Compare
+                                                                LocalizationKeys.General.ADD -> Icons.Default.Add
+                                                                else -> Icons.Default.MoreVert
+                                                        }
+
+                                                val iconColor =
+                                                        when (actionKey) {
+                                                                LocalizationKeys.General.EDIT -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.DELETE ->
+                                                                        MaterialTheme.colors.error
+                                                                LocalizationKeys.General.ANALYSE ->
+                                                                        VetNutriColors.Secondary
+                                                                LocalizationKeys.General.COMPARE -> VetNutriColors.Primary
+                                                                LocalizationKeys.General.ADD -> VetNutriColors.Primary
+                                                                else ->
+                                                                        MaterialTheme.colors
+                                                                                .onSurface.copy(
+                                                                                alpha = 0.6f
+                                                                        )
+                                                        }
+
+                                                val tooltipText = fr.vetbrain.vetnutri_mp.Localization.LocalizationManager.translate(actionKey)
+
+                                                IconButtonWithTooltip(
+                                                        onClick = {
+                                                                config.onFoodAction?.invoke(
+                                                                        aliment,
+                                                                        actionKey
+                                                                )
+                                                        },
+                                                        imageVector = icon,
+                                                        contentDescription = tooltipText,
+                                                        tooltip = tooltipText,
+                                                        tint = iconColor
+                                                )
+                                        }
+                                }
+                        }
+
                 }
         }
 }
+
 
 /** Panneau de détails (pour le layout horizontal) */
 @Composable
@@ -954,7 +1111,7 @@ private fun FoodDetailsPanel(
                                 contentAlignment = Alignment.Center
                         ) {
                                 Text(
-                                        text = "Sélectionnez un aliment\npour voir ses détails",
+                                        text = translate("auto.view.components.foodsearchcomponent.salectionnez_un_aliment_pour_voir_ses_datails"),
                                         style = MaterialTheme.typography.body1,
                                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                                 )
@@ -962,45 +1119,46 @@ private fun FoodDetailsPanel(
                 } else {
                         AlimentDetailsContent(
                                 aliment = config.selectedFood!!,
+                                referenceEv = config.referenceEv,
+                                equationRepository = config.equationRepository,
                                 modifier = Modifier.fillMaxSize()
                         )
                 }
         }
 }
 
+
 /** Contenu des détails de l'aliment */
 @Composable
-private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modifier) {
-        Column(
+private fun AlimentDetailsContent(aliment: AlimentEv, referenceEv: ReferenceEv? = null, equationRepository: EquationRepository? = null, modifier: Modifier = Modifier) {
+        LazyColumn(
                 modifier = modifier.padding(AppSizes.paddingMedium),
                 verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
         ) {
-                Text(
-                        text = "Détails de l'aliment",
-                        style = MaterialTheme.typography.h6,
-                        color = VetNutriColors.Primary
-                )
-
-                Divider()
-
                 // Informations générales
-                Text(
-                        text = aliment.nom ?: "Sans nom",
-                        style = MaterialTheme.typography.h6,
-                        fontWeight = FontWeight.Bold
-                )
+                item {
+                        Text(
+                                text = aliment.nom ?: "Sans nom",
+                                style = MaterialTheme.typography.h6,
+                                fontWeight = FontWeight.Bold
+                        )
+                }
 
                 if (!aliment.brand.isNullOrEmpty()) {
-                        DetailRow("Marque", aliment.brand!!)
+                        item { DetailRow("Marque", aliment.brand!!) }
                 }
 
                 if (!aliment.gamme.isNullOrEmpty()) {
-                        DetailRow("Gamme", aliment.gamme!!)
+                        item { DetailRow("Gamme", aliment.gamme!!) }
                 }
 
-                aliment.typeAliment?.let { type -> DetailRow("Type", type.translateEnum()) }
+                aliment.typeAliment?.let { type -> 
+                        item { DetailRow("Type", type.translateEnum()) }
+                }
 
-                aliment.group?.let { group -> DetailRow("Groupe", group.translateEnum()) }
+                aliment.group?.let { group -> 
+                        item { DetailRow("Groupe", group.translateEnum()) }
+                }
 
                 // Espèces ciblées (hors ALL)
                 val species =
@@ -1008,7 +1166,7 @@ private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modif
                                 it.translateEnum()
                         }
                 if (species.isNotEmpty()) {
-                        DetailRow("Espèces", species.joinToString(", "))
+                        item { DetailRow("Espèces", species.joinToString(", ")) }
                 }
 
                 // Indications principales (hors ALL/AUTRE)
@@ -1017,46 +1175,35 @@ private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modif
                                 .filter { it != AlimIndic.ALL && it != AlimIndic.AUTRE }
                                 .map { it.translateEnum() }
                 if (indications.isNotEmpty()) {
-                        DetailRow("Indications", indications.joinToString(", "))
+                        item { DetailRow("Indications", indications.joinToString(", ")) }
                 }
 
                 if (!aliment.ingredients.isNullOrEmpty()) {
-                        DetailRow("Ingrédients", aliment.ingredients!!)
+                        item { DetailRow("Ingrédients", aliment.ingredients!!) }
                 }
 
-                Divider()
+                item { Divider() }
 
                 // Informations nutritionnelles principales (si disponibles)
                 if (aliment.valMap.isNotEmpty()) {
-                        Text(
-                                text = "Composition nutritionnelle (pour 100g)",
-                                style = MaterialTheme.typography.subtitle1,
-                                fontWeight = FontWeight.Bold
-                        )
-
-                        // Afficher quelques nutriments clés
-                        val nutrientsToShow =
-                                listOf(
-                                        "PROTEINE",
-                                        "LIPIDE",
-                                        "ENA",
-                                        "CELLULOSE",
-                                        "CENDRE",
-                                        "HUMIDITE"
+                        item {
+                                Text(
+                                        text = translate("recipe.add_food.nutritional_composition"),
+                                        style = MaterialTheme.typography.subtitle1,
+                                        fontWeight = FontWeight.Bold
                                 )
-                        nutrientsToShow.forEach { nutrientLabel ->
-                                val nutrient =
-                                        aliment.valMap.keys.find { it.label == nutrientLabel }
-                                if (nutrient != null) {
-                                        val value = aliment.valMap[nutrient]
-                                        if (value != null) {
-                                                DetailRow(
-                                                        nutrient.label,
-                                                        "${TextUtils.formatDecimal(value.value.toDouble(), 1)} ${value.unit ?: ""}"
-                                                )
-                                        }
-                                }
                         }
+
+                }
+
+                // Graphique en secteurs des nutriments
+                item {
+                        NutrientPieChart(
+                            aliment = aliment,
+                            referenceEv = referenceEv,
+                            equationRepository = equationRepository,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                 }
         }
 }
@@ -1066,7 +1213,7 @@ private fun AlimentDetailsContent(aliment: AlimentEv, modifier: Modifier = Modif
 private fun DetailRow(label: String, value: String) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
-                        text = "$label:",
+                        text = "$label :",
                         style = MaterialTheme.typography.body2,
                         modifier = Modifier.weight(1f)
                 )
@@ -1077,4 +1224,281 @@ private fun DetailRow(label: String, value: String) {
                         modifier = Modifier.weight(1f)
                 )
         }
+}
+
+/** Dialog de tri avancé */
+@Composable
+fun AdvancedSortDialog(
+        filters: FoodSearchFilters,
+        onFiltersChange: (FoodSearchFilters) -> Unit,
+        onDismiss: () -> Unit,
+        availableNutrients: List<Nutrient> = getAllAvailableNutrients()
+) {
+        var localNutrientFilters by remember(filters.nutrientFilters) { 
+                mutableStateOf(filters.nutrientFilters.toMutableList()) 
+        }
+        var localSortCriteria by remember(filters.sortCriteria) { 
+                mutableStateOf(filters.sortCriteria) 
+        }
+        var localSortOrder by remember(filters.sortOrder) { 
+                mutableStateOf(filters.sortOrder) 
+        }
+        var localIncludeDeprecated by remember(filters.includeDeprecated) {
+                mutableStateOf(filters.includeDeprecated)
+        }
+        
+        // Synchroniser avec les changements externes
+        LaunchedEffect(
+                filters.nutrientFilters,
+                filters.sortCriteria,
+                filters.sortOrder,
+                filters.includeDeprecated
+        ) {
+                localNutrientFilters = filters.nutrientFilters.toMutableList()
+                localSortCriteria = filters.sortCriteria
+                localSortOrder = filters.sortOrder
+                localIncludeDeprecated = filters.includeDeprecated
+        }
+        AppAlertDialog(
+                onDismissRequest = onDismiss,
+                title = { Text(translate("auto.view.components.foodsearchcomponent.tri_et_filtres_avances"), fontWeight = FontWeight.Bold) },
+                text = {
+                        Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
+                        ) {
+                                // Section filtres par nutriments
+                                Text(
+                                        text = translate("auto.view.components.foodsearchcomponent.filtres_par_nutriments"),
+                                        style = MaterialTheme.typography.subtitle2,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                LazyColumn(
+                                        modifier = Modifier.heightIn(max = 200.dp),
+                                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                                ) {
+                                        itemsIndexed(
+                                                items = localNutrientFilters,
+                                                key = { index, _ -> index }
+                                        ) { index, filter ->
+                                                NutrientFilterRow(
+                                                        filter = filter,
+                                                        availableNutrients = availableNutrients,
+                                                        onFilterChange = { newFilter ->
+                                                                val updatedList = localNutrientFilters.toMutableList()
+                                                                if (index >= 0 && index < updatedList.size) {
+                                                                        updatedList[index] = newFilter
+                                                                        localNutrientFilters = updatedList
+                                                                }
+                                                        },
+                                                        onRemove = {
+                                                                val updatedList = localNutrientFilters.toMutableList()
+                                                                if (index >= 0 && index < updatedList.size) {
+                                                                        updatedList.removeAt(index)
+                                                                        localNutrientFilters = updatedList
+                                                                }
+                                                        }
+                                                )
+                                        }
+                                        item {
+                                                Button(
+                                                        onClick = {
+                                                                localNutrientFilters = (localNutrientFilters + NutrientFilter()).toMutableList()
+                                                        },
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Icon(Icons.Default.Add, contentDescription = null)
+                                                        Spacer(modifier = Modifier.width(4.dp))
+                                                        Text(translate("auto.view.components.foodsearchcomponent.ajouter_un_filtre"))
+                                                }
+                                        }
+                                }
+                                Divider()
+                                // Section tri
+                                Text(
+                                        text = translate("animalList.sortSectionTitle"),
+                                        style = MaterialTheme.typography.subtitle2,
+                                        fontWeight = FontWeight.Bold
+                                )
+                                DropdownField(
+                                        label = translate("auto.view.components.foodsearchcomponent.critere_de_tri"),
+                                        selectedValue = localSortCriteria,
+                                        options = listOf(null) + SortCriteria.entries,
+                                        onValueChange = { localSortCriteria = it },
+                                        valueToString = { it?.displayName ?: "Aucun" },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        height = 40.dp,
+                                        fontSize = 12.sp,
+                                        labelFontSize = 10.sp,
+                                        borderWidth = 0.5.dp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                DropdownField(
+                                        label = translate("auto.view.components.foodsearchcomponent.ordre"),
+                                        selectedValue = localSortOrder,
+                                        options = SortOrder.entries,
+                                        onValueChange = { localSortOrder = it },
+                                        valueToString = { it.displayName },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        height = 40.dp,
+                                        fontSize = 12.sp,
+                                        labelFontSize = 10.sp,
+                                        borderWidth = 0.5.dp
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                        Text(
+                                                text = translate("auto.view.components.foodsearchcomponent.inclure_les_aliments_obsoletes"),
+                                                style = MaterialTheme.typography.body2
+                                        )
+                                        Switch(
+                                                checked = localIncludeDeprecated,
+                                                onCheckedChange = {
+                                                        localIncludeDeprecated = it
+                                                }
+                                        )
+                                }
+                        }
+                },
+                confirmButton = {
+                        Button(
+                                onClick = {
+                                        onFiltersChange(
+                                                filters.copy(
+                                                        nutrientFilters = localNutrientFilters,
+                                                        sortCriteria = localSortCriteria,
+                                                        sortOrder = localSortOrder,
+                                                        includeDeprecated = localIncludeDeprecated
+                                                )
+                                        )
+                                        onDismiss()
+                                }
+                        ) {
+                                Text(translate("recipe.action.apply"))
+                        }
+                },
+                dismissButton = {
+                        TextButton(onClick = onDismiss) {
+                                Text(translate("general.cancel"))
+                        }
+                }
+        )
+}
+
+/**
+ * Obtient le nom traduit d'un nutriment selon son type en utilisant les traductions JSON
+ */
+private fun obtenirNomTraduitNutriment(nutriment: Nutrient?): String {
+        if (nutriment == null) return "Sélectionner"
+        return when (nutriment) {
+                is NutrientLipid -> nutriment.translateEnum()
+                is NutrientMacro -> nutriment.translateEnum()
+                is NutrientMain -> nutriment.translateEnum()
+                is NutrientMin -> nutriment.translateEnum()
+                is NutrientOther -> nutriment.translateEnum()
+                is NutrientVitam -> nutriment.translateEnum()
+                is AAEnum -> nutriment.translateEnum()
+                is NutrientAnalysis -> nutriment.translateEnum()
+                else -> nutriment.label // Fallback sur le label original si le type n'est pas reconnu
+        }
+}
+
+/** Ligne de filtre par nutriment */
+@Composable
+private fun NutrientFilterRow(
+        filter: NutrientFilter,
+        availableNutrients: List<Nutrient>,
+        onFilterChange: (NutrientFilter) -> Unit,
+        onRemove: () -> Unit
+) {
+        var valueText by remember { 
+                mutableStateOf(filter.value?.toString() ?: "") 
+        }
+
+        // Ne pas écraser la saisie en cours si la valeur convertie est identique
+        LaunchedEffect(filter.value) {
+                val currentNumericValue = valueText.replace(',', '.').toDoubleOrNull()
+                if (currentNumericValue != filter.value) {
+                        valueText = filter.value?.toString() ?: ""
+                }
+        }
+
+        Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                verticalAlignment = Alignment.CenterVertically
+        ) {
+                // Sélection du nutriment
+                Box(modifier = Modifier.weight(2f)) {
+                        val nutrientOptions = listOf(null) + availableNutrients
+                        DropdownField(
+                                label = translate("nutrientComponents.columnNutrient"),
+                                selectedValue = filter.nutrient,
+                                options = nutrientOptions,
+                                onValueChange = { 
+                                        onFilterChange(filter.copy(nutrient = it)) 
+                                },
+                                valueToString = { obtenirNomTraduitNutriment(it) },
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 40.dp,
+                                fontSize = 12.sp,
+                                labelFontSize = 10.sp,
+                                borderWidth = 0.5.dp
+                        )
+                }
+                // Opérateur
+                Box(modifier = Modifier.weight(1f)) {
+                        DropdownField(
+                                label = translate("auto.view.components.foodsearchcomponent.operateur"),
+                                selectedValue = filter.operator,
+                                options = NutrientOperator.entries,
+                                onValueChange = { 
+                                        onFilterChange(filter.copy(operator = it)) 
+                                },
+                                valueToString = { it.displayName },
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 40.dp,
+                                fontSize = 12.sp,
+                                labelFontSize = 10.sp,
+                                borderWidth = 0.5.dp
+                        )
+                }
+                // Valeur
+                Box(modifier = Modifier.weight(1f)) {
+                        BasicAppTextField(
+                                value = valueText,
+                                onValueChange = { newText ->
+                                        valueText = newText
+                                        val doubleValue = newText.replace(',', '.').toDoubleOrNull()
+                                        onFilterChange(filter.copy(value = doubleValue))
+                                },
+                                placeholder = translate("nutrientComponents.columnValue"),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier.fillMaxWidth().height(40.dp)
+                        )
+                }
+                // Bouton supprimer
+                IconButtonWithTooltip(
+                        onClick = onRemove,
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = translate("general.delete"),
+                        tooltip = translate("auto.view.components.foodsearchcomponent.supprimer_le_filtre")
+                )
+        }
+}
+
+/** Obtient tous les nutriments disponibles */
+private fun getAllAvailableNutrients(): List<Nutrient> {
+        val allNutrients = mutableListOf<Nutrient>()
+        allNutrients.addAll(NutrientMain.entries)
+        allNutrients.addAll(NutrientMacro.entries)
+        allNutrients.addAll(NutrientMin.entries)
+        allNutrients.addAll(NutrientVitam.entries)
+        allNutrients.addAll(NutrientLipid.entries)
+        allNutrients.addAll(AAEnum.entries)
+        return allNutrients
 }

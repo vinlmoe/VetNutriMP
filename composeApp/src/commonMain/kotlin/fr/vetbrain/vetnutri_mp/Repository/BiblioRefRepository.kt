@@ -1,16 +1,22 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppLog
 import fr.vetbrain.vetnutri_mp.Data.BiblioRef
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefDao
 import fr.vetbrain.vetnutri_mp.DataBase.BiblioRefEntity
 import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
 import fr.vetbrain.vetnutri_mp.Utils.genUUID
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** Interface définissant les opérations possibles sur les références bibliographiques. */
@@ -44,20 +50,11 @@ class InMemoryBiblioRefRepository : BiblioRefRepository {
     }
 
     override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
-
-        // Créer une nouvelle liste avec la référence ajoutée ou mise à jour
-        val newList = _biblioRefs.value.toMutableList()
-        val existingIndex = newList.indexOfFirst { it.uuid == biblioRef.uuid }
-
-        if (existingIndex >= 0) {
-            newList[existingIndex] = biblioRef
-        } else {
-            newList.add(biblioRef)
+        _biblioRefs.update { current ->
+            val idx = current.indexOfFirst { it.uuid == biblioRef.uuid }
+            if (idx >= 0) current.toMutableList().also { it[idx] = biblioRef }
+            else current + biblioRef
         }
-
-        // Mettre à jour le StateFlow avec la nouvelle liste
-        _biblioRefs.value = newList
-
     }
 
     override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
@@ -65,12 +62,12 @@ class InMemoryBiblioRefRepository : BiblioRefRepository {
     }
 
     override suspend fun deleteBiblioRef(biblioRef: BiblioRef) {
-        _biblioRefs.value = _biblioRefs.value.filter { it.uuid != biblioRef.uuid }
+        _biblioRefs.update { current -> current.filter { it.uuid != biblioRef.uuid } }
     }
 
     override suspend fun clearAllBiblioRefs(): Int {
-        val count = _biblioRefs.value.size
-        _biblioRefs.value = emptyList()
+        var count = 0
+        _biblioRefs.update { current -> count = current.size; emptyList() }
         return count
     }
 }
@@ -109,20 +106,11 @@ class TestBiblioRefRepository : BiblioRefRepository {
     }
 
     override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
-
-        // Créer une nouvelle liste avec la référence ajoutée ou mise à jour
-        val newList = _biblioRefs.value.toMutableList()
-        val existingIndex = newList.indexOfFirst { it.uuid == biblioRef.uuid }
-
-        if (existingIndex >= 0) {
-            newList[existingIndex] = biblioRef
-        } else {
-            newList.add(biblioRef)
+        _biblioRefs.update { current ->
+            val idx = current.indexOfFirst { it.uuid == biblioRef.uuid }
+            if (idx >= 0) current.toMutableList().also { it[idx] = biblioRef }
+            else current + biblioRef
         }
-
-        // Mettre à jour le StateFlow avec la nouvelle liste
-        _biblioRefs.value = newList
-
     }
 
     override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
@@ -130,12 +118,12 @@ class TestBiblioRefRepository : BiblioRefRepository {
     }
 
     override suspend fun deleteBiblioRef(biblioRef: BiblioRef) {
-        _biblioRefs.value = _biblioRefs.value.filter { it.uuid != biblioRef.uuid }
+        _biblioRefs.update { current -> current.filter { it.uuid != biblioRef.uuid } }
     }
 
     override suspend fun clearAllBiblioRefs(): Int {
-        val count = _biblioRefs.value.size
-        _biblioRefs.value = emptyList()
+        var count = 0
+        _biblioRefs.update { current -> count = current.size; emptyList() }
         return count
     }
 }
@@ -146,40 +134,16 @@ class TestBiblioRefRepository : BiblioRefRepository {
  */
 class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : BiblioRefRepository {
     private val _biblioRefs = MutableStateFlow<List<BiblioRef>>(emptyList())
+    private val writeMutex = Mutex()
+
+    // Portée de vie de l'application : le repository est un singleton d'AppContainer.
+    private val scope = CoroutineScope(SupervisorJob() + AppDispatchers.IO)
 
     init {
-        // Chargement initial des données depuis la base
-        CoroutineScope(AppDispatchers.IO).launch {
-            refreshFromDatabase()
-
-            // Ajouter des références de test si la base est vide
-            if (_biblioRefs.value.isEmpty()) {
-                val testRefs =
-                        listOf(
-                                BiblioRef(
-                                        uuid = "test-1",
-                                        firstAuthor = "Dupont",
-                                        year = 2020,
-                                        completeRef =
-                                                "Dupont et al., Etude sur les nutriments, 2020",
-                                        comments = "Étude importante",
-                                        consistent = 1
-                                ),
-                                BiblioRef(
-                                        uuid = "test-2",
-                                        firstAuthor = "Martin",
-                                        year = 2021,
-                                        completeRef = "Martin J., Nutrition canine, 2021",
-                                        comments = "À vérifier",
-                                        consistent = 1
-                                )
-                        )
-
-                for (ref in testRefs) {
-                    insertBiblioRef(ref)
-                }
-            }
-        }
+        // Chargement initial des données depuis la base.
+        // (Les références fictives « Dupont 2020 » / « Martin 2021 » qui étaient insérées
+        // dans une base vide ont été retirées : elles polluaient les bases de production.)
+        scope.launch { refreshFromDatabase() }
     }
 
     private suspend fun refreshFromDatabase() {
@@ -190,11 +154,9 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
             // Convertir en objets du domaine
             val dbRefs = allRefs.map { it.toDomain() }
             _biblioRefs.value = dbRefs
-
-            if (dbRefs.isNotEmpty()) {
-            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            e.rethrowIfCancellation()
+            AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
         }
     }
 
@@ -230,106 +192,78 @@ class DatabaseBiblioRefRepository(private val biblioRefDao: BiblioRefDao) : Bibl
                 // Mettre à jour le cache et émettre les nouvelles données
                 _biblioRefs.value = dbRefs
                 emit(dbRefs)
-            } catch (e: Exception) {
-                // En cas d'erreur, on n'émet rien de plus (les données du cache ont déjà été
-                // émises)
-            }
+            } catch (e: Exception) { e.rethrowIfCancellation(); AppLog.d("BiblioRefRepository", "Exception ignorée : ${e.message}") }
         }
     }
 
     override suspend fun insertBiblioRef(biblioRef: BiblioRef) {
-
-        try {
-            // S'assurer que le champ consistent a une valeur valide (au moins 1)
-            val safeRef =
-                    if (biblioRef.consistent <= 0) {
-                        biblioRef.copy(consistent = 1)
+        withContext(AppDispatchers.IO) {
+            writeMutex.withLock {
+                try {
+                    val safeRef = if (biblioRef.consistent <= 0) biblioRef.copy(consistent = 1) else biblioRef
+                    val entity = safeRef.toEntity()
+                    val existingRef = biblioRefDao.getBiblioRefById(safeRef.uuid)
+                    if (existingRef != null) {
+                        biblioRefDao.updateBiblioRef(entity)
                     } else {
-                        biblioRef
+                        biblioRefDao.insertBiblioRef(entity)
                     }
-
-            // Conversion en entité avec la référence sécurisée
-            val entity = safeRef.toEntity()
-
-            // Vérifier si la référence existe déjà
-            val existingRef = biblioRefDao.getBiblioRefById(safeRef.uuid)
-
-            // Insérer dans la base de données
-            if (existingRef != null) {
-                // Si elle existe déjà, mettre à jour
-                biblioRefDao.updateBiblioRef(entity)
-            } else {
-                // Sinon, insérer une nouvelle référence
-                biblioRefDao.insertBiblioRef(entity)
+                    refreshFromDatabase()
+                } catch (e: Exception) {
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
+                    throw e
+                }
             }
-
-            // Vérifier si l'insertion a fonctionné
-            val verifyRef = biblioRefDao.getBiblioRefById(safeRef.uuid)
-            if (verifyRef != null) {
-            }
-
-            // Lister toutes les références après l'insertion
-            val allRefs = biblioRefDao.getAllBiblioRefs()
-            allRefs.forEach {
-            }
-
-            // Rafraîchir la liste en mémoire
-            refreshFromDatabase()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
         }
     }
 
     override suspend fun updateBiblioRef(biblioRef: BiblioRef) {
-
-        try {
-            // Mettre à jour dans la base de données
-            biblioRefDao.updateBiblioRef(biblioRef.toEntity())
-
-            // Rafraîchir la liste en mémoire
-            refreshFromDatabase()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
+        withContext(AppDispatchers.IO) {
+            writeMutex.withLock {
+                try {
+                    biblioRefDao.updateBiblioRef(biblioRef.toEntity())
+                    refreshFromDatabase()
+                } catch (e: Exception) {
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
+                    throw e
+                }
+            }
         }
     }
 
     override suspend fun deleteBiblioRef(biblioRef: BiblioRef) {
-
-        try {
-            // Supprimer de la base de données
-            biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
-
-            // Rafraîchir la liste en mémoire
-            refreshFromDatabase()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
+        withContext(AppDispatchers.IO) {
+            writeMutex.withLock {
+                try {
+                    biblioRefDao.deleteBiblioRef(biblioRef.toEntity())
+                    refreshFromDatabase()
+                } catch (e: Exception) {
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
+                    throw e
+                }
+            }
         }
     }
 
     override suspend fun clearAllBiblioRefs(): Int {
-        
-
-        return try {
-            // Obtenir le nombre total de références bibliographiques avant suppression directement
-            // depuis la base
-            val allBiblioRefEntities = biblioRefDao.getAllBiblioRefs()
-            val count = allBiblioRefEntities.size
-
-            if (count > 0) {
-                // Supprimer toutes les références bibliographiques
-                biblioRefDao.deleteAllBiblioRefs()
-
-                // Rafraîchir le cache local
-                _biblioRefs.value = emptyList()
+        return withContext(AppDispatchers.IO) {
+            writeMutex.withLock {
+                try {
+                    val count = biblioRefDao.getAllBiblioRefs().size
+                    if (count > 0) {
+                        biblioRefDao.deleteAllBiblioRefs()
+                        refreshFromDatabase()
+                    }
+                    count
+                } catch (e: Exception) {
+                    e.rethrowIfCancellation()
+                    AppLog.e("BiblioRefRepository", e.message ?: "Erreur", e)
+                    throw e
+                }
             }
-
-            count
-        } catch (e: Exception) {
-            e.printStackTrace()
-            throw e
         }
     }
 

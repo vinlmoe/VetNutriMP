@@ -53,6 +53,7 @@ fun ConsultationsView(
     // Affichage conditionnel : vue plein écran ou vue normale
     if (showFullScreenEdit) {
         val availableReferences by viewModel.availableReferences.collectAsState()
+        val availableKeywords by viewModel.availableKeywords.collectAsState()
         var showNoReferenceDialog by remember { mutableStateOf(false) }
 
         ConsultationFullScreenEditView(
@@ -60,29 +61,31 @@ fun ConsultationsView(
                 animalName = animal?.nom ?: "",
                 animalEspece = animal?.getEspece(),
                 availableReferences = availableReferences,
+                availableKeywords = availableKeywords,
                 onBackPressed = { consultation -> viewModel.saveFromFullScreen(consultation) },
                 onCancel = {
-                    // Annuler la création si la consultation venait d'être créée (uuid vide)
-                    if (selectedConsultation?.uuid?.isEmpty() == true) {
-                        viewModel.stopEditingConsultation()
-                    }
+                    // Abandonne un éventuel brouillon et garde une consultation sélectionnée
+                    viewModel.cancelConsultationEditing()
                     viewModel.closeFullScreenEdit()
                 },
-                onLoadReferences = { viewModel.chargerReferencesDisponibles() }
+                onLoadReferences = { viewModel.chargerReferencesDisponibles() },
+                onLoadKeywords = { viewModel.chargerMotsClesConsultation() },
+                onCreateKeyword = { keyword -> viewModel.ajouterMotCleConsultation(keyword) },
+                typesTroupeau = animal?.typesTroupeau
         )
 
         // Dialog uniquement après clic sur Valider: on le pilote ici via la sélection
         if (showNoReferenceDialog) {
             AlertDialog(
                     onDismissRequest = { showNoReferenceDialog = false },
-                    title = { Text("Référence générale manquante") },
+                    title = { Text(translate(Consultation.MISSING_REF_TITLE)) },
                     text = {
                         Text(
-                                "Veuillez sélectionner une référence générale avant de valider la consultation."
+                                translate(Consultation.MISSING_REF_MESSAGE)
                         )
                     },
                     confirmButton = {
-                        TextButton(onClick = { showNoReferenceDialog = false }) { Text("OK") }
+                        TextButton(onClick = { showNoReferenceDialog = false }) { Text(translate(General.OK)) }
                     }
             )
         }
@@ -136,7 +139,7 @@ private fun ConsultationsMainView(
                             },
                             colors =
                                     ButtonDefaults.buttonColors(
-                                            backgroundColor = Color.Red,
+                                            backgroundColor = VetNutriColors.Error,
                                             contentColor = Color.White
                                     )
                     ) { Text(General.CONFIRM.translate()) }
@@ -154,25 +157,15 @@ private fun ConsultationsMainView(
         )
     }
 
-    Scaffold(
-            floatingActionButton = {
-                FloatingActionButton(
-                        onClick = { viewModel.createNewConsultationFullScreen() },
-                        backgroundColor = VetNutriColors.Primary
-                ) {
-                    Icon(
-                            imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter une consultation",
-                            tint = VetNutriColors.OnPrimary
-                    )
-                }
-            }
-    ) { paddingValues ->
-        Row(modifier = modifier.fillMaxSize().padding(paddingValues)) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        // Téléphone : la liste occupe tout l'écran, le détail la remplace une fois ouvert
+        val isCompact = maxWidth < AppSizes.breakpointCompact
+        val showDetailOnly = isCompact && showConsultationDetail && selectedConsultation != null
+
+        val listePane: @Composable (Modifier) -> Unit = { paneModifier ->
             // Liste des consultations
             Column(
-                    modifier =
-                            Modifier.weight(0.4f).fillMaxHeight().padding(AppSizes.paddingMedium),
+                    modifier = paneModifier.fillMaxHeight().padding(AppSizes.paddingMedium),
                     verticalArrangement = Arrangement.spacedBy(AppSizes.paddingMedium)
             ) {
                 // FAB remplace le bouton d'ajout; laisser l'espace entête
@@ -183,7 +176,7 @@ private fun ConsultationsMainView(
                 )
 
                 Text(
-                        text = "Consultations",
+                        text = translate(Consultation.TITLE),
                         style = MaterialTheme.typography.h6,
                         color = VetNutriColors.Primary
                 )
@@ -195,7 +188,7 @@ private fun ConsultationsMainView(
                                 contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                    text = "Aucune consultation",
+                                    text = translate(Consultation.NONE),
                                     style = MaterialTheme.typography.body1,
                                     color = Color.Gray
                             )
@@ -220,6 +213,9 @@ private fun ConsultationsMainView(
                                             onConsultationToDelete(consultation)
                                             onShowDeleteConfirmation(true)
                                         },
+                                        onDuplicate = {
+                                            viewModel.duplicateConsultation(consultation)
+                                        },
                                         isDeleteEnabled = canDeleteConsultation,
                                         onClick = {
                                             viewModel.selectConsultation(consultation)
@@ -231,29 +227,38 @@ private fun ConsultationsMainView(
                     }
                 }
             }
+        }
 
-            // Séparateur vertical
-            Divider(
-                    modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
-                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
-            )
-
+        val detailPane: @Composable (Modifier) -> Unit = { paneModifier ->
             // Détail de la consultation
             if (showConsultationDetail) {
-                Box(modifier = Modifier.weight(0.6f).fillMaxHeight()) {
+                Box(modifier = paneModifier.fillMaxHeight()) {
                     selectedConsultation?.let { consultation ->
                         val availableReferences by viewModel.availableReferences.collectAsState()
 
                         // Charger les références au démarrage
                         LaunchedEffect(Unit) { viewModel.chargerReferencesDisponibles() }
 
+                        // Troupeau : état du troupeau par groupe à la place du poids et de la
+                        // NEC d'un individu
+                        val typesTroupeau = animal?.typesTroupeau
+                        if (typesTroupeau != null && consultation.uuid.isNotEmpty()) {
+                            DetailConsultationTroupeau(
+                                    consultation = consultation,
+                                    types = typesTroupeau,
+                                    references = availableReferences,
+                                    onEdit = { viewModel.editConsultationFullScreen(consultation) },
+                                    onDismiss = { onShowConsultationDetail(false) }
+                            )
+                        } else
                         AppConsultationDetailView(
                                 consultation = consultation,
                                 availableReferences = availableReferences,
                                 onDismiss = {
-                                    if (isEditingConsultation && consultation.uuid.isEmpty()) {
-                                        // Si on annule l'ajout d'une nouvelle consultation
-                                        viewModel.stopEditingConsultation()
+                                    if (isEditingConsultation) {
+                                        // Abandonne un éventuel brouillon et garde une
+                                        // consultation sélectionnée
+                                        viewModel.cancelConsultationEditing()
                                     }
                                     onShowConsultationDetail(false)
                                 },
@@ -267,16 +272,51 @@ private fun ConsultationsMainView(
                                     }
                                     viewModel.stopEditingConsultation()
                                     onShowConsultationDetail(false)
-                                }
+                                },
+                                viewModel = viewModel
                         )
                     }
                 }
             } else {
                 // Message indiquant de sélectionner une consultation
                 CenteredMessage(
-                        message = "Sélectionnez une consultation pour afficher les détails",
-                        modifier = Modifier.weight(0.6f).fillMaxHeight()
+                        message = translate(Consultation.SELECT_DETAIL_HINT),
+                        modifier = paneModifier.fillMaxHeight()
                 )
+            }
+        }
+
+        Scaffold(
+                floatingActionButton = {
+                    if (!showDetailOnly) {
+                        FloatingActionButton(
+                                onClick = { viewModel.createNewConsultationFullScreen() },
+                                backgroundColor = VetNutriColors.Primary
+                        ) {
+                            Icon(
+                                    imageVector = AppIcons.Add,
+                                    contentDescription = translate(Consultation.ADD),
+                                    tint = VetNutriColors.OnPrimary
+                            )
+                        }
+                    }
+                }
+        ) { paddingValues ->
+            val contentModifier = Modifier.fillMaxSize().padding(paddingValues)
+            when {
+                showDetailOnly -> Box(contentModifier) { detailPane(Modifier.fillMaxWidth()) }
+                isCompact -> Box(contentModifier) { listePane(Modifier.fillMaxWidth()) }
+                else -> Row(modifier = contentModifier) {
+                    listePane(Modifier.weight(0.4f))
+
+                    // Séparateur vertical
+                    Divider(
+                            modifier = Modifier.fillMaxHeight().width(AppSizes.dividerWidth),
+                            color = MaterialTheme.colors.onSurface.copy(alpha = 0.12f)
+                    )
+
+                    detailPane(Modifier.weight(0.6f))
+                }
             }
         }
     }

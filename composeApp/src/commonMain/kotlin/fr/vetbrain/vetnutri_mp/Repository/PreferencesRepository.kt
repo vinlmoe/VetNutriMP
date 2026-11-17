@@ -1,5 +1,11 @@
 package fr.vetbrain.vetnutri_mp.Repository
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import fr.vetbrain.vetnutri_mp.Utils.AppDispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.withContext
 import fr.vetbrain.vetnutri_mp.Data.PreferencesApplication
 import fr.vetbrain.vetnutri_mp.Data.PreferencesEspece
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
@@ -31,10 +37,25 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         return -1
     }
 
+    // Préférences partagées par toutes les vues : null tant qu'elles n'ont pas été lues sur le
+    // stockage, puis mises à jour à chaque chargement et à chaque sauvegarde
+    private val _preferencesFlow = MutableStateFlow<PreferencesApplication?>(null)
+    val preferencesFlow: StateFlow<PreferencesApplication?> = _preferencesFlow.asStateFlow()
+
     // État des préférences
     private var _preferences = PreferencesApplication.createDefault()
+        set(value) {
+            field = value
+            _preferencesFlow.value = value
+        }
     val preferences: PreferencesApplication
         get() = _preferences
+
+    /** Préférences courantes, lues sur le stockage au premier appel seulement */
+    suspend fun getLoadedPreferences(): PreferencesApplication {
+        if (_preferencesFlow.value == null) loadPreferences()
+        return _preferences
+    }
 
     /** Obtient les unités valides pour l'expression des besoins (excluant UnitType.AUTRE) */
     fun getValidUnits(): List<UnitReqEnum> {
@@ -53,49 +74,50 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     /** Charge les préférences depuis le stockage */
-    suspend fun loadPreferences() {
+    suspend fun loadPreferences(): Unit = withContext(AppDispatchers.IO) {
         try {
             val jsonString = preferencesStorage.getString(PREFERENCES_KEY, "{}")
-            
+
             if (jsonString.isNotBlank() && jsonString != "{}") {
                 // Essayer de parser le JSON manuellement
                 _preferences = parsePreferencesFromJson(jsonString)
             } else {
                 _preferences = PreferencesApplication()
             }
-            
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // En cas d'erreur, utiliser les préférences par défaut
             _preferences = PreferencesApplication.createDefault()
         }
     }
 
     /** Sauvegarde les préférences dans le stockage */
-    suspend fun savePreferences(preferences: PreferencesApplication) {
+    suspend fun savePreferences(preferences: PreferencesApplication): Unit = withContext(AppDispatchers.IO) {
         try {
             val jsonString = serializePreferencesToJson(preferences)
-            
+
             preferencesStorage.saveString(PREFERENCES_KEY, jsonString)
             _preferences = preferences
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Même en cas d'erreur de sauvegarde, on met à jour en mémoire
             _preferences = preferences
         }
     }
 
     /** Obtient les préférences pour une espèce */
-    suspend fun getPreferencesForSpecies(species: Espece): PreferencesEspece {
-        return _preferences.getPreferencesEspece(species)
+    suspend fun getPreferencesForSpecies(species: Espece): PreferencesEspece = withContext(AppDispatchers.IO) {
+        return@withContext _preferences.getPreferencesEspece(species)
     }
 
     /** Met à jour les préférences pour une espèce */
     suspend fun updatePreferencesForSpecies(
             species: Espece,
             preferences: PreferencesEspece
-    ): PreferencesApplication {
+    ): PreferencesApplication = withContext(AppDispatchers.IO) {
         val updatedPreferences = _preferences.updatePreferencesEspece(preferences)
         savePreferences(updatedPreferences)
-        return updatedPreferences
+        return@withContext updatedPreferences
     }
 
     /** Obtient toutes les espèces disponibles */
@@ -113,6 +135,14 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
         val sb = StringBuilder()
         sb.append("{")
         sb.append("\"version\":${preferences.versionPreferences},")
+        sb.append("\"user\":{")
+        sb.append("\"name\":\"" + preferences.nomUtilisateur.replace("\"", "\\\"") + "\",")
+        sb.append("\"orderNumber\":\"" + preferences.numeroOrdre.replace("\"", "\\\"") + "\",")
+        sb.append("\"address\":\"" + preferences.adressePostale.replace("\"", "\\\"") + "\",")
+        sb.append("\"postalCode\":\"" + preferences.codePostal.replace("\"", "\\\"") + "\",")
+        sb.append("\"city\":\"" + preferences.ville.replace("\"", "\\\"") + "\",")
+        sb.append("\"phone\":\"" + preferences.telephone.replace("\"", "\\\"") + "\",")
+        sb.append("\"email\":\"" + preferences.email.replace("\"", "\\\"") + "\"},")
         sb.append("\"species\":{")
 
         val speciesEntries = mutableListOf<String>()
@@ -196,8 +226,50 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 }
             }
 
-            return PreferencesApplication(preferencesParEspece = preferencesMap)
+            // Extraire section utilisateur (optionnelle)
+            val userStart = json.indexOf("\"user\":{")
+            var nomUtilisateur = ""
+            var numeroOrdre = ""
+            var adressePostale = ""
+            var codePostal = ""
+            var ville = ""
+            var telephone = ""
+            var email = ""
+            if (userStart != -1) {
+                val braceIndex = json.indexOf('{', userStart)
+                val userEnd = findMatchingClosingBrace(json, braceIndex)
+                if (braceIndex != -1 && userEnd > braceIndex) {
+                    val userJson = json.substring(braceIndex + 1, userEnd)
+                    nomUtilisateur =
+                            Regex("\"name\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    numeroOrdre =
+                            Regex("\"orderNumber\":\"(.*?)\"").find(userJson)?.groupValues?.get(1)
+                                    ?: ""
+                    adressePostale =
+                            Regex("\"address\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    codePostal =
+                            Regex("\"postalCode\":\"(.*?)\"").find(userJson)?.groupValues?.get(1)
+                                    ?: ""
+                    ville = Regex("\"city\":\"(.*?)\"").find(userJson)?.groupValues?.get(1)
+                                    ?: ""
+                    telephone =
+                            Regex("\"phone\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                    email = Regex("\"email\":\"(.*?)\"").find(userJson)?.groupValues?.get(1) ?: ""
+                }
+            }
+
+            return PreferencesApplication(
+                    preferencesParEspece = preferencesMap,
+                    nomUtilisateur = nomUtilisateur,
+                    numeroOrdre = numeroOrdre,
+                    adressePostale = adressePostale,
+                    codePostal = codePostal,
+                    ville = ville,
+                    telephone = telephone,
+                    email = email
+            )
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return PreferencesApplication.createDefault()
         }
     }
@@ -227,6 +299,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 }
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Retourner une map vide en cas d'erreur
             return mapOf(
                     "BASE" to emptyList(),
@@ -267,6 +340,7 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
                 emptyMap()
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             emptyMap()
         }
     }
@@ -277,12 +351,13 @@ class PreferencesRepository(private val preferencesStorage: PreferencesStorage) 
     }
 
     /** Importe les préférences depuis un JSON */
-    suspend fun importerPreferences(preferencesJson: String): Boolean {
-        return try {
+    suspend fun importerPreferences(preferencesJson: String): Boolean = withContext(AppDispatchers.IO) {
+        return@withContext try {
             val nouvellesPreferences = parsePreferencesFromJson(preferencesJson)
             savePreferences(nouvellesPreferences)
             true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             false
         }
     }

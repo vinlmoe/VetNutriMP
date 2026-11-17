@@ -1,5 +1,7 @@
 package fr.vetbrain.vetnutri_mp.Enumer
 
+import fr.vetbrain.vetnutri_mp.Data.Labelable
+
 /**
  * Types d'expression des besoins nutritionnels Basé sur UnitReqEnum mais limité aux types POIDS et
  * ENERGIE (excluant AUTRE)
@@ -7,8 +9,9 @@ package fr.vetbrain.vetnutri_mp.Enumer
 enum class TypeExpressionBesoin(
         val unitReqEnum: UnitReqEnum,
         val id: Int = unitReqEnum.id,
-        val displayName: String = unitReqEnum.label
-) {
+        val displayName: String = unitReqEnum.label,
+        override val label: String = unitReqEnum.label
+) : Labelable {
     PAR_KG(UnitReqEnum.PERKG),
     PAR_KCAL(UnitReqEnum.PERKCAL),
     PAR_KG_METABOLIQUE(UnitReqEnum.PERMS),

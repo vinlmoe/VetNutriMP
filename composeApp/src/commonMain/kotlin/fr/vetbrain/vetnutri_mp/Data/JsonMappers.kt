@@ -1,17 +1,19 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.FoodKindResolver
 import fr.vetbrain.vetnutri_mp.Enumer.GroupAlim
 import fr.vetbrain.vetnutri_mp.Enumer.Nutrient
+import fr.vetbrain.vetnutri_mp.Enumer.NutrientMain
 import fr.vetbrain.vetnutri_mp.Enumer.NutrientResolver.AllNutrientResolver
 import fr.vetbrain.vetnutri_mp.Enumer.TargetAdjust
 import fr.vetbrain.vetnutri_mp.Enumer.UnitReqEnum
 import fr.vetbrain.vetnutri_mp.Enumer.VariableKind
 import kotlinx.datetime.LocalDate
 
-/** Fonctions d'extension pour convertir entre les classes de données et les structures JSON */
+/** Mappers JSON <-> domaine (aliments, animaux, rations, préférences, etc.). */
 
 // AlimentEv <-> AlimentEvJson
 fun AlimentEv.toJson(): AlimentEvJson {
@@ -28,6 +30,8 @@ fun AlimentEv.toJson(): AlimentEvJson {
             espece = 0, // À adapter selon votre logique
             Especes = this.especes,
             gamme = this.gamme ?: "",
+            dateMaj = this.lastUpdateDate ?: "",
+            imageRef = this.imageRef ?: "",
             presentation = "", // Non présent dans AlimentEv
             quantInt = this.quantInt ?: 0.0,
             cont = if (this.cont != null) this.cont.name else "NO",
@@ -39,7 +43,8 @@ fun AlimentEv.toJson(): AlimentEvJson {
                                 nutrient.label to
                                         NutrientQuantity(nutrientQuantity.value, nutrient.label)
                             }
-                            .toMap()
+                            .toMap(),
+            energieParEspece = this.energieParEspece
     )
 }
 
@@ -49,10 +54,12 @@ private fun stringToAlimIndic(indicStr: String): AlimIndic? {
         // Essayer d'abord par le nom de l'énumération (PED, NEUT, etc.)
         AlimIndic.valueOf(indicStr)
     } catch (e: Exception) {
+        e.rethrowIfCancellation()
         try {
             // Si ça échoue, essayer par le label (Pédiatrique, Stérilisé, etc.)
             AlimIndic.byName(indicStr)
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Si ça échoue encore, retourner null
             null
         }
@@ -73,17 +80,18 @@ fun AlimentEvJson.toData(): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            val nutrient = AllNutrientResolver(nutrientKey)
+            // Essayer d'abord la résolution directe
+            var nutrient = AllNutrientResolver(nutrientKey)
+            
+            // Si la résolution échoue, essayer de nettoyer la clé
+            if (nutrient == null) {
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                nutrient = AllNutrientResolver(cleanedKey)
+            }
+            
+            // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-            } else {
-                // Essayer de nettoyer la clé pour trouver une correspondance
-                val cleanedKey = nutrientKey.trim().replace("_", " ")
-                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
-                if (nutrientAfterClean != null) {
-                    nutrientMap[nutrientAfterClean] =
-                            NutrientQuantity(value, nutrientAfterClean.label)
-                }
             }
         }
     }
@@ -97,6 +105,7 @@ fun AlimentEvJson.toData(): AlimentEv {
                             try {
                                 GroupAlim.valueOf(this.group)
                             } catch (e: Exception) {
+                                e.rethrowIfCancellation()
                                 null
                             },
                     typeAliment = FoodKindResolver.resoudreFoodKindBrut(this.foodKind),
@@ -112,6 +121,8 @@ fun AlimentEvJson.toData(): AlimentEv {
                     quantInt = this.quantInt,
                     deprecated = this.deprecated,
                     dataB = this.DataB,
+                    lastUpdateDate = this.dateMaj,
+                    imageRef = this.imageRef,
                     especes = especesConverties.toMutableList(),
                     indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
                     // Assurez-vous que valMap est mutable
@@ -119,7 +130,16 @@ fun AlimentEvJson.toData(): AlimentEv {
                     rationUUID = null
             )
 
-    // Vérifier l'objet après conversion
+    alimentEv.energieParEspece = if (this.energieParEspece.isNotEmpty()) {
+        this.energieParEspece
+    } else {
+        val genericEnergy = nutrientMap[NutrientMain.ENERGIE]?.value
+        if (genericEnergy != null && genericEnergy > 0.0 && especesConverties.isNotEmpty()) {
+            especesConverties.associateWith { genericEnergy }
+        } else {
+            emptyMap()
+        }
+    }
 
     return alimentEv
 }
@@ -136,17 +156,18 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             val nutrientKey = nutrientQuantity.nut
             val value = nutrientQuantity.value
 
-            val nutrient = AllNutrientResolver(nutrientKey)
+            // Essayer d'abord la résolution directe
+            var nutrient = AllNutrientResolver(nutrientKey)
+            
+            // Si la résolution échoue, essayer de nettoyer la clé
+            if (nutrient == null) {
+                val cleanedKey = nutrientKey.trim().replace("_", " ")
+                nutrient = AllNutrientResolver(cleanedKey)
+            }
+            
+            // Si la résolution réussit, ajouter le nutriment
             if (nutrient != null) {
                 nutrientMap[nutrient] = NutrientQuantity(value, nutrient.label)
-            } else {
-                // Essayer de nettoyer la clé pour trouver une correspondance
-                val cleanedKey = nutrientKey.trim().replace("_", " ")
-                val nutrientAfterClean = AllNutrientResolver(cleanedKey)
-                if (nutrientAfterClean != null) {
-                    nutrientMap[nutrientAfterClean] =
-                            NutrientQuantity(value, nutrientAfterClean.label)
-                }
             }
         }
     }
@@ -158,6 +179,7 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
                     try {
                         GroupAlim.valueOf(this.group)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             typeAliment = FoodKindResolver.resoudreFoodKindBrut(this.foodKind),
@@ -173,11 +195,24 @@ fun AlimentEvJson.toData(ratUUID: String): AlimentEv {
             quantInt = this.quantInt,
             deprecated = this.deprecated,
             dataB = this.DataB,
+            lastUpdateDate = this.dateMaj,
+            imageRef = this.imageRef,
             especes = especesConverties.toMutableList(),
             indicat = this.indication.mapNotNull { stringToAlimIndic(it) }.toMutableList(),
             valMap = nutrientMap.toMutableMap(),
             rationUUID = ratUUID
-    )
+    ).also { alim ->
+        alim.energieParEspece = if (this.energieParEspece.isNotEmpty()) {
+            this.energieParEspece
+        } else {
+            val genericEnergy = nutrientMap[NutrientMain.ENERGIE]?.value
+            if (genericEnergy != null && genericEnergy > 0.0 && especesConverties.isNotEmpty()) {
+                especesConverties.associateWith { genericEnergy }
+            } else {
+                emptyMap()
+            }
+        }
+    }
 }
 
 /**
@@ -202,6 +237,7 @@ private fun convertirEspecesEnLabels(especes: List<String>, especeId: Int): List
                             ?: especeStr // Utiliser le label si trouvé, sinon garder la chaîne
                     // d'origine
                 } catch (e: Exception) {
+                    e.rethrowIfCancellation()
                     especeStr // En cas d'erreur, garder la chaîne d'origine
                 }
             } else {
@@ -216,6 +252,7 @@ private fun convertirEspecesEnLabels(especes: List<String>, especeId: Int): List
             val espece = Espece.getEnumFromInt(especeId)
             return listOf(espece?.label ?: especeId.toString())
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             return listOf(especeId.toString())
         }
     }
@@ -237,8 +274,14 @@ fun AnimalEv.toJson(): AnimalEvJson {
             dateNaiss = this.birthdate ?: LocalDate(2023, 1, 1),
             race = this.race,
             resume = this.summary,
+            jsonbinId = this.jsonbinId,
+            exam = this.exam,
+            examStudentId = this.examStudentId,
+            examStudentNumber = this.examStudentNumber,
+            examExerciseId = this.examExerciseId,
             listWeight = this.weightHistory.map { it.toJson() },
-            list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() })
+            list = ListConsultEvJson(consultations = this.consultations.map { it.toJson() }),
+            herdTypes = this.typesTroupeau
     )
 }
 
@@ -256,6 +299,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                     else -> emptyList()
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 emptyList()
             }
 
@@ -270,6 +314,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                         val especeEnum = Espece.getEnumFromInt(especeId)
                         especeEnum.label
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Fallback au label CHIEN
                         Espece.CHIEN.label
                     }
@@ -279,6 +324,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                         val especeEnum = Espece.valueOf(especeStr)
                         especeEnum.label
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         // Essayer de trouver par label
                         val especeByLabel = Espece.getByLabel(especeStr)
                         if (especeByLabel != null) {
@@ -289,6 +335,7 @@ fun AnimalEvJson.toData(): AnimalEv {
                     }
                 }
             } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 // Valeur par défaut en cas d'erreur
                 Espece.CHIEN.label
             }
@@ -304,13 +351,20 @@ fun AnimalEvJson.toData(): AnimalEv {
             birthdate = this.dateNaiss,
             race = this.race,
             summary = this.resume,
+            jsonbinId = this.jsonbinId,
+            exam = this.exam,
+            examStudentId = this.examStudentId,
+            examStudentNumber = this.examStudentNumber,
+            examExerciseId = this.examExerciseId,
             weightHistory =
                     try {
                         this.listWeight.map { it.toData() }.toMutableList()
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         mutableListOf()
                     },
-            consultations = consultationsList.toMutableList()
+            consultations = consultationsList.toMutableList(),
+            typesTroupeau = this.herdTypes?.toMutableList()
     )
 }
 
@@ -352,7 +406,16 @@ fun ConsultationEv.toJson(): ConsultationEvJson {
             k5value = this.k5Value ?: 1.0,
             rationList = this.rations.associateBy({ it.uuid }, { it.toJson() }),
             diseaseRef = listOf(), // Non présent dans ConsultationEv
-            svp = this.suppVarp.map { it.toJson() }
+            svp = this.suppVarp.map { it.toJson() },
+            keywords = this.keywordIds,
+            prescriptionAnamnese = this.prescriptionAnamnese,
+            prescriptionExamenClinique = this.prescriptionExamenClinique,
+            prescriptionFacteurNutritionnelClef = this.prescriptionFacteurNutritionnelClef,
+            prescriptionAdditionalText = this.prescriptionAdditionalText,
+            prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds,
+            prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections,
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds,
+            herdParameters = this.parametresTroupeau
     )
 }
 
@@ -376,7 +439,16 @@ fun ConsultationEvJson.toData(): ConsultationEv {
             k4Value = this.k4value,
             k5Value = this.k5value,
             suppVarp = this.svp.map { it.toData() }.toMutableList(),
-            rations = this.rationList.values.map { it.toData() }.toMutableList()
+            rations = this.rationList.values.map { it.toData() }.toMutableList(),
+            keywordIds = this.keywords.toMutableList(),
+            prescriptionAnamnese = this.prescriptionAnamnese,
+            prescriptionExamenClinique = this.prescriptionExamenClinique,
+            prescriptionFacteurNutritionnelClef = this.prescriptionFacteurNutritionnelClef,
+            prescriptionAdditionalText = this.prescriptionAdditionalText,
+            prescriptionSelectedConseilIds = this.prescriptionSelectedConseilIds.toMutableList(),
+            prescriptionLocalHtmlSections = this.prescriptionLocalHtmlSections.toMutableList(),
+            prescriptionSelectedRationIds = this.prescriptionSelectedRationIds.toMutableList(),
+            parametresTroupeau = this.herdParameters.toMutableList()
     )
 }
 
@@ -444,6 +516,7 @@ fun SupplementalvariablePJson.toData(): SupplementalvariableP {
                     try {
                         VariableKind.valueOf(this.variable)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             varue = this.value
@@ -494,6 +567,7 @@ fun AdjustSaveEvJson.toData(): AdjustSaveEv {
                     try {
                         Espece.valueOf(this.esp)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             MutableList = this.list.map { it.toData() }.toMutableList()
@@ -517,6 +591,7 @@ fun TargetDefinitionEvJson.toData(): TargetDefinitionEv {
                     try {
                         TargetAdjust.valueOf(this.target)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             varue = this.value,
@@ -524,6 +599,7 @@ fun TargetDefinitionEvJson.toData(): TargetDefinitionEv {
                     try {
                         UnitReqEnum.valueOf(this.unit)
                     } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                     },
             percent = this.percentCompletion,

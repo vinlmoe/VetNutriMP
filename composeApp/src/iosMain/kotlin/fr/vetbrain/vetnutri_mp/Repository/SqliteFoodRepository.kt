@@ -68,7 +68,11 @@ class SqliteFoodRepository : FoodRepository {
         return count
     }
 
-    override suspend fun importFoods(foods: List<AlimentEvJson>): FoodImportResult {
+    override suspend fun importFoods(
+        foods: List<AlimentEvJson>,
+        mergeNutrients: Boolean,
+        importOnlyIfNewer: Boolean
+    ): FoodImportResult {
         var importCount = 0
 
         foods.forEach { jsonFood ->
@@ -127,6 +131,11 @@ class SqliteFoodRepository : FoodRepository {
     override suspend fun getFood(uuid: String): AlimentEv? {
         return getFoodById(uuid)
     }
+
+    override suspend fun getFoodsCount(): Int = _foods.size
+
+    override suspend fun getDistinctNutrientLabels(): List<String> =
+        _foods.flatMap { it.valMap.keys.map { k -> k.label } }.distinct()
 
     private suspend fun refreshFoods() {
         foodsFlow.value = _foods.toList()

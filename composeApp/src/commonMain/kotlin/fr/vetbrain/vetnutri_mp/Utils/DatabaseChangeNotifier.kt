@@ -25,7 +25,9 @@ object DatabaseChangeNotifier {
         REFERENCE_DELETED,
         REFERENCE_IMPORTED,
         DATABASE_RESET,
-        DATABASE_VERSION_UPDATED
+        DATABASE_VERSION_UPDATED,
+        DATABASE_MIGRATION_FAILED,
+        DATABASE_CORRUPTION_DETECTED
     }
 
     data class DatabaseChangeEvent(

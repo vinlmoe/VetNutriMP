@@ -13,7 +13,7 @@ class TermsAcceptanceStorage {
     companion object {
         private const val KEY_TERMS_ACCEPTED = "terms_accepted"
         private const val KEY_TERMS_VERSION = "terms_version"
-        private const val CURRENT_TERMS_VERSION = "1.0"
+        private const val CURRENT_TERMS_VERSION = "1.1"
     }
 
     private val _isTermsAccepted = MutableStateFlow(false)
@@ -37,6 +37,7 @@ class TermsAcceptanceStorage {
                 isAccepted
             }
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // En cas d'erreur, considérer que les CGU ne sont pas acceptées
             false
         }
@@ -49,8 +50,9 @@ class TermsAcceptanceStorage {
             setTermsVersion(CURRENT_TERMS_VERSION)
             _isTermsAccepted.value = true
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Gérer l'erreur de sauvegarde
-            e.printStackTrace()
+            AppLog.e("TermsAcceptanceStorage", e.message ?: "Erreur", e)
         }
     }
 
@@ -60,8 +62,9 @@ class TermsAcceptanceStorage {
             setTermsAccepted(false)
             _isTermsAccepted.value = false
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Gérer l'erreur de sauvegarde
-            e.printStackTrace()
+            AppLog.e("TermsAcceptanceStorage", e.message ?: "Erreur", e)
         }
     }
 
@@ -72,8 +75,9 @@ class TermsAcceptanceStorage {
             setTermsVersion("")
             _isTermsAccepted.value = false
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
             // Gérer l'erreur de sauvegarde
-            e.printStackTrace()
+            AppLog.e("TermsAcceptanceStorage", e.message ?: "Erreur", e)
         }
     }
 

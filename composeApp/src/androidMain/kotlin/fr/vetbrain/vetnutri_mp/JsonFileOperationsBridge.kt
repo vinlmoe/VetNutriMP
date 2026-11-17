@@ -1,0 +1,121 @@
+package fr.vetbrain.vetnutri_mp
+
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
+import android.net.Uri
+import androidx.activity.ComponentActivity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/** Registered before STARTED; the system picker grants access on Android 9 as well. */
+internal object JsonFileOperationsBridge {
+    private var importLauncher: ActivityResultLauncher<Array<String>>? = null
+    private var exportLauncher: ActivityResultLauncher<String>? = null
+    private var exportZipLauncher: ActivityResultLauncher<String>? = null
+    private var pendingImport: CompletableDeferred<Uri?>? = null
+    private var importMultipleLauncher: ActivityResultLauncher<Array<String>>? = null
+    private var pendingImportMultiple: CompletableDeferred<List<Uri>>? = null
+    private var pendingExport: CompletableDeferred<Uri?>? = null
+    private var pendingExportZip: CompletableDeferred<Uri?>? = null
+
+    fun register(activity: ComponentActivity) {
+        importLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            pendingImport?.complete(uri)
+            pendingImport = null
+        }
+        importMultipleLauncher = activity.registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            pendingImportMultiple?.complete(uris)
+            pendingImportMultiple = null
+        }
+        exportLauncher = activity.registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            pendingExport?.complete(uri)
+            pendingExport = null
+        }
+        // Type distinct : avec application/json, le système ajouterait « .json » au nom
+        exportZipLauncher = activity.registerForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+            pendingExportZip?.complete(uri)
+            pendingExportZip = null
+        }
+    }
+
+    fun unregister(changingConfigurations: Boolean) {
+        importLauncher = null
+        importMultipleLauncher = null
+        exportLauncher = null
+        exportZipLauncher = null
+        if (!changingConfigurations) {
+            pendingExportZip?.cancel()
+            pendingExportZip = null
+            pendingImport?.cancel()
+            pendingImportMultiple?.cancel()
+            pendingImportMultiple = null
+            pendingExport?.cancel()
+            pendingImport = null
+            pendingExport = null
+        }
+    }
+
+    suspend fun pickImport(): Uri? = withContext(Dispatchers.Main) {
+        check(pendingImport == null) { "Une sélection de fichier est déjà ouverte" }
+        val launcher = checkNotNull(importLauncher) { "Sélecteur de fichier indisponible" }
+        val result = CompletableDeferred<Uri?>()
+        pendingImport = result
+        try {
+            // Some providers label .json files as text/plain or application/octet-stream.
+            launcher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            pendingImport = null
+            throw e
+        }
+        result.await()
+    }
+
+    /** Plusieurs fichiers ; liste vide si l'utilisateur annule. */
+    suspend fun pickImportMultiple(): List<Uri> = withContext(Dispatchers.Main) {
+        check(pendingImportMultiple == null) { "Une sélection de fichier est déjà ouverte" }
+        val launcher = checkNotNull(importMultipleLauncher) { "Sélecteur de fichier indisponible" }
+        val result = CompletableDeferred<List<Uri>>()
+        pendingImportMultiple = result
+        try {
+            launcher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            pendingImportMultiple = null
+            throw e
+        }
+        result.await()
+    }
+
+    suspend fun pickExport(name: String): Uri? = withContext(Dispatchers.Main) {
+        check(pendingExport == null) { "Une sélection de destination est déjà ouverte" }
+        val launcher = checkNotNull(exportLauncher) { "Sélecteur de fichier indisponible" }
+        val result = CompletableDeferred<Uri?>()
+        pendingExport = result
+        try {
+            launcher.launch(name)
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            pendingExport = null
+            throw e
+        }
+        result.await()
+    }
+
+    suspend fun pickExportZip(name: String): Uri? = withContext(Dispatchers.Main) {
+        check(pendingExportZip == null) { "Une sélection de destination est déjà ouverte" }
+        val launcher = checkNotNull(exportZipLauncher) { "Sélecteur de fichier indisponible" }
+        val result = CompletableDeferred<Uri?>()
+        pendingExportZip = result
+        try {
+            launcher.launch(name)
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            pendingExportZip = null
+            throw e
+        }
+        result.await()
+    }
+}

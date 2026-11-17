@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 
 @Dao
@@ -16,6 +17,8 @@ interface AnimalDao {
         @Delete suspend fun delete(animal: AnimalEntity)
 
         @Query("SELECT * FROM animals") suspend fun getAllAnimals(): List<AnimalEntity>
+
+        @Query("SELECT COUNT(*) FROM animals") suspend fun getAnimalsCount(): Int
 
         @Query("SELECT * FROM animals WHERE uuid = :id")
         suspend fun getAnimalById(id: String): AnimalEntity?
@@ -48,6 +51,71 @@ interface AnimalDao {
 
         @Query("DELETE FROM RATIONS WHERE idConsult = :consultationId")
         suspend fun deleteRationsForConsultation(consultationId: String)
+
+        /** Sauvegarde atomique d'un nouvel animal avec toutes ses relations. */
+        @Transaction
+        suspend fun saveAnimalWithRelations(
+                animal: AnimalEntity,
+                consultations: List<ConsultationEntity>,
+                weights: List<WeightEntity>
+        ) {
+                insert(animal)
+                consultations.forEach { insertConsultation(it) }
+                weights.forEach { insertWeight(it) }
+        }
+
+        /**
+         * Mise à jour atomique des poids d'un animal : suppression + réinsertion dans la même
+         * transaction. Sans atomicité, une interruption entre DELETE et INSERT perdrait des poids.
+         */
+        @Transaction
+        suspend fun updateWeightsTransactional(animalId: String, weights: List<WeightEntity>) {
+                deleteWeightsForAnimal(animalId)
+                weights.forEach { insertWeight(it) }
+        }
+
+        /** Remplace atomiquement toutes les données d'un animal existant lors d'un import. */
+        @Transaction
+        suspend fun replaceAnimalRelationsForImport(
+                animal: AnimalEntity,
+                weights: List<WeightEntity>,
+                consultations: List<ConsultationEntity>,
+                suppVars: List<SupplementalVariableEntity>,
+                rations: List<RationEntity>,
+                aliments: List<AlimentRationEntity>
+        ) {
+                update(animal)
+                deleteWeightsForAnimal(animal.uuid)
+                val existingConsultations = getConsultationsForAnimal(animal.uuid)
+                existingConsultations.forEach { c ->
+                        deleteSupplementalVariablesForConsultation(c.uuid)
+                        deleteRationsForConsultation(c.uuid)
+                        deleteConsultation(c)
+                }
+                weights.forEach { insertWeight(it) }
+                consultations.forEach { insertConsultation(it) }
+                suppVars.forEach { insertSupplementalVariable(it) }
+                rations.forEach { insertRation(it) }
+                aliments.forEach { insertAlimentRation(it) }
+        }
+
+        /** Insère atomiquement un nouvel animal avec toutes ses relations lors d'un import. */
+        @Transaction
+        suspend fun insertAnimalWithAllRelations(
+                animal: AnimalEntity,
+                weights: List<WeightEntity>,
+                consultations: List<ConsultationEntity>,
+                suppVars: List<SupplementalVariableEntity>,
+                rations: List<RationEntity>,
+                aliments: List<AlimentRationEntity>
+        ) {
+                insert(animal)
+                weights.forEach { insertWeight(it) }
+                consultations.forEach { insertConsultation(it) }
+                suppVars.forEach { insertSupplementalVariable(it) }
+                rations.forEach { insertRation(it) }
+                aliments.forEach { insertAlimentRation(it) }
+        }
 }
 
 @Dao
@@ -76,6 +144,16 @@ interface ConsultationDao {
         @Query("SELECT * FROM ALIMENTS WHERE refRation = :rationId")
         suspend fun getAlimentsForRation(rationId: String): List<AlimentRationEntity>
 
+        @Query("SELECT * FROM RATION_SUPPLEMENTAL_VARIABLES WHERE idRation = :rationId")
+        suspend fun getSupplementalVariablesForRation(
+                rationId: String
+        ): List<RationSupplementalVariableEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertRationSupplementalVariable(
+                supplementalVariable: RationSupplementalVariableEntity
+        )
+
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertSupplementalVariable(supplementalVariable: SupplementalVariableEntity)
 
@@ -90,10 +168,125 @@ interface ConsultationDao {
 
         @Query("DELETE FROM SUPPLEMENTAL_VARIABLES WHERE idConsult = :consultationId")
         suspend fun deleteSupplementalVariablesForConsultation(consultationId: String)
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS ORDER BY label")
+        suspend fun getAllConsultationKeywords(): List<ConsultationKeywordEntity>
+
+        @Query("SELECT * FROM CONSULTATION_KEYWORDS WHERE label = :label LIMIT 1")
+        suspend fun getConsultationKeywordByLabel(label: String): ConsultationKeywordEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertConsultationKeyword(keyword: ConsultationKeywordEntity)
+
+        @Query("SELECT uuid, keywordsJson FROM CONSULTATIONS WHERE keywordsJson IS NOT NULL AND keywordsJson != ''")
+        suspend fun getConsultationKeywordLinks(): List<ConsultationKeywordLink>
+
+        @Query("UPDATE CONSULTATIONS SET keywordsJson = :keywordsJson WHERE uuid = :consultationId")
+        suspend fun updateConsultationKeywords(consultationId: String, keywordsJson: String)
+
+        @Query("DELETE FROM CONSULTATION_KEYWORDS WHERE uuid IN (:uuids)")
+        suspend fun deleteConsultationKeywords(uuids: List<String>)
+
+        @Query("UPDATE OR IGNORE CONSULTATION_KEYWORDS SET label = :label WHERE uuid = :uuid")
+        suspend fun renameConsultationKeyword(uuid: String, label: String)
+
+        /**
+         * Fusionne les mots-clés en double (`remplacements` : doublon → mot-clé conservé) en une
+         * transaction : crée le mot-clé conservé s'il manque, réaffecte les consultations, supprime
+         * les doublons et corrige les libellés. Renvoie le nombre de consultations modifiées.
+         */
+        @Transaction
+        suspend fun mergeConsultationKeywords(
+                remplacements: Map<String, ConsultationKeywordEntity>,
+                libellesCorriges: Map<String, String>
+        ): Int {
+                val presents = getAllConsultationKeywords()
+                val uuidsPresents = presents.map { it.uuid }.toSet()
+                val doublons = remplacements.keys.filter { it in uuidsPresents }
+                // Cible effective : le mot-clé conservé, ou celui qui porte déjà son libellé
+                val cibles =
+                        doublons.associateWith { ancien ->
+                                val conserve = remplacements.getValue(ancien)
+                                if (conserve.uuid in uuidsPresents) conserve.uuid
+                                else {
+                                        val homonyme = getConsultationKeywordByLabel(conserve.label)
+                                        if (homonyme != null) homonyme.uuid
+                                        else {
+                                                insertConsultationKeyword(conserve)
+                                                conserve.uuid
+                                        }
+                                }
+                        }
+                var modifiees = 0
+                if (cibles.isNotEmpty()) {
+                        for (lien in getConsultationKeywordLinks()) {
+                                val ids = lien.keywordsJson.split(",").filter { it.isNotBlank() }
+                                val fusion = ids.map { cibles[it] ?: it }.distinct()
+                                if (fusion != ids) {
+                                        updateConsultationKeywords(lien.uuid, fusion.joinToString(","))
+                                        modifiees++
+                                }
+                        }
+                        deleteConsultationKeywords(doublons)
+                }
+                libellesCorriges.forEach { (uuid, label) -> renameConsultationKeyword(uuid, label) }
+                return modifiees
+        }
+
+        /**
+         * Remplace atomiquement toutes les relations d'une consultation (rations, aliments,
+         * variables de consultation et variables par étape). Sans atomicité, un échec partiel
+         * après DELETE laisserait une consultation sans rations ni aliments. Les variables par
+         * étape sont supprimées en cascade avec les rations.
+         */
+        @Transaction
+        suspend fun replaceConsultationRelations(
+                consultationId: String,
+                rations: List<RationEntity>,
+                aliments: List<AlimentRationEntity>,
+                suppVars: List<SupplementalVariableEntity>,
+                rationSuppVars: List<RationSupplementalVariableEntity> = emptyList()
+        ) {
+                deleteRationsForConsultation(consultationId)
+                deleteSupplementalVariablesForConsultation(consultationId)
+                rations.forEach { insertRation(it) }
+                aliments.forEach { insertAlimentRation(it) }
+                suppVars.forEach { insertSupplementalVariable(it) }
+                rationSuppVars.forEach { insertRationSupplementalVariable(it) }
+        }
+}
+
+@Dao
+interface ExamGradingDao {
+        @Query("SELECT * FROM EXAM_GRADING_RULES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun getRule(examId: String, exerciseId: String): ExamGradingRuleEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertRule(rule: ExamGradingRuleEntity)
+
+        @Query("SELECT * FROM EXAM_GRADES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun getGrades(examId: String, exerciseId: String): List<ExamGradeEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsertGrades(grades: List<ExamGradeEntity>)
+
+        @Query("DELETE FROM EXAM_GRADES WHERE examId = :examId AND exerciseId = :exerciseId")
+        suspend fun deleteGrades(examId: String, exerciseId: String)
 }
 
 @Dao
 interface RecipeDao {
+        @Transaction
+        suspend fun importRecipe(recipe: RecetteEntity, aliments: List<AlimentRecetteEntity>) {
+                if (getRecipeById(recipe.uuid) == null) {
+                        insertRecipe(recipe)
+                } else {
+                        updateRecipe(recipe)
+                }
+                deleteAlimentsForRecipe(recipe.uuid)
+                aliments.forEach { insertAlimentRecette(it) }
+        }
+
         @Insert suspend fun insertRecipe(recipe: RecetteEntity)
         @Update suspend fun updateRecipe(recipe: RecetteEntity)
         @Delete suspend fun deleteRecipe(recipe: RecetteEntity)
@@ -194,12 +387,35 @@ interface FoodDao {
 
         @Query("SELECT * FROM FOOD WHERE deprecated = 0 LIMIT :limit")
         suspend fun getActiveFoods(limit: Int = 100): List<FoodEntity>
+
+        @Query(
+                """
+                SELECT * FROM FOOD
+                WHERE
+                    (:query = '' OR nameDef LIKE '%' || :query || '%' OR name LIKE '%' || :query || '%' OR brand LIKE '%' || :query || '%')
+                    AND (:groupAlim IS NULL OR groupAlim = :groupAlim)
+                    AND (:especeText IS NULL OR especesJson LIKE '%' || :especeText || '%')
+                LIMIT :limit
+                """
+        )
+        suspend fun searchFoodsFiltered(
+                query: String,
+                groupAlim: Int?,
+                especeText: String?,
+                limit: Int = 5000
+        ): List<FoodEntity>
 }
 
 @Dao
 interface NutrientValueDao {
         @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment = :alimentUuid")
         suspend fun getNutrientValues(alimentUuid: String): List<NutrientValueEntity>
+
+        @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
+        suspend fun getNutrientValuesForAliments(alimentUuids: List<String>): List<NutrientValueEntity>
+
+        @Query("SELECT * FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids) AND nutrientLabel = :nutrientLabel")
+        suspend fun getNutrientValueForAliments(alimentUuids: List<String>, nutrientLabel: String): List<NutrientValueEntity>
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertNutrientValues(values: List<NutrientValueEntity>)
@@ -211,6 +427,36 @@ interface NutrientValueDao {
 
         @Query("DELETE FROM NUTRIENT_VALUES WHERE refAliment IN (:alimentUuids)")
         suspend fun deleteAllForAliments(alimentUuids: List<String>)
+
+        @Query("SELECT DISTINCT nutrientLabel FROM NUTRIENT_VALUES")
+        suspend fun getDistinctNutrientLabels(): List<String>
+
+        @Transaction
+        suspend fun replaceNutrientValues(alimentUuid: String, values: List<NutrientValueEntity>) {
+                deleteAllNutrientValuesForAliment(alimentUuid)
+                if (values.isNotEmpty()) insertNutrientValues(values)
+        }
+}
+
+@Dao
+interface EnergyPerSpeciesDao {
+        @Query("SELECT * FROM ENERGY_PER_SPECIES WHERE refAliment = :alimentUuid")
+        suspend fun getForAliment(alimentUuid: String): List<EnergyPerSpeciesEntity>
+
+        @Query("SELECT * FROM ENERGY_PER_SPECIES WHERE refAliment IN (:alimentUuids)")
+        suspend fun getForAliments(alimentUuids: List<String>): List<EnergyPerSpeciesEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(values: List<EnergyPerSpeciesEntity>)
+
+        @Query("DELETE FROM ENERGY_PER_SPECIES WHERE refAliment = :alimentUuid")
+        suspend fun deleteForAliment(alimentUuid: String)
+
+        @Transaction
+        suspend fun replace(alimentUuid: String, values: List<EnergyPerSpeciesEntity>) {
+                deleteForAliment(alimentUuid)
+                if (values.isNotEmpty()) insert(values)
+        }
 }
 
 /** DAO pour accéder aux références bibliographiques dans la base de données */
@@ -220,6 +466,9 @@ interface BiblioRefDao {
 
         @Query("SELECT * FROM BIBLIO_REFS WHERE uuid = :uuid")
         suspend fun getBiblioRefById(uuid: String): BiblioRefEntity?
+
+        @Query("SELECT * FROM BIBLIO_REFS WHERE uuid IN (:uuids)")
+        suspend fun getBiblioRefsByIds(uuids: List<String>): List<BiblioRefEntity>
 
         @Insert(onConflict = OnConflictStrategy.REPLACE)
         suspend fun insertBiblioRef(biblioRef: BiblioRefEntity)
@@ -260,6 +509,25 @@ interface EquationDao {
 
         @Query("SELECT * FROM EQUATIONS WHERE specie = :specie")
         suspend fun getEquationsBySpecie(specie: String): List<EquationEntity>
+}
+
+/** DAO pour persister les métadonnées des nutriments personnalisés */
+@Dao
+interface CustomNutrientDao {
+        @Query("SELECT * FROM CUSTOM_NUTRIENTS")
+        suspend fun getAll(): List<CustomNutrientEntity>
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertOrReplace(entity: CustomNutrientEntity)
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insertOrReplaceAll(entities: List<CustomNutrientEntity>)
+
+        @Delete
+        suspend fun delete(entity: CustomNutrientEntity)
+
+        @Query("DELETE FROM CUSTOM_NUTRIENTS")
+        suspend fun deleteAll()
 }
 
 /** DAO pour accéder aux références évaluées dans la base de données */
@@ -392,6 +660,22 @@ interface ReferenceEvDao {
         @Query("DELETE FROM REFERENCE_EV_NUTRIENTS") suspend fun deleteAllNutrients()
 }
 
+/** DAO pour la table de jonction aliment ↔ référence bibliographique */
+@Dao
+interface AlimentBiblioRefDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(entities: List<AlimentBiblioRefEntity>)
+
+    @Query("DELETE FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
+    suspend fun deleteForAliment(alimentUuid: String)
+
+    @Query("SELECT biblioRefUuid FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid = :alimentUuid")
+    suspend fun getBiblioRefUuids(alimentUuid: String): List<String>
+
+    @Query("SELECT * FROM ALIMENT_BIBLIO_REFS WHERE alimentUuid IN (:alimentUuids)")
+    suspend fun getBiblioRefsForAliments(alimentUuids: List<String>): List<AlimentBiblioRefEntity>
+}
+
 /** DAO pour accéder aux sections HTML réutilisables */
 @Dao
 interface HtmlSectionDao {
@@ -503,4 +787,33 @@ interface HtmlSectionDao {
         """
         )
         suspend fun getConseilsCount(): Int
+}
+
+/** DAO du journal des calculs de prévision du poids */
+@Dao
+interface WeightForecastLogDao {
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(log: WeightForecastLogEntity)
+
+        @Query("SELECT * FROM WEIGHT_FORECAST_LOGS WHERE animalUuid = :animalUuid ORDER BY createdAt DESC LIMIT 1")
+        suspend fun getLastForAnimal(animalUuid: String): WeightForecastLogEntity?
+
+        @Query("SELECT * FROM WEIGHT_FORECAST_LOGS ORDER BY createdAt")
+        suspend fun getAll(): List<WeightForecastLogEntity>
+}
+
+/** DAO des configurations d'exploration multiration enregistrées */
+@Dao
+interface MultiRationExplorationDao {
+        @Query("SELECT * FROM MULTI_RATION_EXPLORATIONS ORDER BY updatedAt DESC")
+        suspend fun getAll(): List<MultiRationExplorationEntity>
+
+        @Query("SELECT * FROM MULTI_RATION_EXPLORATIONS WHERE uuid = :uuid")
+        suspend fun getById(uuid: String): MultiRationExplorationEntity?
+
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun upsert(exploration: MultiRationExplorationEntity)
+
+        @Query("DELETE FROM MULTI_RATION_EXPLORATIONS WHERE uuid = :uuid")
+        suspend fun deleteById(uuid: String)
 }

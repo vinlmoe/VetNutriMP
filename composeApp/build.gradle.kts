@@ -1,5 +1,19 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.gradle.jvm.tasks.Jar
+import java.util.Properties
+
+// Lecture des secrets depuis local.properties (ignoré par git)
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+val jsonbinCreateKey: String = localProps.getProperty("jsonbin.create.key")
+    ?: System.getenv("JSONBIN_CREATE_KEY")
+    ?: ""
+val jsonbinReadKey: String = localProps.getProperty("jsonbin.read.key")
+    ?: System.getenv("JSONBIN_READ_KEY")
+    ?: ""
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -12,39 +26,66 @@ plugins {
 }
 
 kotlin {
-    androidTarget { compilerOptions { jvmTarget.set(JvmTarget.JVM_11) } }
+    androidTarget {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+            // Optimisations sélectives pour réduire la complexité sans tout désactiver
+            freeCompilerArgs.addAll(
+                    "-Xjvm-default=all",
+                    "-Xno-param-assertions",
+                    "-Xno-call-assertions",
+                    "-Xno-receiver-assertions",
+                    "-Xoptimization-phase-step=15", // Réduire les étapes d'optimisation
+                    "-Xinline-max-instruction-count=150", // Limiter l'inlining sélectif
+                    "-Xdisable-phases=DevirtualizationAnalysis" // Désactiver seulement l'analyse
+                    // problématique
+                    )
+        }
+    }
 
     listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
             linkerOpts.add("-lsqlite3")
+            binaryOption("bundleId", "fr.vetbrain.vetnutri")
+        }
+        // Configuration iOS - Configuration basique uniquement
+        iosTarget.compilerOptions {
+            freeCompilerArgs.addAll(
+                    // C'est l'argument qui désactive la phase gourmande en mémoire
+                    "-Xdisable-phases=DevirtualizationAnalysis,DCEPhase,StaticInitializersOptimization,RemoveRedundantCallsToStaticInitializersPhase"
+            )
         }
     }
 
     jvm("desktop")
 
     sourceSets {
-        sourceSets.iosMain { kotlin.srcDir("build/generated/ksp/metadata") }
-
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.room.runtime)
             implementation(libs.androidx.room.paging)
+            implementation(libs.ktor.client.android)
+            implementation(libs.qr.kit)
+            
+            // Forcer la mise à jour de androidx.graphics pour compatibilité 16KB
+            // Cette dépendance est transitive de androidx.compose.ui:ui-graphics-android
+            // Les versions récentes devraient être compatibles 16KB
+            implementation(libs.androidx.graphics.path)
         }
 
         commonMain.dependencies {
-            implementation("io.github.koalaplot:koalaplot-core:0.8.0")
-            implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
+            implementation(libs.koalaPlot.core)
+            implementation(libs.compose.material.icons.extended)
             implementation(libs.androidx.sqlite.bundled)
             implementation(compose.runtime)
             implementation(compose.foundation)
             implementation(compose.material)
+            implementation(compose.material3)
             implementation(compose.ui)
-            implementation("org.jetbrains.compose.ui:ui-util:1.7.0")
+            implementation(libs.compose.ui.util)
             implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.kotlin.test)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodel)
@@ -66,50 +107,187 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs) // ✅ auto-resolve skiko
                 implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation("com.openhtmltopdf:openhtmltopdf-core:1.0.10")
-                implementation("com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10")
-                implementation(libs.compose.ui.test.manifest)
+
+                implementation(libs.xerial.sqlite.jdbc)
+                implementation(libs.openhtmltopdf.core)
+                implementation(libs.openhtmltopdf.pdfbox)
+                implementation(libs.openhtmltopdf.svg.support)
+                implementation(libs.ktor.client.okhttp)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.slf4j.simple)
+                implementation(libs.qrcode.kotlin)
             }
         }
 
-        val iosMain by getting {
-            kotlin.srcDir("build/generated/ksp/metadata")
-            dependencies { implementation(libs.sqliter.driver) }
+        val iosMain by creating {
+            dependencies {
+                implementation(libs.sqliter.driver)
+                implementation(libs.ktor.client.darwin)
+                implementation(libs.qr.kit)
+            }
         }
 
-        val iosArm64Main by getting
-        val iosX64Main by getting
-        val iosSimulatorArm64Main by getting
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+        }
+
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.junit)
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.desktop.uiTestJUnit4)
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.junit)
+            }
+        }
     }
 }
+
+// Génère AppSecretsGenerated.kt dans build/ (ignoré par git) depuis local.properties
+val generateSecrets by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/secrets/commonMain/fr/vetbrain/vetnutri_mp/Utils")
+    outputs.dir(outputDir)
+    inputs.property("createKey", jsonbinCreateKey)
+    inputs.property("readKey", jsonbinReadKey)
+    doLast {
+        fun escapeKotlinString(value: String): String =
+            value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("$", "\\$")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+
+        val escapedCreateKey = escapeKotlinString(jsonbinCreateKey)
+        val escapedReadKey = escapeKotlinString(jsonbinReadKey)
+
+        outputDir.get().asFile.mkdirs()
+        File(outputDir.get().asFile, "AppSecretsGenerated.kt").writeText(
+            """
+            package fr.vetbrain.vetnutri_mp.Utils
+
+            internal const val JSONBIN_CREATE_KEY_VALUE: String = "$escapedCreateKey"
+            internal const val JSONBIN_READ_KEY_VALUE: String   = "$escapedReadKey"
+            """.trimIndent()
+        )
+    }
+}
+kotlin.sourceSets["commonMain"].kotlin
+    .srcDir(generateSecrets.map { it.outputs.files })
+
+// ---------------------------------------------------------------------------
+// Données initiales et traductions : source unique dans src/commonMain/resources.
+// Android les lit dans ses assets, iOS dans le bundle Xcode : les copies sont
+// produites ici au build au lieu d'être maintenues à la main.
+// ---------------------------------------------------------------------------
+val commonResourcesDir = layout.projectDirectory.dir("src/commonMain/resources")
+val initialDataFile = commonResourcesDir.file("data/vetnutri_export_init.json")
+val initialDataAndroidAssetsDir = layout.buildDirectory.dir("generated/initialDataAssets").get().asFile
+
+val syncInitialDataAndroidAssets by tasks.registering(Sync::class) {
+    from(initialDataFile) { into("data") }
+    from(commonResourcesDir) { include("strings_*.json") }
+    into(initialDataAndroidAssetsDir)
+}
+
+// Langues proposées par l'application et référencées dans le projet Xcode
+val iosStringsFiles = listOf("strings_fr.json", "strings_en.json", "strings_zh.json")
+
+val syncInitialDataIos by tasks.registering(Copy::class) {
+    description = "Copie vetnutri_export_init.json et les traductions dans le bundle de l'app iOS (iosApp/iosApp)."
+    from(initialDataFile)
+    from(commonResourcesDir) { include(iosStringsFiles) }
+    into(rootProject.layout.projectDirectory.dir("iosApp/iosApp"))
+}
+
+tasks.matching {
+    it.name == "preBuild" || (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        (it.name.startsWith("lint") && it.name != "lint")
+}.configureEach { dependsOn(syncInitialDataAndroidAssets) }
+
+tasks.matching { it.name == "embedAndSignAppleFrameworkForXcode" }
+    .configureEach { dependsOn(syncInitialDataIos) }
 
 android {
     namespace = "fr.vetbrain.vetnutri_mp"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
     sourceSets["main"].res.srcDirs("src/androidMain/res")
     sourceSets["main"].resources.srcDirs("src/commonMain/resources")
+    sourceSets["main"].assets.srcDirs("src/androidMain/assets", initialDataAndroidAssetsDir)
 
     defaultConfig {
         applicationId = "fr.vetbrain.vetnutri_mp"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 17
-        versionName = "3.1.16B"
+        versionCode = 319
+        versionName = "3.3.19"
+
+        // Configuration de Room
+
+        // Configuration pour la compatibilité avec les pages mémoire de 16KB (Android 15+)
+        // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
+        // AGP 8.5.1+ (nous avons 8.7.3) applique automatiquement l'alignement 16KB
+        // lors du packaging des bibliothèques partagées non compressées
+        ndk {
+            // Filtrer les ABI pour ne garder que celles compatibles avec 16KB
+            // arm64-v8a est compatible avec 16KB pages sur Android 15+
+            // IMPORTANT: 
+            // - armeabi-v7a réintroduit pour améliorer la compatibilité Chromebook
+            //   (certains environnements Android sur ChromeOS restent limités en 32-bit)
+            // - x86 exclu (architecture 32-bit legacy)
+            // - x86_64 conservé pour la compatibilité Chromebook (Android on ChromeOS)
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
     }
 
     packaging {
         resources {
             // excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+        // Configuration pour la compatibilité avec les pages mémoire de 16KB
+        // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
+        // AGP 8.5.1+ applique automatiquement l'alignement 16KB pour les bibliothèques non compressées
+        jniLibs {
+            // useLegacyPackaging = false permet à AGP d'appliquer l'alignement 16KB automatiquement
+            useLegacyPackaging = false
+            // Préserver les symboles de debug pour faciliter le diagnostic si nécessaire
+            keepDebugSymbols += "**/*.so"
+            // Exclure la bibliothèque problématique libimage_processing_util_jni.so
+            // Cette bibliothèque n'est pas alignée sur 16KB (4096 bytes au lieu de 16384)
+            // Elle est utilisée pour optimiser PathEffect.dashPathEffect mais Compose a
+            // une implémentation de fallback en Java/Kotlin qui fonctionnera correctement
+            // Risque: Légère dégradation de performance pour les lignes pointillées (négligeable)
+            excludes += listOf("**/libimage_processing_util_jni.so")
+        }
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             versionNameSuffix = rootProject.extra["releaseVersionNameSuffix"] as String
+            // AGP 8.5.1+ applique automatiquement l'alignement 16KB lors du packaging
+            // Référence: https://developer.android.com/guide/practices/page-sizes?hl=fr#compile-16-kb-alignment
+            isDebuggable = false
         }
     }
     compileOptions {
@@ -120,39 +298,138 @@ android {
 
 dependencies {
     debugImplementation(compose.uiTooling)
+    debugImplementation(libs.compose.ui.test.manifest)
 }
 
 compose.desktop {
     application {
         mainClass = "fr.vetbrain.vetnutri_mp.MainKt"
 
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "fr.vetbrain.vetnutri_mp"
-            packageVersion = "3.1.16"
+        buildTypes.release { proguard { isEnabled.set(false) } }
 
-            macOS { iconFile.set(project.file("src/desktopMain/resources/icon.icns")) }
-            windows { iconFile.set(project.file("src/desktopMain/resources/icon.ico")) }
+        nativeDistributions {
+            targetFormats(TargetFormat.Dmg, TargetFormat.Exe, TargetFormat.Deb)
+            modules(
+                "java.instrument",
+                "java.management",
+                "java.naming",
+                "java.sql",
+                "jdk.unsupported",
+                "jdk.xml.dom"
+            )
+            packageName = "VetNutriMP"
+            packageVersion = "3.3.19"
+            description = "Application de nutrition vétérinaire multiplateforme"
+            copyright = "© 2026 VetBrain"
+            vendor = "VetBrain"
+
+            // Configuration macOS
+            macOS {
+                iconFile.set(project.file("src/desktopMain/resources/icon.icns"))
+                bundleID = "fr.vetbrain.vetnutri_mp"
+                // Note: La signature est effectuée après compilation via le script
+                // compile_and_sign_macos.sh
+                // Compose Desktop ne supporte pas encore la signature automatique dans Gradle
+            }
+            windows {
+                iconFile.set(project.file("src/desktopMain/resources/icon.ico"))
+                // Configuration pour un exécutable portable
+                menuGroup = "VetNutriMP"
+                upgradeUuid = "18159995-d967-4cd2-8885-77BFA97CFA9F"
+            }
             linux { iconFile.set(project.file("src/desktopMain/resources/icon.png")) }
         }
     }
 }
 
 dependencies {
-    implementation("org.jetbrains.compose.material:material-icons-extended:1.7.3")
     implementation(libs.androidx.sqlite.bundled)
-    implementation(kotlin("test"))
-    implementation(kotlin("test-common"))
-    implementation(kotlin("test-annotations-common"))
-
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)
     add("kspIosX64", libs.androidx.room.compiler)
     add("kspIosArm64", libs.androidx.room.compiler)
     add("kspDesktop", libs.androidx.room.compiler)
+    implementation(libs.compose.webview.multiplatform)
 
-    implementation("io.github.kevinnzou:compose-webview-multiplatform:1.9.40")
-    implementation("org.burnoutcrew.composereorderable:reorderable:0.9.6")
+    // Reorderable - Drag and Drop pour Compose
+    implementation(libs.reorderable)
 }
 
 room { schemaDirectory("$projectDir/schemas") }
+// Force exclude kotlinx-coroutines-android from desktop configurations
+configurations.configureEach {
+    if (name.lowercase().contains("desktop")) {
+        exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-android")
+    }
+}
+
+// Native Image (GraalVM) - expérimental pour Windows single-file
+val desktopMainClass = "fr.vetbrain.vetnutri_mp.MainKt"
+val nativeImageConfigDir = layout.buildDirectory.dir("native-image/config")
+val nativeImageOutputDir = layout.buildDirectory.dir("native/native-image")
+val isWindowsHost = providers.systemProperty("os.name")
+    .map { it.lowercase().contains("windows") }
+    .orElse(false)
+
+tasks.register<JavaExec>("runDesktopWithNativeAgent") {
+    group = "native image"
+    description = "Lance l'app desktop avec l'agent Native Image pour générer la config de réflexion/JNI."
+    dependsOn("desktopJar")
+    mainClass.set(desktopMainClass)
+    classpath = files(
+        tasks.named<Jar>("desktopJar").flatMap { it.archiveFile },
+        configurations.getByName("desktopRuntimeClasspath")
+    )
+    jvmArgs(
+        "-agentlib:native-image-agent=config-output-dir=${nativeImageConfigDir.get().asFile.absolutePath}"
+    )
+}
+
+tasks.register<Exec>("buildWindowsNativeImage") {
+    group = "native image"
+    description = "Construit un exe Windows single-file via GraalVM native-image (expérimental)."
+    dependsOn("desktopJar")
+    onlyIf {
+        if (!isWindowsHost.get()) {
+            logger.warn("buildWindowsNativeImage ignorée: cette tâche doit être lancée sur Windows.")
+            false
+        } else {
+            true
+        }
+    }
+
+    doFirst {
+        val outputDir = nativeImageOutputDir.get().asFile
+        outputDir.mkdirs()
+
+        val desktopJar = tasks.named<Jar>("desktopJar").get().archiveFile.get().asFile
+        val runtimeFiles = configurations.getByName("desktopRuntimeClasspath").resolve()
+        val classpath = (listOf(desktopJar) + runtimeFiles).joinToString(";") { it.absolutePath }
+        val outputExe = outputDir.resolve("VetNutriMP.exe").absolutePath
+
+        val args = mutableListOf(
+            "native-image",
+            "--no-fallback",
+            "--enable-url-protocols=http,https",
+            "-H:+AddAllCharsets",
+            "-H:+ReportExceptionStackTraces",
+            "-Dfile.encoding=UTF-8",
+            "-cp",
+            classpath,
+            desktopMainClass,
+            outputExe
+        )
+
+        val configDir = nativeImageConfigDir.get().asFile
+        if (configDir.exists()) {
+            args.add(1, "-H:ConfigurationFileDirectories=${configDir.absolutePath}")
+        } else {
+            logger.lifecycle(
+                "Aucune config agent trouvée dans ${configDir.absolutePath}. " +
+                    "Exécute d'abord runDesktopWithNativeAgent pour améliorer les chances de succès."
+            )
+        }
+
+        commandLine(args)
+    }
+}

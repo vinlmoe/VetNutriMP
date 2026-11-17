@@ -1,5 +1,6 @@
 package fr.vetbrain.vetnutri_mp.Data
 
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Enumer.*
 import fr.vetbrain.vetnutri_mp.Enumer.AAEnum
 import fr.vetbrain.vetnutri_mp.Enumer.AlimIndic
@@ -24,10 +25,14 @@ data class AlimentEv(
         var quantInt: Double? = null,
         var deprecated: Boolean = false,
         var dataB: String? = null,
+        var lastUpdateDate: String? = null,
+        var imageRef: String? = null,
         var especes: MutableList<String> = mutableListOf(),
         var indicat: MutableList<AlimIndic> = mutableListOf(),
         var valMap: MutableMap<Nutrient, NutrientQuantity> = mutableMapOf(),
-        val rationUUID: String? = null
+        val rationUUID: String? = null,
+        val biblioRefs: List<BiblioRef> = emptyList(),
+        var energieParEspece: Map<String, Double> = emptyMap()
 ) {
         /**
          * Obtient la valeur d'un nutriment dans cet aliment
@@ -43,26 +48,40 @@ data class AlimentEv(
                         return null
                 }
 
-                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE) et qu'on a une
-                // référence avec des équations, utiliser les équations
-                if (referenceEv != null &&
-                                (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE)
-                ) {
-                        return calculerEnergieViaReference(referenceEv)
+                // Si c'est l'énergie (NutrientEnergy ou NutrientMain.ENERGIE)
+                if (nutrient is NutrientEnergy || nutrient == NutrientMain.ENERGIE) {
+                        val especeNom = referenceEv?.espece?.name
+                        if (especeNom != null) {
+                                // Priorité 1 : valeur définie pour cette espèce précise
+                                val vEspece = energieParEspece[especeNom]
+                                if (vEspece != null && vEspece > 0.0) return vEspece
+                                // Si des valeurs par espèce existent mais pas pour celle-ci → équation
+                                if (energieParEspece.isNotEmpty()) {
+                                        return calculerEnergieViaReference(referenceEv)
+                                                ?.let { if (it < 0.0) 0.0 else it }
+                                }
+                        }
+                        // Rétro-compat : pas de valeurs par espèce → valeur générique puis équation
+                        val generique = valMap[nutrient]?.value
+                        if (generique != null && generique > 0.0) return generique
+                        if (referenceEv != null) {
+                                return calculerEnergieViaReference(referenceEv)
+                                        ?.let { if (it < 0.0) 0.0 else it }
+                        }
+                        return null
                 }
 
-                // Sinon, retourner la valeur stockée
+                // Sinon, retourner la valeur stockée (jamais négative)
                 val quantity = valMap[nutrient]
-                return quantity?.value
+                return quantity?.value?.let { if (it < 0.0) 0.0 else it }
         }
 
         /** Calcule l'énergie via les équations de ReferenceEv */
         private fun calculerEnergieViaReference(referenceEv: ReferenceEv): Double? {
-                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
+                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut,
+                // selon FoodKind (même règle que EquationEvaluator.calculerEnergiePour100g)
                 val estCommercial =
-                        indicat.any { indication ->
-                                indication.name == "COMP" || indication.name == "COMPL"
-                        }
+                        typeAliment == FoodKind.COMPLET || typeAliment == FoodKind.COMPLEMENTAIRE
 
                 // Choisir l'équation appropriée
                 val equation =
@@ -76,22 +95,17 @@ data class AlimentEv(
                         return null
                 }
 
-                // Créer les variables pour l'évaluation
-                val variables = mutableMapOf<String, Double>()
-
-                // Ajouter les nutriments principaux nécessaires aux formules
+                val variables: MutableMap<String, Double> = mutableMapOf()
                 valMap.forEach { (nutrient, quantity) ->
                         variables[nutrient.label] = quantity.value
                 }
-
-                // Évaluer l'équation
                 return try {
                         fr.vetbrain.vetnutri_mp.Utils.ExpressionMathematique.evaluer(
                                 equation.equationScript,
                                 variables
-                        )
-                                ?: null
+                        )?.let { if (it < 0.0) 0.0 else it }
                 } catch (e: Exception) {
+                        e.rethrowIfCancellation()
                         null
                 }
         }

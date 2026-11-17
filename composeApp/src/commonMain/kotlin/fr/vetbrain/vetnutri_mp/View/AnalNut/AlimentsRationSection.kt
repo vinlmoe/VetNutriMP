@@ -1,14 +1,19 @@
 package fr.vetbrain.vetnutri_mp.View.AnalNut
 
+import fr.vetbrain.vetnutri_mp.Data.calculerAjustement
+import fr.vetbrain.vetnutri_mp.Data.suggestDefaultTargetNutrient
+import fr.vetbrain.vetnutri_mp.Data.AlimentAdjustmentData
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Balance
-import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.*
@@ -16,13 +21,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import fr.vetbrain.vetnutri_mp.Components.AlimentItem
 import fr.vetbrain.vetnutri_mp.Components.CenteredMessage
+import fr.vetbrain.vetnutri_mp.Components.IconWithTooltip
 import fr.vetbrain.vetnutri_mp.Data.AlimentRation
 import fr.vetbrain.vetnutri_mp.Data.Ration
 import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Enumer.*
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
+import fr.vetbrain.vetnutri_mp.Components.genererTexteRationPressePapier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.material.icons.filled.Assignment
 import kotlinx.coroutines.launch
 
 /**
@@ -37,6 +49,7 @@ import kotlinx.coroutines.launch
  * @param onOpenRecipeDialog Callback pour ouvrir le gestionnaire de recettes
  * @param onSaveRecipe Callback pour sauvegarder la ration actuelle comme recette
  * @param showSnackbar Callback pour afficher des messages
+ * @param isReadOnly Désactive toute modification de la composition (ration virtuelle agrégée)
  * @param modifier Modificateur optionnel pour personnaliser l'apparence
  */
 @Composable
@@ -45,17 +58,28 @@ fun SectionAlimentsRation(
         referenceUtilisee: ReferenceEv?,
         besoinEnergetiqueTotal: Double?,
         besoinEnergetiqueStandard: Double?,
-        viewModel: AnimalDetailViewModel,
+        viewModel: AnimalDetailViewModel? = null,
+        equationRepository: fr.vetbrain.vetnutri_mp.Repository.EquationRepository?,
         onAddAliment: () -> Unit,
         onMultiNutrientAdjustment: () -> Unit,
         onOpenRecipeDialog: () -> Unit,
         onSaveRecipe: () -> Unit,
+        isExamMode: Boolean = false,
         showSnackbar: (String) -> Unit,
         isCompact: Boolean = false,
-        modifier: Modifier = Modifier
+        isReadOnly: Boolean = false,
+        modifier: Modifier = Modifier,
+        autoriserRecettes: Boolean = true,
+        onUpdateAliments: (fr.vetbrain.vetnutri_mp.Data.Ration, List<AlimentRation>) -> Unit =
+                { ration, aliments -> requireNotNull(viewModel).updateRationAliments(ration, aliments) },
+        onUpdateQuantite: (String, Double) -> Unit =
+                { id, quantite -> requireNotNull(viewModel).updateAlimentQuantity(id, quantite) },
+        onRemoveAliment: (String) -> Unit =
+                { id -> requireNotNull(viewModel).removeAlimentFromRation(id) }
 ) {
         var editingAlimentId by remember { mutableStateOf<String?>(null) }
         val coroutineScope = rememberCoroutineScope()
+        val clipboardManager = LocalClipboardManager.current
 
         Card(
                 modifier = modifier.fillMaxWidth(),
@@ -73,7 +97,7 @@ fun SectionAlimentsRation(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                                 Text(
-                                        text = "Aliments de la ration",
+                                        text = translate(LocalizationKeys.AnalNut.RATION_ALIMENTS_TITLE),
                                         style = MaterialTheme.typography.subtitle2,
                                         color = VetNutriColors.Primary
                                 )
@@ -82,202 +106,235 @@ fun SectionAlimentsRation(
                                         horizontalArrangement =
                                                 Arrangement.spacedBy(AppSizes.paddingXSmall)
                                 ) {
-                                        // Sauvegarder la ration comme recette
-                                        Icon(
-                                                imageVector = Icons.Filled.Save,
-                                                contentDescription = "Enregistrer comme recette",
-                                                tint =
-                                                        if (selectedRation?.alimentMutableList
-                                                                        ?.isNotEmpty() == true
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        ?.isNotEmpty() ==
-                                                                                        true,
-                                                                        onClick = onSaveRecipe
+                                        if (!isExamMode && !isReadOnly && autoriserRecettes) {
+                                                // Sauvegarder la ration comme recette
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Save,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
+                                                        tint =
+                                                                if (selectedRation?.alimentMutableList
+                                                                                ?.isNotEmpty() == true
                                                                 )
-                                        )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.SAVE_AS_RECIPE),
+                                                        enabled =
+                                                                selectedRation
+                                                                        ?.alimentMutableList
+                                                                        ?.isNotEmpty() ==
+                                                                        true,
+                                                        onClick = onSaveRecipe
+                                                )
+                                        }
 
-                                        // Bouton pour l'ajustement multi-nutriments
-                                        Icon(
-                                                imageVector = Icons.Filled.Tune,
-                                                contentDescription = "Ajustement multi-nutriments",
-                                                tint =
-                                                        if (selectedRation?.alimentMutableList
-                                                                        ?.isNotEmpty() == true
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation
-                                                                                        ?.alimentMutableList
-                                                                                        ?.isNotEmpty() ==
-                                                                                        true,
-                                                                        onClick =
-                                                                                onMultiNutrientAdjustment
+                                        if (!isExamMode) {
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Assignment,
+                                                        contentDescription = translate(LocalizationKeys.General.COPY),
+                                                        tint = if (selectedRation?.alimentMutableList?.isNotEmpty() == true)
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(alpha = 0.5f),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.General.COPY),
+                                                        enabled = selectedRation?.alimentMutableList?.isNotEmpty() == true,
+                                                        onClick = {
+                                                                selectedRation?.let { ration ->
+                                                                        val text = genererTexteRationPressePapier(ration)
+                                                                        clipboardManager.setText(AnnotatedString(text))
+                                                                        showSnackbar(translate(LocalizationKeys.Ration.COPIED_TO_CLIPBOARD))
+                                                                }
+                                                        }
+                                                )
+                                        }
+
+                                        if (!isReadOnly) {
+                                                // Bouton pour l'ajustement multi-nutriments
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Tune,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
+                                                        tint =
+                                                                if (selectedRation?.alimentMutableList
+                                                                                ?.isNotEmpty() == true
                                                                 )
-                                        )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.MULTI_NUTRIENT_ADJUSTMENT),
+                                                        enabled =
+                                                                selectedRation
+                                                                        ?.alimentMutableList
+                                                                        ?.isNotEmpty() ==
+                                                                        true,
+                                                        onClick = onMultiNutrientAdjustment
+                                                )
 
-                                        // Bouton pour ajustement rapide multi-nutriments
-                                        Icon(
-                                                imageVector = Icons.Filled.Balance,
-                                                contentDescription =
-                                                        "Ajustement rapide multi-nutriments",
-                                                tint =
-                                                        if (selectedRation != null &&
-                                                                        referenceUtilisee != null &&
+                                                // Bouton pour ajustement rapide multi-nutriments
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Balance,
+                                                        contentDescription =
+                                                                translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
+                                                        tint =
+                                                                if (selectedRation != null &&
+                                                                                referenceUtilisee != null &&
+                                                                                (selectedRation
+                                                                                        .alimentMutableList
+                                                                                        .isNotEmpty())
+                                                                )
+                                                                        VetNutriColors.Primary
+                                                                else
+                                                                        VetNutriColors.Primary.copy(
+                                                                                alpha = 0.5f
+                                                                        ),
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.QUICK_MULTI_NUTRIENT_ADJUSTMENT),
+                                                        enabled =
+                                                                selectedRation !=
+                                                                        null &&
+                                                                        referenceUtilisee !=
+                                                                                null &&
                                                                         (selectedRation
                                                                                 .alimentMutableList
-                                                                                .isNotEmpty())
-                                                        )
-                                                                VetNutriColors.Primary
-                                                        else
-                                                                VetNutriColors.Primary.copy(
-                                                                        alpha = 0.5f
-                                                                ),
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        enabled =
-                                                                                selectedRation !=
-                                                                                        null &&
-                                                                                        referenceUtilisee !=
-                                                                                                null &&
-                                                                                        (selectedRation
-                                                                                                .alimentMutableList
-                                                                                                .isNotEmpty()),
-                                                                        onClick = {
-                                                                                if (selectedRation !=
-                                                                                                null &&
-                                                                                                referenceUtilisee !=
-                                                                                                        null
-                                                                                ) {
-                                                                                        coroutineScope
-                                                                                                .launch {
-                                                                                                        try {
-                                                                                                                // Créer les données d'ajustement par défaut
-                                                                                                                val adjustmentData =
-                                                                                                                        selectedRation
-                                                                                                                                .alimentMutableList
-                                                                                                                                .map {
-                                                                                                                                        alimentRation
-                                                                                                                                        ->
-                                                                                                                                        val suggestion =
-                                                                                                                                                suggestDefaultTargetNutrient(
-                                                                                                                                                        alimentRation,
-                                                                                                                                                        referenceUtilisee
+                                                                                .isNotEmpty()),
+                                                        onClick = {
+                                                                                        if (selectedRation !=
+                                                                                                        null &&
+                                                                                                        referenceUtilisee !=
+                                                                                                                null
+                                                                                        ) {
+                                                                                                coroutineScope
+                                                                                                        .launch {
+                                                                                                                try {
+                                                                                                                        // Créer les données d'ajustement par défaut
+                                                                                                                        val adjustmentData =
+                                                                                                                                selectedRation
+                                                                                                                                        .alimentMutableList
+                                                                                                                                        .map {
+                                                                                                                                                alimentRation
+                                                                                                                                                ->
+                                                                                                                                                val suggestion =
+                                                                                                                                                        suggestDefaultTargetNutrient(
+                                                                                                                                                                alimentRation,
+                                                                                                                                                                referenceUtilisee
+                                                                                                                                                        )
+                                                                                                                                                AlimentAdjustmentData(
+                                                                                                                                                        alimentRation =
+                                                                                                                                                                alimentRation,
+                                                                                                                                                        selectedNutrient =
+                                                                                                                                                                suggestion,
+                                                                                                                                                        isLocked =
+                                                                                                                                                                false,
+                                                                                                                                                        isEnergyAdjustable =
+                                                                                                                                                                true
                                                                                                                                                 )
-                                                                                                                                        AlimentAdjustmentData(
-                                                                                                                                                alimentRation =
-                                                                                                                                                        alimentRation,
-                                                                                                                                                selectedNutrient =
-                                                                                                                                                        suggestion,
-                                                                                                                                                isLocked =
-                                                                                                                                                        false,
-                                                                                                                                                isEnergyAdjustable =
-                                                                                                                                                        true
-                                                                                                                                        )
-                                                                                                                                }
+                                                                                                                                        }
 
-                                                                                                                // Calculer l'ajustement avec les valeurs par défaut
-                                                                                                                val result =
-                                                                                                                        calculerAjustement(
-                                                                                                                                ration =
-                                                                                                                                        selectedRation,
-                                                                                                                                adjustmentData =
-                                                                                                                                        adjustmentData,
-                                                                                                                                referenceUtilisee =
-                                                                                                                                        referenceUtilisee,
-                                                                                                                                besoinEnergetiqueTotal =
-                                                                                                                                        besoinEnergetiqueTotal
-                                                                                                                                                ?: 0.0,
-                                                                                                                                besoinEnergetiqueStandard =
-                                                                                                                                        besoinEnergetiqueStandard
-                                                                                                                                                ?: 0.0,
-                                                                                                                                poidsAnimal =
-                                                                                                                                        null, // Valeur par défaut
-                                                                                                                                poidsMetabolique =
-                                                                                                                                        null // Valeur par défaut
-                                                                                                                        )
+                                                                                                                        // Calculer l'ajustement avec les valeurs par défaut
+                                                                                                                        val result =
+                                                                                                                                calculerAjustement(
+                                                                                                                                        ration =
+                                                                                                                                                selectedRation,
+                                                                                                                                        adjustmentData =
+                                                                                                                                                adjustmentData,
+                                                                                                                                        referenceUtilisee =
+                                                                                                                                                referenceUtilisee,
+                                                                                                                                        besoinEnergetiqueTotal =
+                                                                                                                                                besoinEnergetiqueTotal
+                                                                                                                                                        ?: 0.0,
+                                                                                                                                        besoinEnergetiqueStandard =
+                                                                                                                                                besoinEnergetiqueStandard
+                                                                                                                                                        ?: 0.0,
+                                                                                                                                        poidsAnimal =
+                                                                                                                                                null, // Valeur par défaut
+                                                                                                                                        poidsMetabolique =
+                                                                                                                                                null, // Valeur par défaut
+                                                                                                                                        equationRepository =
+                                                                                                                                                equationRepository
+                                                                                                                                )
 
-                                                                                                                if (result.success
-                                                                                                                ) {
-                                                                                                                        result.adjustedAliments
-                                                                                                                                ?.let {
-                                                                                                                                        adjustedAliments
-                                                                                                                                        ->
-                                                                                                                                        viewModel
-                                                                                                                                                .updateRationAliments(
-                                                                                                                                                        selectedRation,
-                                                                                                                                                        adjustedAliments
+                                                                                                                        if (result.success
+                                                                                                                        ) {
+                                                                                                                                result.adjustedAliments
+                                                                                                                                        ?.let {
+                                                                                                                                                adjustedAliments
+                                                                                                                                                ->
+                                                                                                                                                onUpdateAliments(
+                                                                                                                                                                selectedRation,
+                                                                                                                                                                adjustedAliments
+                                                                                                                                                        )
+                                                                                                                                                showSnackbar(
+                                                                                                                                                        translate(LocalizationKeys.AnalNut.QUICK_ADJUST_SUCCESS, result.message)
                                                                                                                                                 )
-                                                                                                                                        showSnackbar(
-                                                                                                                                                "Ajustement rapide réussi : ${result.message}"
-                                                                                                                                        )
-                                                                                                                                }
-                                                                                                                } else {
+                                                                                                                                        }
+                                                                                                                        } else {
+                                                                                                                                showSnackbar(
+                                                                                                                                        translate(LocalizationKeys.AnalNut.ADJUST_ERROR, result.message)
+                                                                                                                                )
+                                                                                                                        }
+                                                                                                                } catch (
+                                                                                                                        e:
+                                                                                                                                Exception) {
+                                                                                                                        e.rethrowIfCancellation()
                                                                                                                         showSnackbar(
-                                                                                                                                "Erreur lors de l'ajustement : ${result.message}"
+                                                                                                                                translate(LocalizationKeys.AnalNut.ADJUST_ERROR, e.message ?: translate(LocalizationKeys.General.UNKNOWN_ERROR))
                                                                                                                         )
                                                                                                                 }
-                                                                                                        } catch (
-                                                                                                                e:
-                                                                                                                        Exception) {
-                                                                                                                showSnackbar(
-                                                                                                                        "Erreur lors de l'ajustement : ${e.message}"
-                                                                                                                )
                                                                                                         }
-                                                                                                }
+                                                                                        }
                                                                                 }
-                                                                        }
-                                                                )
-                                        )
+                                                )
 
-                                        // Ouvrir le gestionnaire de recettes
-                                        Icon(
-                                                imageVector = Icons.Filled.MenuBook,
-                                                contentDescription = "Ouvrir les recettes",
-                                                tint = VetNutriColors.Primary,
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(
-                                                                        onClick = onOpenRecipeDialog
-                                                                )
-                                        )
+                                                if (!isExamMode && autoriserRecettes) {
+                                                        // Ouvrir le gestionnaire de recettes
+                                                        IconWithTooltip(
+                                                                imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                                                                contentDescription = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                                tint = VetNutriColors.Primary,
+                                                                modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                                tooltip = translate(LocalizationKeys.AnalNut.OPEN_RECIPES),
+                                                                onClick = onOpenRecipeDialog
+                                                        )
+                                                }
 
-                                        // Bouton pour ajouter un aliment
-                                        Icon(
-                                                imageVector = Icons.Filled.Add,
-                                                contentDescription = "Ajouter un aliment",
-                                                tint = VetNutriColors.Primary,
-                                                modifier =
-                                                        Modifier.size(AppSizes.iconSizeXSmall)
-                                                                .clickable(onClick = onAddAliment)
-                                        )
+                                                // Bouton pour ajouter un aliment
+                                                IconWithTooltip(
+                                                        imageVector = Icons.Filled.Add,
+                                                        contentDescription = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
+                                                        tint = VetNutriColors.Primary,
+                                                        modifier = Modifier.size(AppSizes.iconSizeXSmall),
+                                                        tooltip = translate(LocalizationKeys.AnalNut.ADD_ALIMENT),
+                                                        onClick = onAddAliment
+                                                )
+                                        }
                                 }
+                        }
+
+                        if (isReadOnly) {
+                                Text(
+                                        text = translate(LocalizationKeys.Ration.GROUP_READ_ONLY_HINT),
+                                        style = MaterialTheme.typography.caption,
+                                        color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f)
+                                )
                         }
 
                         Divider()
 
                         // Liste des aliments
-                        if (selectedRation?.alimentMutableList.isNullOrEmpty()) {
+                        if (selectedRation == null) {
                                 CenteredMessage(
-                                        message = "Aucun aliment dans cette ration",
+                                        message = translate(LocalizationKeys.AnalNut.NO_RATION_SELECTED),
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        } else if (selectedRation.alimentMutableList.isEmpty()) {
+                                CenteredMessage(
+                                        message = translate(LocalizationKeys.AnalNut.NO_ALIMENT_IN_RATION),
                                         modifier = Modifier.fillMaxWidth()
                                 )
                         } else {
@@ -288,42 +345,44 @@ fun SectionAlimentsRation(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                selectedRation?.alimentMutableList?.forEach {
-                                                        aliment ->
-                                                        AlimentItem(
-                                                                aliment = aliment,
-                                                                isEditing =
-                                                                        editingAlimentId ==
-                                                                                aliment.uuid,
-                                                                onStartEditing = {
-                                                                        if (editingAlimentId !=
-                                                                                        null &&
-                                                                                        editingAlimentId !=
-                                                                                                aliment.uuid
-                                                                        ) {
-                                                                                editingAlimentId =
-                                                                                        null
-                                                                        }
-                                                                        editingAlimentId =
-                                                                                aliment.uuid
-                                                                },
-                                                                onQuantityChange = { newQuantity ->
-                                                                        viewModel
-                                                                                .updateAlimentQuantity(
+                                                selectedRation.alimentMutableList.forEachIndexed { index, aliment ->
+                                                        key("${aliment.uuid}-${aliment.quantite}") {
+                                                                AlimentItem(
+                                                                        aliment = aliment,
+                                                                        feedColor = VetNutriColors.getFeedColor(index),
+                                                                        referenceEv = referenceUtilisee,
+                                                                        isReadOnly = isReadOnly,
+                                                                        isEditing =
+                                                                                editingAlimentId ==
                                                                                         aliment.uuid,
-                                                                                        newQuantity
-                                                                                )
-                                                                },
-                                                                onFinishEditing = {
-                                                                        editingAlimentId = null
-                                                                },
-                                                                onDelete = {
-                                                                        viewModel
-                                                                                .removeAlimentFromRation(
+                                                                        onStartEditing = {
+                                                                                if (editingAlimentId !=
+                                                                                                null &&
+                                                                                                editingAlimentId !=
+                                                                                                        aliment.uuid
+                                                                                ) {
+                                                                                        editingAlimentId =
+                                                                                                null
+                                                                                }
+                                                                                editingAlimentId =
                                                                                         aliment.uuid
-                                                                                )
-                                                                }
-                                                        )
+                                                                        },
+                                                                        onQuantityChange = { newQuantity ->
+                                                                                onUpdateQuantite(
+                                                                                                aliment.uuid,
+                                                                                                newQuantity
+                                                                                        )
+                                                                        },
+                                                                        onFinishEditing = {
+                                                                                editingAlimentId = null
+                                                                        },
+                                                                        onDelete = {
+                                                                                onRemoveAliment(
+                                                                                                aliment.uuid
+                                                                                        )
+                                                                        }
+                                                                )
+                                                        }
                                                 }
                                         }
                                 } else {
@@ -333,12 +392,15 @@ fun SectionAlimentsRation(
                                                 verticalArrangement =
                                                         Arrangement.spacedBy(AppSizes.paddingSmall)
                                         ) {
-                                                items(
-                                                        selectedRation?.alimentMutableList
-                                                                ?: emptyList()
-                                                ) { aliment ->
+                                                itemsIndexed(
+                                                        selectedRation.alimentMutableList,
+                                                        key = { _, it -> "${it.uuid}-${it.quantite}" }
+                                                ) { index, aliment ->
                                                         AlimentItem(
                                                                 aliment = aliment,
+                                                                feedColor = VetNutriColors.getFeedColor(index),
+                                                                referenceEv = referenceUtilisee,
+                                                                isReadOnly = isReadOnly,
                                                                 isEditing =
                                                                         editingAlimentId ==
                                                                                 aliment.uuid,
@@ -355,8 +417,7 @@ fun SectionAlimentsRation(
                                                                                 aliment.uuid
                                                                 },
                                                                 onQuantityChange = { newQuantity ->
-                                                                        viewModel
-                                                                                .updateAlimentQuantity(
+                                                                        onUpdateQuantite(
                                                                                         aliment.uuid,
                                                                                         newQuantity
                                                                                 )
@@ -365,8 +426,7 @@ fun SectionAlimentsRation(
                                                                         editingAlimentId = null
                                                                 },
                                                                 onDelete = {
-                                                                        viewModel
-                                                                                .removeAlimentFromRation(
+                                                                        onRemoveAliment(
                                                                                         aliment.uuid
                                                                                 )
                                                                 }
@@ -392,11 +452,12 @@ private fun calculerDensiteEnergetique(
         try {
                 val aliment = alimentRation.aliment ?: return 0.0
 
-                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut
+                // Déterminer si l'aliment est commercial (complet/complémentaire) ou brut,
+                // selon FoodKind (même règle que EquationEvaluator.calculerEnergiePour100g)
                 val estCommercial =
-                        aliment.indicat.any { indication ->
-                                indication.name == "COMP" || indication.name == "COMPL"
-                        }
+                        aliment.typeAliment == fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLET ||
+                                aliment.typeAliment ==
+                                        fr.vetbrain.vetnutri_mp.Enumer.FoodKind.COMPLEMENTAIRE
 
                 // Choisir l'équation appropriée
                 val equation =
@@ -443,6 +504,7 @@ private fun calculerDensiteEnergetique(
 
                 return resultat ?: 0.0
         } catch (e: Exception) {
+                e.rethrowIfCancellation()
                 return 0.0
         }
 }

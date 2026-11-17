@@ -1,5 +1,10 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Components.AppAlertDialog
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import fr.vetbrain.vetnutri_mp.Components.PuceFiltre
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,10 +23,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.vetbrain.vetnutri_mp.Export.*
 import fr.vetbrain.vetnutri_mp.Repository.ConseilRepository
+import fr.vetbrain.vetnutri_mp.ViewModel.ConseilsViewModel
 import fr.vetbrain.vetnutri_mp.Theme.AppIcons
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import kotlinx.coroutines.launch
+import fr.vetbrain.vetnutri_mp.Utils.Recherche
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -31,37 +38,24 @@ fun ConseilsPersonnalisesView(
         onEditConseil: (String) -> Unit = {},
         onCreateConseil: () -> Unit = {}
 ) {
-    var conseils by remember { mutableStateOf<List<HtmlSection>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf<SectionCategory?>(null) }
     var showTemplates by remember { mutableStateOf(false) }
     var conseilToDelete by remember { mutableStateOf<HtmlSection?>(null) }
 
     val scope = rememberCoroutineScope()
-
-    // Charger les conseils au démarrage
-    LaunchedEffect(Unit) {
-        try {
-            val result = conseilRepository.getConseilsActifs()
-            if (result.isSuccess) {
-                conseils = result.getOrThrow()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            isLoading = false
-        }
-    }
+    // Chargement, suppression et création depuis un modèle passent par le ViewModel
+    val viewModel = remember(conseilRepository) { ConseilsViewModel(conseilRepository, scope) }
+    val conseils by viewModel.conseils.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    LaunchedEffect(viewModel) { viewModel.loadConseils() }
 
     // Filtrer les conseils selon la recherche et la catégorie
     val filteredConseils =
             remember(conseils, searchQuery, selectedCategory) {
                 conseils.filter { conseil ->
                     val matchesSearch =
-                            searchQuery.isEmpty() ||
-                                    conseil.title.contains(searchQuery, ignoreCase = true) ||
-                                    conseil.tags.any { it.contains(searchQuery, ignoreCase = true) }
+                            Recherche.correspond(searchQuery, conseil.title, *conseil.tags.toTypedArray())
 
                     val matchesCategory =
                             selectedCategory == null || conseil.category == selectedCategory
@@ -78,7 +72,7 @@ fun ConseilsPersonnalisesView(
                 ) {
                     Icon(
                             imageVector = AppIcons.Add,
-                            contentDescription = "Ajouter un conseil",
+                            contentDescription = translate("auto.view.conseilspersonnalisesview.ajouter_un_conseil"),
                             tint = VetNutriColors.OnPrimary
                     )
                 }
@@ -94,14 +88,14 @@ fun ConseilsPersonnalisesView(
             OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Rechercher un conseil") },
+                    label = { Text(translate("auto.view.conseilspersonnalisesview.rechercher_un_conseil")) },
                     leadingIcon = {
-                        Icon(imageVector = AppIcons.Search, contentDescription = "Rechercher")
+                        Icon(imageVector = AppIcons.Search, contentDescription = translate("consultation.edit.ref.search_tooltip"))
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(imageVector = AppIcons.Close, contentDescription = "Effacer")
+                                Icon(imageVector = AppIcons.Close, contentDescription = translate("animalList.clearSearch"))
                             }
                         }
                     },
@@ -115,24 +109,16 @@ fun ConseilsPersonnalisesView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Filtres par catégorie
+            // Filtres par catégorie : celles des conseils enregistrés
+            val categories = remember(conseils) { conseils.map { it.category }.distinct().sortedBy { it.libelle() } }
             Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Chip(onClick = { selectedCategory = null }, modifier = Modifier.height(32.dp)) {
-                    Text("Toutes")
+                PuceFiltre(translate("crossConsultation.speciesAll"), selectionnee = selectedCategory == null, onClick = { selectedCategory = null })
+                categories.forEach { category ->
+                    PuceFiltre(category.libelle(), selectionnee = selectedCategory == category, onClick = { selectedCategory = category })
                 }
-
-                SectionCategory.values()
-                        .filter { it.name.contains("CONSEIL") }
-                        .take(4) // Limiter à 4 catégories pour l'affichage
-                        .forEach { category ->
-                            Chip(
-                                    onClick = { selectedCategory = category },
-                                    modifier = Modifier.height(32.dp)
-                            ) { Text(category.name.replace("CONSEIL_", "")) }
-                        }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -152,7 +138,7 @@ fun ConseilsPersonnalisesView(
                             modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Templates")
+                    Text(translate("auto.view.conseilspersonnalisesview.templates"))
                 }
             }
 
@@ -177,7 +163,7 @@ fun ConseilsPersonnalisesView(
                 }
             } else {
                 Text(
-                        text = "Liste des conseils (${filteredConseils.size})",
+                        text = translate("conseil.liste", filteredConseils.size.toString()),
                         style = MaterialTheme.typography.h6
                 )
 
@@ -208,11 +194,11 @@ fun ConseilsPersonnalisesView(
     // Dialog pour afficher les templates
     if (showTemplates) {
         TemplatesDialog(
-                conseilRepository = conseilRepository,
+                viewModel = viewModel,
                 onDismiss = { showTemplates = false },
                 onSelectTemplate = { template ->
-                    // TODO: Créer un conseil à partir du template
                     showTemplates = false
+                    viewModel.createFromTemplate(template) { nouveau -> onEditConseil(nouveau.id) }
                 }
         )
     }
@@ -221,7 +207,7 @@ fun ConseilsPersonnalisesView(
     if (conseilToDelete != null) {
         AlertDialog(
                 onDismissRequest = { conseilToDelete = null },
-                title = { Text("Supprimer le conseil") },
+                title = { Text(translate("auto.view.conseilspersonnalisesview.supprimer_le_conseil")) },
                 text = {
                     Text(
                             "Êtes-vous sûr de vouloir supprimer le conseil \"${conseilToDelete?.title}\" ?"
@@ -230,30 +216,17 @@ fun ConseilsPersonnalisesView(
                 confirmButton = {
                     TextButton(
                             onClick = {
-                                conseilToDelete?.let { conseil ->
-                                    scope.launch {
-                                        try {
-                                            conseilRepository.supprimerConseil(conseil.id)
-                                            // Recharger la liste
-                                            val result = conseilRepository.getConseilsActifs()
-                                            if (result.isSuccess) {
-                                                conseils = result.getOrThrow()
-                                            }
-                                        } catch (e: Exception) {
-                                            e.printStackTrace()
-                                        }
-                                    }
-                                }
+                                conseilToDelete?.let { conseil -> viewModel.deleteConseil(conseil.id) }
                                 conseilToDelete = null
                             },
                             colors =
                                     ButtonDefaults.textButtonColors(
                                             contentColor = VetNutriColors.Primary
                                     )
-                    ) { Text("Supprimer") }
+                    ) { Text(translate("general.delete")) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { conseilToDelete = null }) { Text("Annuler") }
+                    TextButton(onClick = { conseilToDelete = null }) { Text(translate("general.cancel")) }
                 }
         )
     }
@@ -291,7 +264,7 @@ private fun ConseilCard(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                            text = conseil.category.name.replace("CONSEIL_", ""),
+                            text = conseil.category.libelle(),
                             style = MaterialTheme.typography.caption,
                             color = VetNutriColors.Primary
                     )
@@ -301,15 +274,15 @@ private fun ConseilCard(
                     IconButton(onClick = onEdit) {
                         Icon(
                                 imageVector = AppIcons.Edit,
-                                contentDescription = "Modifier",
+                                contentDescription = translate("ration.editAction"),
                                 tint = VetNutriColors.Primary
                         )
                     }
                     IconButton(onClick = onDelete) {
                         Icon(
                                 imageVector = AppIcons.Delete,
-                                contentDescription = "Supprimer",
-                                tint = Color.Red
+                                contentDescription = translate("general.delete"),
+                                tint = VetNutriColors.Error
                         )
                     }
                 }
@@ -352,7 +325,7 @@ private fun ConseilCard(
                     horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                        text = "Utilisé ${conseil.usageCount} fois",
+                        text = translate("conseil.utilise", conseil.usageCount.toString()),
                         style = MaterialTheme.typography.caption,
                         color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                 )
@@ -367,7 +340,7 @@ private fun ConseilCard(
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
-                                text = "Priorité ${conseil.priority}",
+                                text = translate("conseil.priorite", conseil.priority.toString()),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
@@ -381,36 +354,25 @@ private fun ConseilCard(
 
 @Composable
 private fun TemplatesDialog(
-        conseilRepository: ConseilRepository,
+        viewModel: ConseilsViewModel,
         onDismiss: () -> Unit,
         onSelectTemplate: (HtmlSection) -> Unit
 ) {
-    var templates by remember { mutableStateOf<List<HtmlSection>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val templates by viewModel.templates.collectAsState()
+    val isLoading by viewModel.templatesLoading.collectAsState()
 
-    LaunchedEffect(Unit) {
-        try {
-            val result = conseilRepository.getTemplatesConseils()
-            if (result.isSuccess) {
-                templates = result.getOrThrow()
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            isLoading = false
-        }
-    }
+    LaunchedEffect(Unit) { viewModel.loadTemplates() }
 
-    AlertDialog(
+    AppAlertDialog(
             onDismissRequest = onDismiss,
-            title = { Text("Templates de conseils") },
+            title = { Text(translate("auto.view.conseilspersonnalisesview.templates_de_conseils")) },
             text = {
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 } else if (templates.isEmpty()) {
-                    Text("Aucun template disponible")
+                    Text(translate("auto.view.conseilspersonnalisesview.aucun_template_disponible"))
                 } else {
                     LazyColumn(modifier = Modifier.height(300.dp)) {
                         items(templates) { template ->
@@ -428,7 +390,7 @@ private fun TemplatesDialog(
                                             fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                            text = template.category.name.replace("CONSEIL_", ""),
+                                            text = template.category.libelle(),
                                             style = MaterialTheme.typography.caption,
                                             color = MaterialTheme.colors.primary
                                     )
@@ -445,7 +407,10 @@ private fun TemplatesDialog(
                                 ButtonDefaults.textButtonColors(
                                         contentColor = VetNutriColors.Primary
                                 )
-                ) { Text("Fermer") }
+                ) { Text(translate("settings.close")) }
             }
     )
 }
+
+/** Nom traduit d'une catégorie de conseil (« Hygiène », « Activité »…). */
+internal fun SectionCategory.libelle(): String = translate("sectionCategory.$name")

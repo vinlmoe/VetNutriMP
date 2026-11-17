@@ -1,5 +1,9 @@
 package fr.vetbrain.vetnutri_mp.View
 
+import fr.vetbrain.vetnutri_mp.Localization.traduireRace
+import fr.vetbrain.vetnutri_mp.Utils.enTexte
+import fr.vetbrain.vetnutri_mp.Utils.lireDate
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -8,13 +12,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme as M3MaterialTheme
+import androidx.compose.material3.Text as M3Text
+import androidx.compose.material3.TextButton as M3TextButton
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import fr.vetbrain.vetnutri_mp.Components.ChampRace
 import fr.vetbrain.vetnutri_mp.Components.ComboBox
 import fr.vetbrain.vetnutri_mp.Data.AnimalEv
+import fr.vetbrain.vetnutri_mp.Data.avecEspeceDuTroupeau
 import fr.vetbrain.vetnutri_mp.Enumer.Espece
 import fr.vetbrain.vetnutri_mp.Enumer.Sex
 import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys.Animal
@@ -23,8 +37,12 @@ import fr.vetbrain.vetnutri_mp.Localization.translate
 import fr.vetbrain.vetnutri_mp.Localization.translateEnum
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnimalEditView(
         animal: AnimalEv,
@@ -33,14 +51,19 @@ fun AnimalEditView(
         modifier: Modifier = Modifier
 ) {
         var nom by remember { mutableStateOf(animal.nom) }
-        var race by remember { mutableStateOf(animal.race) }
+        // Race affichée dans la langue de l'interface ; le texte enregistré ne change que si elle est modifiée
+        val raceAffichee = remember { traduireRace(animal.race, animal.getEspece()) }
+        var race by remember { mutableStateOf(raceAffichee) }
         var ownerName by remember { mutableStateOf(animal.ownerName) }
         var summary by remember { mutableStateOf(animal.summary) }
         var selectedSex by remember { mutableStateOf(animal.getSex()) }
         var selectedEspece by remember { mutableStateOf(animal.getEspece()) }
-        var birthDateText by remember { mutableStateOf(animal.birthdate?.toString() ?: "") }
+        var birthDateText by remember { mutableStateOf(animal.birthdate?.enTexte() ?: "") }
         var isDateValid by remember { mutableStateOf(true) }
         var isDead by remember { mutableStateOf(animal.dead) }
+        var isDatePickerVisible by remember { mutableStateOf(false) }
+        // Troupeau : types d'animaux (null = individu)
+        var typesTroupeau by remember { mutableStateOf(animal.typesTroupeau?.toList()) }
 
         val scrollState = rememberScrollState()
 
@@ -67,6 +90,22 @@ fun AnimalEditView(
 
                         Spacer(modifier = Modifier.height(AppSizes.paddingSmall))
 
+                        SelecteurIndividuTroupeau(
+                                estTroupeau = typesTroupeau != null,
+                                onChange = { troupeau ->
+                                        typesTroupeau =
+                                                if (troupeau) typesTroupeau ?: typesTroupeauParDefaut(selectedEspece) else null
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                        )
+                        typesTroupeau?.let { types ->
+                                EditeurTypesTroupeau(
+                                        types = types,
+                                        onChange = { typesTroupeau = it },
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        }
+
                         // Nom de l'animal
                         OutlinedTextField(
                                 value = nom,
@@ -77,20 +116,22 @@ fun AnimalEditView(
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = Icons.Default.Favorite,
-                                                contentDescription = "Nom",
+                                                contentDescription = Animal.NAME.translate(),
                                                 tint = VetNutriColors.Primary
                                         )
                                 }
                         )
 
-                        // Race
-                        OutlinedTextField(
-                                value = race,
-                                onValueChange = { race = it },
-                                label = { Text(Animal.BREED.translate()) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
-                        )
+                        // Race (pour un troupeau : celle de chaque groupe d'individus)
+                        if (typesTroupeau == null) {
+                                ChampRace(
+                                        value = race,
+                                        onValueChange = { race = it },
+                                        espece = selectedEspece,
+                                        label = Animal.BREED.translate(),
+                                        modifier = Modifier.fillMaxWidth()
+                                )
+                        }
 
                         // Propriétaire
                         OutlinedTextField(
@@ -102,24 +143,21 @@ fun AnimalEditView(
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = Icons.Default.Person,
-                                                contentDescription = "Propriétaire",
+                                                contentDescription = Animal.OWNER.translate(),
                                                 tint = VetNutriColors.Primary
                                         )
                                 }
                         )
 
+                        // Date de naissance, sexe et espèce : ceux de l'individu (pour un troupeau,
+                        // décrits par groupe d'individus)
+                        if (typesTroupeau == null) {
                         // Date de naissance
                         OutlinedTextField(
                                 value = birthDateText,
                                 onValueChange = {
                                         birthDateText = it
-                                        isDateValid =
-                                                try {
-                                                        if (it.isNotEmpty()) LocalDate.parse(it)
-                                                        true
-                                                } catch (e: Exception) {
-                                                        false
-                                                }
+                                        isDateValid = it.isBlank() || lireDate(it) != null
                                 },
                                 label = { Text(Animal.BIRTH_DATE.translate()) },
                                 modifier = Modifier.fillMaxWidth(),
@@ -128,18 +166,71 @@ fun AnimalEditView(
                                 leadingIcon = {
                                         Icon(
                                                 imageVector = Icons.Default.DateRange,
-                                                contentDescription = "Date de naissance",
+                                                contentDescription = Animal.BIRTH_DATE.translate(),
                                                 tint = VetNutriColors.Primary
                                         )
+                                },
+                                trailingIcon = {
+                                        IconButton(onClick = { isDatePickerVisible = true }) {
+                                                Icon(
+                                                        imageVector = Icons.Default.DateRange,
+                                                        contentDescription = General.DATE_PICKER.translate(),
+                                                        tint = VetNutriColors.Primary
+                                                )
+                                        }
                                 }
                         )
 
                         if (!isDateValid) {
                                 Text(
-                                        text = "Format de date invalide (YYYY-MM-DD)",
+                                        text = Animal.INVALID_DATE_FORMAT.translate(),
                                         color = MaterialTheme.colors.error,
                                         style = MaterialTheme.typography.caption
                                 )
+                        }
+
+                        if (isDatePickerVisible) {
+                                val pickerState = rememberDatePickerState()
+                                val vetNutriColorScheme = lightColorScheme(
+                                        primary = VetNutriColors.Primary,
+                                        onPrimary = VetNutriColors.OnPrimary,
+                                        secondary = VetNutriColors.Secondary,
+                                        onSecondary = VetNutriColors.OnSecondary,
+                                        error = VetNutriColors.Error,
+                                        onError = VetNutriColors.OnError,
+                                        background = VetNutriColors.Background,
+                                        onBackground = VetNutriColors.OnBackground,
+                                        surface = VetNutriColors.Background,
+                                        onSurface = VetNutriColors.OnBackground,
+                                        surfaceVariant = VetNutriColors.Background
+                                )
+                                M3MaterialTheme(colorScheme = vetNutriColorScheme) {
+                                        DatePickerDialog(
+                                                onDismissRequest = { isDatePickerVisible = false },
+                                                confirmButton = {
+                                                        M3TextButton(
+                                                                onClick = {
+                                                                        val selected: Long? = pickerState.selectedDateMillis
+                                                                        if (selected != null) {
+                                                                                val date = Instant.fromEpochMilliseconds(selected)
+                                                                                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                                                                                        .date
+                                                                                birthDateText = date.enTexte()
+                                                                                isDateValid = true
+                                                                        }
+                                                                        isDatePickerVisible = false
+                                                                }
+                                                        ) { M3Text(General.VALIDATE.translate()) }
+                                                },
+                                                dismissButton = {
+                                                        M3TextButton(onClick = { isDatePickerVisible = false }) {
+                                                                M3Text(General.CANCEL.translate())
+                                                        }
+                                                }
+                                        ) {
+                                                DatePicker(state = pickerState)
+                                        }
+                                }
                         }
 
                         // Sexe avec ComboBox
@@ -169,6 +260,8 @@ fun AnimalEditView(
                                 modifier = Modifier.fillMaxWidth(),
                                 itemLabelProvider = { it.translateEnum() }
                         )
+
+                        }
 
                         // Animal décédé
                         Row(
@@ -236,28 +329,20 @@ fun AnimalEditView(
 
                                 Button(
                                         onClick = {
-                                                val birthdate =
-                                                        try {
-                                                                if (birthDateText.isNotEmpty())
-                                                                        LocalDate.parse(
-                                                                                birthDateText
-                                                                        )
-                                                                else null
-                                                        } catch (e: Exception) {
-                                                                null
-                                                        }
+                                                val birthdate = lireDate(birthDateText)
 
                                                 val updatedAnimal =
                                                         animal.copy(
                                                                 nom = nom,
-                                                                race = race,
+                                                                race = if (race == raceAffichee) animal.race else race,
                                                                 ownerName = ownerName,
                                                                 summary = summary,
                                                                 sexId = selectedSex.id,
                                                                 birthdate = birthdate,
                                                                 dead = isDead,
-                                                                specieId = selectedEspece.label
-                                                        )
+                                                                specieId = selectedEspece.label,
+                                                                typesTroupeau = typesTroupeau?.toMutableList()
+                                                        ).avecEspeceDuTroupeau()
 
                                                 // Log de débogage pour vérifier les informations de
                                                 // l'animal

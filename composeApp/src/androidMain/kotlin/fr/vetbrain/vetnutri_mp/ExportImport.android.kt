@@ -1,38 +1,69 @@
 package fr.vetbrain.vetnutri_mp
 
-import android.content.ContentValues
-import android.os.Build
-import android.os.Environment
-import android.provider.MediaStore
+import fr.vetbrain.vetnutri_mp.Utils.rethrowIfCancellation
 import fr.vetbrain.vetnutri_mp.Localization.AndroidContext
+import fr.vetbrain.vetnutri_mp.Data.ApiEnvelope
+import fr.vetbrain.vetnutri_mp.Utils.createExportJson
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.encodeToStream
+import java.io.OutputStream
 
-actual fun exportJsonToFile(content: String, defaultFileName: String): Boolean {
-    val context = AndroidContext.appContext
-    val nomFichier: String =
-            if (defaultFileName.isBlank()) "vetnutri_export.json" else defaultFileName
+private suspend fun saveJson(defaultFileName: String, write: (OutputStream) -> Unit): Boolean {
     return try {
-        val resolver = context.contentResolver
-        val collection =
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                        MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                else MediaStore.Files.getContentUri("external")
-        val valeurs = ContentValues()
-        valeurs.put(MediaStore.MediaColumns.DISPLAY_NAME, nomFichier)
-        valeurs.put(MediaStore.MediaColumns.MIME_TYPE, "application/json")
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
-                valeurs.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-        val uri = resolver.insert(collection, valeurs) ?: return false
-        resolver.openOutputStream(uri)?.use { flux ->
-            flux.write(content.toByteArray(Charsets.UTF_8))
-            flux.flush()
+        val uri = JsonFileOperationsBridge.pickExport(defaultFileName.ifBlank { "vetnutri_export.json" }) ?: return false
+        withContext(Dispatchers.IO) {
+            val stream = AndroidContext.appContext.contentResolver.openOutputStream(uri, "wt")
+                ?: error("Impossible d'ouvrir la destination")
+            stream.use { write(it) }
         }
-                ?: return false
         true
-    } catch (_: Throwable) {
+    } catch (e: CancellationException) {
+        throw e
+    } catch (ignored: Exception) {
+        ignored.rethrowIfCancellation()
         false
     }
 }
 
-actual fun openJsonFileContent(): String? {
-    return null
+actual suspend fun exportJsonToFile(content: String, defaultFileName: String): Boolean =
+    saveJson(defaultFileName) { it.write(content.toByteArray(Charsets.UTF_8)) }
+
+@OptIn(ExperimentalSerializationApi::class)
+actual suspend fun exportApiEnvelopeToFile(envelope: ApiEnvelope, defaultFileName: String): Boolean =
+    saveJson(defaultFileName) { createExportJson().encodeToStream(ApiEnvelope.serializer(), envelope, it) }
+
+actual suspend fun openJsonFilesContent(): List<fr.vetbrain.vetnutri_mp.Data.FichierJson>? {
+    val uris = JsonFileOperationsBridge.pickImportMultiple()
+    if (uris.isEmpty()) return null
+    return uris.map { uri ->
+        val nom = nomAffiche(uri)
+        val contenu = try {
+            readFileContent(uri)
+        } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            fr.vetbrain.vetnutri_mp.Utils.AppLog.w("ExportImport", "Lecture impossible : $nom", e)
+            ""
+        }
+        fr.vetbrain.vetnutri_mp.Data.FichierJson(nom, contenu)
+    }
+}
+
+/** Nom du fichier tel que l'affiche le fournisseur de documents (repli : fin de l'URI). */
+private suspend fun nomAffiche(uri: android.net.Uri): String = withContext(fr.vetbrain.vetnutri_mp.Utils.AppDispatchers.IO) {
+    try {
+        AndroidContext.appContext.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+    } catch (e: Exception) {
+        e.rethrowIfCancellation()
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.d("ExportImport", "Nom de fichier indisponible : ${e.message}")
+        null
+    } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "copie.json"
+}
+
+actual suspend fun openJsonFileContent(): String? {
+    val uri = JsonFileOperationsBridge.pickImport() ?: return null
+    return readFileContent(uri)
 }

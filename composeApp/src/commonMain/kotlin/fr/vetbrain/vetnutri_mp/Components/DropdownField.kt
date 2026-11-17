@@ -3,7 +3,10 @@ package fr.vetbrain.vetnutri_mp.Components
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.material.LocalTextStyle
@@ -11,13 +14,18 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Dialog
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
+import fr.vetbrain.vetnutri_mp.Utils.isIosPlatform
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
 
 /**
  * Composant générique de liste déroulante basé sur BasicTextField pour un contrôle total
@@ -50,8 +58,9 @@ fun <T> DropdownField(
         borderWidth: Dp = 0.5.dp
 ) {
         var expanded by remember { mutableStateOf(false) }
-        val displayValue = remember(selectedValue) { 
-            selectedValue?.let { valueToString(it) } ?: "Sélectionner" 
+        val selectDefaultText = translate("dropdownField.selectDefault")
+        val displayValue = remember(selectedValue, selectDefaultText) {
+            selectedValue?.let { valueToString(it) } ?: selectDefaultText
         }
 
         Column(modifier = modifier) {
@@ -124,7 +133,7 @@ fun <T> DropdownField(
                                                 ) {
                                                         // Label fixe (pas d'animation flottante)
                                                         Text(
-                                                                text = "$label: ",
+                                                                text = "$label : ",
                                                                 fontSize = labelFontSize,
                                                                 color =
                                                                         MaterialTheme.colors
@@ -140,7 +149,7 @@ fun <T> DropdownField(
 
                                                         // Contenu du champ
                                                         Box(modifier = Modifier.weight(1f)) {
-                                                                if (displayValue == "Sélectionner"
+                                                                if (displayValue == selectDefaultText
                                                                 ) {
                                                                         Text(
                                                                                 text = displayValue,
@@ -169,7 +178,7 @@ fun <T> DropdownField(
                                                         // Icône dropdown
                                                         Icon(
                                                                 Icons.Default.ArrowDropDown,
-                                                                contentDescription = "Dropdown",
+                                                                contentDescription = translate("dropdownField.dropdownIcon"),
                                                                 modifier = Modifier.size(18.dp),
                                                                 tint =
                                                                         MaterialTheme.colors
@@ -187,7 +196,11 @@ fun <T> DropdownField(
 
                         DropdownMenu(
                                 expanded = expanded && enabled,
-                                onDismissRequest = { expanded = false },
+                                onDismissRequest = {
+                                        if (!isIosPlatform) {
+                                                expanded = false
+                                        }
+                                },
                                 modifier = Modifier.fillMaxWidth(0.9f)
                         ) {
                                 options.forEach { option ->
@@ -222,6 +235,7 @@ fun <T> DropdownField(
  * @param T Type d'élément pour la liste déroulante
  * @param label Libellé du champ
  * @param selectedValues Valeurs actuellement sélectionnées
+ * @param excludedValues Valeurs explicitement exclues lorsque [triState] est activé
  * @param options Liste des options disponibles
  * @param onValuesChange Callback appelé lorsqu'une ou plusieurs valeurs sont sélectionnées
  * @param valueToString Fonction de conversion des valeurs en chaînes affichables
@@ -236,8 +250,12 @@ fun <T> DropdownField(
 fun <T> MultiSelectDropdownField(
         label: String,
         selectedValues: Set<T>,
+        excludedValues: Set<T> = emptySet(),
         options: List<T>,
         onValuesChange: (Set<T>) -> Unit,
+        onExcludedValuesChange: ((Set<T>) -> Unit)? = null,
+        onTriStateValuesChange: ((included: Set<T>, excluded: Set<T>) -> Unit)? = null,
+        triState: Boolean = false,
         valueToString: (T) -> String,
         modifier: Modifier = Modifier,
         enabled: Boolean = true,
@@ -247,12 +265,34 @@ fun <T> MultiSelectDropdownField(
         borderWidth: Dp = 0.5.dp
 ) {
         var expanded by remember { mutableStateOf(false) }
+        // État local pour les valeurs temporaires pendant la sélection
+        var tempSelectedValues by remember(expanded, selectedValues) {
+                mutableStateOf(selectedValues)
+        }
+        var tempExcludedValues by remember(expanded, excludedValues) {
+                mutableStateOf(excludedValues)
+        }
+        
+        // Réinitialiser les valeurs temporaires quand le menu s'ouvre
+        LaunchedEffect(expanded) {
+                if (expanded) {
+                        tempSelectedValues = selectedValues
+                        tempExcludedValues = excludedValues
+                }
+        }
+        
         val displayValue =
-                if (selectedValues.isEmpty()) "Sélectionner"
-                else "${selectedValues.size} sélectionnée(s)"
+                if (selectedValues.isEmpty() && excludedValues.isEmpty()) {
+                        translate("dropdownField.selectDefault")
+                } else {
+                        buildList {
+                                        addAll(selectedValues.map(valueToString))
+                                        addAll(excludedValues.map { "− ${valueToString(it)}" })
+                                }
+                                .joinToString(", ")
+                }
 
         Column(modifier = modifier) {
-                Box {
                         BasicTextField(
                                 value = displayValue,
                                 onValueChange = {},
@@ -320,7 +360,7 @@ fun <T> MultiSelectDropdownField(
                                                                 Alignment.CenterVertically
                                                 ) {
                                                         Text(
-                                                                text = "$label: ",
+                                                                text = "$label : ",
                                                                 fontSize = labelFontSize,
                                                                 color =
                                                                         MaterialTheme.colors
@@ -337,7 +377,7 @@ fun <T> MultiSelectDropdownField(
                                                                 if (selectedValues.isEmpty()) {
                                                                         Text(
                                                                                 text =
-                                                                                        "Sélectionner...",
+                                                                                        translate(LocalizationKeys.General.SELECT_PLACEHOLDER),
                                                                                 fontSize = fontSize,
                                                                                 color =
                                                                                         MaterialTheme
@@ -379,7 +419,7 @@ fun <T> MultiSelectDropdownField(
                                                         }
                                                         Icon(
                                                                 Icons.Default.ArrowDropDown,
-                                                                contentDescription = "Dropdown",
+                                                                contentDescription = translate("dropdownField.dropdownIcon"),
                                                                 modifier = Modifier.size(18.dp),
                                                                 tint =
                                                                         MaterialTheme.colors
@@ -394,54 +434,156 @@ fun <T> MultiSelectDropdownField(
                                         }
                                 }
                         )
-                        DropdownMenu(
-                                expanded = expanded && enabled,
-                                onDismissRequest = { expanded = false },
-                                modifier = Modifier.fillMaxWidth(0.9f)
-                        ) {
-                                // Option "Tout désélectionner"
-                                DropdownMenuItem(
-                                        onClick = {
-                                                onValuesChange(emptySet())
+                // Dialog personnalisé pour la sélection multiple
+                if (expanded && enabled) {
+                        Dialog(onDismissRequest = { 
+                                // Réinitialiser les valeurs temporaires si on ferme sans valider
+                                tempSelectedValues = selectedValues
+                                tempExcludedValues = excludedValues
                                                 expanded = false
-                                        }
+                        }) {
+                                Surface(
+                                        shape = MaterialTheme.shapes.medium,
+                                        color = MaterialTheme.colors.surface,
+                                        elevation = 8.dp,
+                                        modifier = Modifier
+                                                .fillMaxWidth(0.9f)
+                                                .heightIn(max = 500.dp)
                                 ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Column(
+                                                modifier = Modifier.fillMaxSize()
+                                        ) {
+                                                // Liste des options avec scroll
+                                                Column(
+                                                        modifier = Modifier
+                                                                .weight(1f)
+                                                                .fillMaxWidth()
+                                                                .verticalScroll(rememberScrollState())
+                                                ) {
+                                                        // Option "Aucune sélection"
+                                                        Row(
+                                                                modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .clickable {
+                                                                                tempSelectedValues = emptySet()
+                                                                                tempExcludedValues = emptySet()
+                                                                        }
+                                                                        .padding(16.dp),
+                                                                verticalAlignment = Alignment.CenterVertically
+                                                        ) {
                                                 Icon(
-                                                        if (selectedValues.isEmpty())
+                                                                        if (tempSelectedValues.isEmpty() && tempExcludedValues.isEmpty())
                                                                 Icons.Default.Check
                                                         else Icons.Default.Clear,
                                                         contentDescription = null,
-                                                        modifier = Modifier.size(16.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text("Aucune sélection")
-                                        }
-                                }
+                                                                        modifier = Modifier.size(20.dp),
+                                                                        tint = if (tempSelectedValues.isEmpty())
+                                                                                VetNutriColors.Primary
+                                                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(12.dp))
+                                                                Text(
+                                                                        translate("dropdownField.noSelection"),
+                                                                        style = MaterialTheme.typography.body1
+                                                                )
+                                                        }
+                                                        Divider()
                                 // Options individuelles
                                 options.forEach { option ->
-                                        DropdownMenuItem(
-                                                onClick = {
-                                                        onValuesChange(
-                                                                if (option in selectedValues)
-                                                                        selectedValues - option
-                                                                else selectedValues + option
-                                                        )
+                                                                Row(
+                                                                        modifier = Modifier
+                                                                                .fillMaxWidth()
+                                                                                .clickable {
+                                                                                        if (triState) {
+                                                                                                when {
+                                                                                                        option in tempSelectedValues -> {
+                                                                                                                tempSelectedValues = tempSelectedValues - option
+                                                                                                                tempExcludedValues = tempExcludedValues + option
+                                                                                                        }
+                                                                                                        option in tempExcludedValues -> {
+                                                                                                                tempExcludedValues = tempExcludedValues - option
+                                                                                                        }
+                                                                                                        else -> tempSelectedValues = tempSelectedValues + option
+                                                                                                }
+                                                                                        } else {
+                                                                                                tempSelectedValues = if (option in tempSelectedValues)
+                                                                                                        tempSelectedValues - option
+                                                                                                else tempSelectedValues + option
+                                                                                        }
+                                                                                }
+                                                                                .padding(16.dp),
+                                                                        verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                        if (triState && option in tempExcludedValues) {
+                                                                                Text(
+                                                                                        text = "−",
+                                                                                        fontSize = 20.sp,
+                                                                                        color = MaterialTheme.colors.error,
+                                                                                        modifier = Modifier.width(20.dp)
+                                                                                )
+                                                                        } else {
+                                                                                Icon(
+                                                                                        if (option in tempSelectedValues) Icons.Default.Check else Icons.Default.Clear,
+                                                                                        contentDescription = null,
+                                                                                        modifier = Modifier.size(20.dp),
+                                                                                        tint = if (option in tempSelectedValues)
+                                                                                                VetNutriColors.Primary
+                                                                                        else MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
+                                                                                )
+                                                                        }
+                                                                        Spacer(modifier = Modifier.width(12.dp))
+                                                                        Text(
+                                                                                valueToString(option),
+                                                                                style = MaterialTheme.typography.body1
+                                                                        )
+                                                                }
+                                                                Divider()
+                                                        }
                                                 }
-                                        ) {
-                                                Row(
-                                                        verticalAlignment =
-                                                                Alignment.CenterVertically
+                                                // Bouton de validation en bas
+                                                Surface(
+                                                        elevation = 4.dp,
+                                                        modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                        Row(
+                                                                modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .padding(16.dp),
+                                                                horizontalArrangement = Arrangement.End
+                                                        ) {
+                                                                OutlinedButton(
+                                                                        onClick = {
+                                                                                tempSelectedValues = selectedValues
+                                                                                tempExcludedValues = excludedValues
+                                                                                expanded = false
+                                                                        },
+                                                                        modifier = Modifier.padding(end = 8.dp)
+                                                                ) {
+                                                                        Text(translate(LocalizationKeys.General.CANCEL))
+                                                                }
+                                                                FloatingActionButton(
+                                                                        onClick = {
+                                                                                if (triState) {
+                                                                                        onTriStateValuesChange?.invoke(
+                                                                                                tempSelectedValues,
+                                                                                                tempExcludedValues
+                                                                                        )
+                                                                                } else {
+                                                                                        onValuesChange(tempSelectedValues)
+                                                                                        onExcludedValuesChange?.invoke(tempExcludedValues)
+                                                                                }
+                                                                                expanded = false
+                                                                        },
+                                                                        backgroundColor = VetNutriColors.Primary,
+                                                                        modifier = Modifier.size(48.dp)
                                                 ) {
                                                         Icon(
-                                                                if (option in selectedValues)
-                                                                        Icons.Default.Check
-                                                                else Icons.Default.Clear,
-                                                                contentDescription = null,
-                                                                modifier = Modifier.size(16.dp)
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(valueToString(option))
+                                                                                Icons.Default.Check,
+                                                                                contentDescription = translate(LocalizationKeys.General.VALIDATE),
+                                                                                tint = MaterialTheme.colors.onPrimary
+                                                                        )
+                                                                }
+                                                        }
                                                 }
                                         }
                                 }

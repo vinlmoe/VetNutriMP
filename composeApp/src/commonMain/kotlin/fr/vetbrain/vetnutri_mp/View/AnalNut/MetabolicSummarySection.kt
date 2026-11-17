@@ -17,9 +17,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import fr.vetbrain.vetnutri_mp.Components.BasicAppTextField
 import fr.vetbrain.vetnutri_mp.Data.ConsultationEv
+import fr.vetbrain.vetnutri_mp.Localization.LocalizationKeys
+import fr.vetbrain.vetnutri_mp.Localization.translate
+import fr.vetbrain.vetnutri_mp.Data.ReferenceEv
 import fr.vetbrain.vetnutri_mp.Theme.AppSizes
 import fr.vetbrain.vetnutri_mp.Theme.VetNutriColors
 import fr.vetbrain.vetnutri_mp.Utils.TextUtils
+import fr.vetbrain.vetnutri_mp.Utils.normalizeDecimalInput
+import fr.vetbrain.vetnutri_mp.Utils.parsePositiveDecimal
 import fr.vetbrain.vetnutri_mp.ViewModel.AnimalDetailViewModel
 
 /** Section compacte pour afficher les valeurs métaboliques d'une consultation */
@@ -32,11 +37,50 @@ fun SectionValeursMetaboliques(
         besoinEnergetiqueTotal: Double?,
         kObserve: Double,
         kCalcule: Double,
+        energieAdditionnelle: Double? = null,
+        referenceUtilisee: ReferenceEv? = null,
+        onUpdateWeights: ((currentWeight: Double, idealWeight: Double) -> Unit)? = null,
         onExpand: () -> Unit,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        // Étape de plan évolutif : le second poids affiché/édité est celui de l'étape (vide = poids
+        // réel), à la place du poids idéal de la consultation
+        estEtape: Boolean = false,
+        poidsEtape: Double? = null,
+        onUpdatePoidsEtape: ((poidsEtape: Double?, poidsReel: Double) -> Unit)? = null
 ) {
+    val libelleSecondPoids =
+            if (estEtape) translate(LocalizationKeys.Evolutive.STEP_WEIGHT_SHORT)
+            else translate(LocalizationKeys.AnalNut.WEIGHT_IDEAL)
+    val secondPoids: Double? =
+            if (estEtape) poidsEtape ?: selectedConsultation?.weight
+            else selectedConsultation?.effectiveWeight
+    // Valeur proposée à l'édition : pour une étape au poids réel, champ vide (reste « réel »)
+    val secondPoidsSaisie: Double? =
+            if (estEtape) poidsEtape else selectedConsultation?.effectiveWeight
     BoxWithConstraints(modifier = modifier) {
-        val isNarrow = maxWidth < 400.dp // Seuil pour largeur faible
+        val isNarrow = maxWidth < 600.dp // aligner avec le seuil utilisé dans RationsView
+        var isEditingWeights by remember { mutableStateOf(false) }
+        var currentWeightText by
+                remember(selectedConsultation?.uuid, selectedConsultation?.weight) {
+                    mutableStateOf(selectedConsultation?.weight?.toString() ?: "")
+                }
+        var idealWeightText by
+                remember(selectedConsultation?.uuid, secondPoidsSaisie, estEtape) {
+                    mutableStateOf(secondPoidsSaisie?.toString() ?: "")
+                }
+
+        /** Valide la saisie ; renvoie vrai si elle a été appliquée. */
+        fun validerPoids(): Boolean {
+            val newCurrent = parsePositiveDecimal(currentWeightText) ?: return false
+            if (estEtape) {
+                // Poids de l'étape (vide = poids réel) et poids réel, en une seule mise à jour
+                onUpdatePoidsEtape?.invoke(parsePositiveDecimal(idealWeightText), newCurrent)
+                return true
+            }
+            val newIdeal = parsePositiveDecimal(idealWeightText) ?: return false
+            onUpdateWeights?.invoke(newCurrent, newIdeal)
+            return true
+        }
 
         Column {
             Row(
@@ -44,64 +88,239 @@ fun SectionValeursMetaboliques(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = "Valeurs métaboliques",
-                        style = MaterialTheme.typography.overline,
+                        text = translate(LocalizationKeys.AnalNut.METABOLIC_VALUES_TITLE),
+                        style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
                 IconButton(onClick = onExpand, modifier = Modifier.size(16.dp)) {
                     Icon(
                             imageVector = Icons.Filled.Search,
-                            contentDescription = "Agrandir les valeurs métaboliques",
+                            contentDescription = translate(LocalizationKeys.AnalNut.EXPAND_METABOLIC),
                             tint = VetNutriColors.Primary,
                             modifier = Modifier.size(12.dp)
                     )
                 }
             }
 
-            // Mode étroit : éléments qui se wrap automatiquement sur plusieurs lignes si
-            // nécessaire
-            FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
-                    verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
-            ) {
-                LigneInfoLocaleCompacte(
-                        label = "Poids actuel",
-                        value =
-                                selectedConsultation?.weight?.let {
-                                    "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
-                                }
-                                        ?: "Non renseigné"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "Poids idéal",
-                        value =
-                                selectedConsultation?.effectiveWeight?.let {
-                                    "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
-                                }
-                                        ?: "Non calculé"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "P. métabolique",
-                        value = poidsMetabolique?.let { TextUtils.formatKgPuissance075(it) }
-                                        ?: "Non calculé"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "BEE standard",
-                        value =
-                                besoinEnergetiqueStandard?.let {
-                                    "${TextUtils.formatDecimal(it, 0)} kcal/j"
-                                }
-                                        ?: "Non calculé"
-                )
-                LigneInfoLocaleCompacte(
-                        label = "BE",
-                        value =
-                                besoinEnergetiqueTotal?.let {
-                                    "${TextUtils.formatDecimal(it, 0)} kcal/j"
-                                }
-                                        ?: "Non calculé"
-                )
+            if (isNarrow) {
+                // Mode étroit : éléments qui se wrap automatiquement sur plusieurs lignes
+                FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall),
+                        verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)
+                ) {
+                    if (isEditingWeights) {
+                        BasicAppTextField(
+                                value = currentWeightText,
+                                onValueChange = { currentWeightText = normalizeDecimalInput(it) },
+                                placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                modifier = Modifier.width(130.dp).height(50.dp)
+                        )
+                        BasicAppTextField(
+                                value = idealWeightText,
+                                onValueChange = { idealWeightText = normalizeDecimalInput(it) },
+                                placeholder = libelleSecondPoids,
+                                modifier = Modifier.width(130.dp).height(50.dp),
+                                trailingIcon = Icons.Filled.Check,
+                                onTrailingIconClick = { if (validerPoids()) isEditingWeights = false }
+                        )
+                        IconButton(
+                                onClick = {
+                                    currentWeightText = selectedConsultation?.weight?.toString() ?: ""
+                                    idealWeightText =
+                                            secondPoidsSaisie?.toString() ?: ""
+                                    isEditingWeights = false
+                                },
+                                modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                    Icons.Filled.Close,
+                                    contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                    tint = VetNutriColors.Error
+                            )
+                        }
+                    } else {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                            LigneInfoLocaleCompacte(
+                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                    value =
+                                            selectedConsultation?.weight?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
+                            )
+                            LigneInfoLocaleCompacte(
+                                    label = libelleSecondPoids,
+                                    value =
+                                            secondPoids?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                            )
+                            IconButton(
+                                    onClick = {
+                                        currentWeightText = selectedConsultation?.weight?.toString() ?: ""
+                                        idealWeightText =
+                                                secondPoidsSaisie?.toString() ?: ""
+                                        isEditingWeights = true
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                        Icons.Filled.Edit,
+                                        contentDescription = translate(LocalizationKeys.General.EDIT),
+                                        modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                    LigneInfoLocaleCompacte(
+                            label = translate(LocalizationKeys.AnalNut.P_METABOLIC),
+                            value = poidsMetabolique?.let {
+                                        TextUtils.formatKgAvecPuissanceDynamique(
+                                                it,
+                                                referenceUtilisee?.equationBW?.equationScript
+                                        )
+                                    }
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = translate(LocalizationKeys.AnalNut.BEE_STANDARD),
+                            value =
+                                    besoinEnergetiqueStandard?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    }
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                    )
+                    if ((energieAdditionnelle ?: 0.0) > 0.0) {
+                        LigneInfoLocaleCompacte(
+                                label = translate(LocalizationKeys.AnalNut.COMPLEMENTARY_REQ),
+                                value = "${TextUtils.formatDecimal(energieAdditionnelle ?: 0.0, 0)} kcal/j"
+                        )
+                    }
+                    LigneInfoLocaleCompacte(
+                            label = translate(LocalizationKeys.AnalNut.BE_SHORT),
+                            value =
+                                    besoinEnergetiqueTotal?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    } ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                    )
+                }
+            } else {
+                // Mode large : affichage aligné en lignes pour meilleure lisibilité
+                Column(verticalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
+                    if (isEditingWeights) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            BasicAppTextField(
+                                    value = currentWeightText,
+                                    onValueChange = {
+                                        currentWeightText = normalizeDecimalInput(it)
+                                    },
+                                    placeholder = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                    modifier = Modifier.width(140.dp).height(50.dp)
+                            )
+                            Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
+                            BasicAppTextField(
+                                    value = idealWeightText,
+                                    onValueChange = {
+                                        idealWeightText = normalizeDecimalInput(it)
+                                    },
+                                    placeholder = libelleSecondPoids,
+                                    modifier = Modifier.width(140.dp).height(50.dp),
+                                    trailingIcon = Icons.Filled.Check,
+                                    onTrailingIconClick = { if (validerPoids()) isEditingWeights = false }
+                            )
+                            IconButton(
+                                    onClick = {
+                                        currentWeightText =
+                                                selectedConsultation?.weight?.toString() ?: ""
+                                        idealWeightText =
+                                                secondPoidsSaisie?.toString() ?: ""
+                                        isEditingWeights = false
+                                    },
+                                    modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                        tint = VetNutriColors.Error
+                                )
+                            }
+                        }
+                    } else {
+                        Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingSmall)
+                        ) {
+                            LigneInfoLocaleCompacte(
+                                    label = translate(LocalizationKeys.AnalNut.WEIGHT_CURRENT),
+                                    value =
+                                            selectedConsultation?.weight?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_SPECIFIED)
+                            )
+                            LigneInfoLocaleCompacte(
+                                    label = libelleSecondPoids,
+                                    value =
+                                            secondPoids?.let {
+                                                "${TextUtils.formatDecimal(it.toDouble(), 1)} kg"
+                                            }
+                                                    ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                            )
+                            IconButton(
+                                    onClick = {
+                                        currentWeightText =
+                                                selectedConsultation?.weight?.toString() ?: ""
+                                        idealWeightText =
+                                                secondPoidsSaisie?.toString() ?: ""
+                                        isEditingWeights = true
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                            ) {
+                                Icon(
+                                        Icons.Filled.Edit,
+                                        contentDescription = translate(LocalizationKeys.General.EDIT),
+                                        modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                    LigneInfoLocaleCompacte(
+                            label = translate(LocalizationKeys.AnalNut.WEIGHT_METABOLIC),
+                            value = poidsMetabolique?.let {
+                                        TextUtils.formatKgAvecPuissanceDynamique(
+                                                it,
+                                                referenceUtilisee?.equationBW?.equationScript
+                                        )
+                                    }
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                    )
+                    LigneInfoLocaleCompacte(
+                            label = translate(LocalizationKeys.AnalNut.BEE_STANDARD),
+                            value =
+                                    besoinEnergetiqueStandard?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    }
+                                            ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                    )
+                    if ((energieAdditionnelle ?: 0.0) > 0.0) {
+                        LigneInfoLocaleCompacte(
+                                label = translate(LocalizationKeys.AnalNut.COMPLEMENTARY_REQ),
+                                value = "${TextUtils.formatDecimal(energieAdditionnelle ?: 0.0, 0)} kcal/j"
+                        )
+                    }
+                    LigneInfoLocaleCompacte(
+                            label = translate(LocalizationKeys.AnalNut.BE_SHORT),
+                            value =
+                                    besoinEnergetiqueTotal?.let {
+                                        "${TextUtils.formatDecimal(it, 0)} kcal/j"
+                                    } ?: translate(LocalizationKeys.General.NOT_CALCULATED)
+                    )
+                }
             }
         }
     }
@@ -125,15 +344,15 @@ fun SectionCoefficients(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = "Coefficients",
-                        style = MaterialTheme.typography.overline,
+                        text = translate(LocalizationKeys.AnalNut.COEFFICIENTS_TITLE),
+                        style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
                 IconButton(onClick = showCoefficientsDialog, modifier = Modifier.size(16.dp)) {
                     Icon(
                             imageVector = Icons.Filled.Search,
-                            contentDescription = "Agrandir les coefficients",
+                            contentDescription = translate(LocalizationKeys.AnalNut.EXPAND_COEFFICIENTS),
                             tint = VetNutriColors.Primary,
                             modifier = Modifier.size(12.dp)
                     )
@@ -199,12 +418,14 @@ fun SectionCoefficients(
                     if (isEditingCoefficient) {
                         BasicAppTextField(
                                 value = coefficientText,
-                                onValueChange = { coefficientText = it },
-                                placeholder = "Coeff. ajust.",
+                                onValueChange = {
+                                    coefficientText = normalizeDecimalInput(it)
+                                },
+                                placeholder = translate(LocalizationKeys.AnalNut.COEFF_ADJUST),
                                 modifier = Modifier.width(100.dp).height(50.dp),
                                 trailingIcon = Icons.Filled.Check,
                                 onTrailingIconClick = {
-                                    coefficientText.toDoubleOrNull()?.let { newValue ->
+                                    parsePositiveDecimal(coefficientText)?.let { newValue ->
                                         selectedConsultation?.let { consultation ->
                                             viewModel.updateCoefficientAjustement(
                                                     consultation.uuid,
@@ -226,14 +447,14 @@ fun SectionCoefficients(
                         ) {
                             Icon(
                                     Icons.Filled.Close,
-                                    contentDescription = "Annuler",
-                                    tint = Color.Red
+                                    contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                    tint = VetNutriColors.Error
                             )
                         }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             LigneInfoLocaleCompacte(
-                                    label = "Coeff. ajust.",
+                                    label = translate(LocalizationKeys.AnalNut.COEFF_ADJUST),
                                     value =
                                             selectedConsultation?.coefficientAjustement?.let {
                                                 TextUtils.formatDecimal(it.toDouble(), 2)
@@ -252,7 +473,7 @@ fun SectionCoefficients(
                             ) {
                                 Icon(
                                         Icons.Filled.Edit,
-                                        contentDescription = "Éditer",
+                                        contentDescription = translate(LocalizationKeys.General.EDIT),
                                         modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -313,12 +534,14 @@ fun SectionCoefficients(
                     if (isEditingCoefficient) {
                         BasicAppTextField(
                                 value = coefficientText,
-                                onValueChange = { coefficientText = it },
-                                placeholder = "Coeff. ajust.",
+                                onValueChange = {
+                                    coefficientText = normalizeDecimalInput(it)
+                                },
+                                placeholder = translate(LocalizationKeys.AnalNut.COEFF_ADJUST),
                                 modifier = Modifier.width(80.dp).height(50.dp),
                                 trailingIcon = Icons.Filled.Check,
                                 onTrailingIconClick = {
-                                    coefficientText.toDoubleOrNull()?.let { newValue ->
+                                    parsePositiveDecimal(coefficientText)?.let { newValue ->
                                         selectedConsultation?.let { consultation ->
                                             viewModel.updateCoefficientAjustement(
                                                     consultation.uuid,
@@ -340,14 +563,14 @@ fun SectionCoefficients(
                         ) {
                             Icon(
                                     Icons.Filled.Close,
-                                    contentDescription = "Annuler",
-                                    tint = Color.Red
+                                    contentDescription = translate(LocalizationKeys.General.CANCEL),
+                                    tint = VetNutriColors.Error
                             )
                         }
                     } else {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             LigneInfoLocaleCompacte(
-                                    label = "Coeff. ajust.",
+                                    label = translate(LocalizationKeys.AnalNut.COEFF_ADJUST),
                                     value =
                                             selectedConsultation?.coefficientAjustement?.let {
                                                 TextUtils.formatDecimal(it.toDouble(), 2)
@@ -366,7 +589,7 @@ fun SectionCoefficients(
                             ) {
                                 Icon(
                                         Icons.Filled.Edit,
-                                        contentDescription = "Éditer",
+                                        contentDescription = translate(LocalizationKeys.General.EDIT),
                                         modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -386,6 +609,8 @@ fun SectionBilanEnergetique(
         pourcentageCouverture: Double,
         kObserve: Double,
         kCalcule: Double,
+       
+        beFinal: Double? = null,
         modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -397,8 +622,8 @@ fun SectionBilanEnergetique(
                     verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                        text = "Bilan énergétique",
-                        style = MaterialTheme.typography.overline,
+                        text = translate(LocalizationKeys.AnalNut.ENERGY_BALANCE_TITLE),
+                        style = MaterialTheme.typography.subtitle2,
                         fontWeight = FontWeight.Bold,
                         color = VetNutriColors.Primary
                 )
@@ -412,20 +637,20 @@ fun SectionBilanEnergetique(
                 ) {
                     // Énergie apportée
                     LigneInfoLocaleCompacte(
-                            label = "Énergie apportée",
+                            label = translate(LocalizationKeys.AnalNut.ENERGY_PROVIDED),
                             value = "${TextUtils.formatDecimal(energieApportee, 0)} kcal/j"
                     )
 
                     // Couverture
                     Column {
                         Text(
-                                text = "Couverture",
+                                text = translate(LocalizationKeys.AnalNut.COVERAGE),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
                                 text = "${TextUtils.formatDecimal(pourcentageCouverture, 0)}%",
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -443,13 +668,13 @@ fun SectionBilanEnergetique(
                     // K Observé
                     Column {
                         Text(
-                                text = "K Observé",
+                                text = translate(LocalizationKeys.AnalNut.K_OBSERVED),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kObserve, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -468,35 +693,37 @@ fun SectionBilanEnergetique(
                     // K Calculé
                     Column {
                         Text(
-                                text = "K Calculé",
+                                text = translate(LocalizationKeys.AnalNut.K_CALCULATED),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kCalcule, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color = VetNutriColors.Primary
                         )
                     }
+
+                
                 }
             } else {
                 // Mode large : structure originale
                 Row() {
                     LigneInfoLocaleCompacte(
-                            label = "Énergie apportée",
+                            label = translate(LocalizationKeys.AnalNut.ENERGY_PROVIDED),
                             value = "${TextUtils.formatDecimal(energieApportee, 0)} kcal/j"
                     )
                     Spacer(modifier = Modifier.width(AppSizes.paddingXSmall))
                     Column {
                         Text(
-                                text = "Couverture",
+                                text = translate(LocalizationKeys.AnalNut.COVERAGE),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
                                 text = "${TextUtils.formatDecimal(pourcentageCouverture, 0)}%",
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -514,13 +741,13 @@ fun SectionBilanEnergetique(
                 Row(horizontalArrangement = Arrangement.spacedBy(AppSizes.paddingXSmall)) {
                     Column {
                         Text(
-                                text = "K Observé",
+                                text = translate(LocalizationKeys.AnalNut.K_OBSERVED),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kObserve, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color =
                                         when {
@@ -537,17 +764,20 @@ fun SectionBilanEnergetique(
                     }
                     Column {
                         Text(
-                                text = "K Calculé",
+                                text = translate(LocalizationKeys.AnalNut.K_CALCULATED),
                                 style = MaterialTheme.typography.caption,
                                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
                                 text = TextUtils.formatDecimal(kCalcule, 2),
-                                style = MaterialTheme.typography.caption,
+                                style = MaterialTheme.typography.body2,
                                 fontWeight = FontWeight.Medium,
                                 color = VetNutriColors.Primary
                         )
                     }
+
+                 
+                  
                 }
             }
         }
@@ -563,6 +793,6 @@ private fun LigneInfoLocaleCompacte(label: String, value: String) {
                 style = MaterialTheme.typography.caption,
                 color = MaterialTheme.colors.onSurface.copy(alpha = 0.6f)
         )
-        Text(text = value, style = MaterialTheme.typography.caption, fontWeight = FontWeight.Medium)
+        Text(text = value, style = MaterialTheme.typography.body2, fontWeight = FontWeight.Medium)
     }
 }
