@@ -62,7 +62,10 @@ data class ConsultationEv(
         var profilEvolutif: ProfilEvolutif? = null,
         // Troupeau : effectif, poids, référentiel et K de chaque type d'animaux (vide = individu,
         // ou valeurs par défaut du troupeau)
-        var parametresTroupeau: MutableList<ParametresTypeTroupeau> = mutableListOf()
+        var parametresTroupeau: MutableList<ParametresTypeTroupeau> = mutableListOf(),
+        // Prévision du poids (chien-v2) : rations retenues comme données (passé) et proposées
+        // (futur), début du suivi ; null = choix par défaut
+        var selectionPrevisionPoids: fr.vetbrain.vetnutri_mp.Data.PoidsChien.SelectionRationsPrevision? = null
 ) {
 
         val isEvolutive: Boolean

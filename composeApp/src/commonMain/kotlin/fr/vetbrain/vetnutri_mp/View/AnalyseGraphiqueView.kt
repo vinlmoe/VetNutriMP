@@ -32,7 +32,8 @@ import io.github.koalaplot.core.util.ExperimentalKoalaPlotApi
 fun AnalyseGraphiqueView(
         viewModel: AnimalDetailViewModel,
         equationRepository: EquationRepository? = null,
-        modifier: Modifier = Modifier
+        modifier: Modifier = Modifier,
+        previsionPoidsViewModel: fr.vetbrain.vetnutri_mp.ViewModel.PrevisionPoidsViewModel? = null
 ) {
         var currentConsultationOnly by remember { mutableStateOf(true) }
         var showRationArea by remember { mutableStateOf(true) }
@@ -248,6 +249,15 @@ fun AnalyseGraphiqueView(
 
                         // Légende et informations
                         GraphiqueLegend(selectedChart)
+
+                        // Prévision du poids du chien adulte (chien-v2), derrière son drapeau
+                        if (selectedChart == ChartType.EVOLUTION_POIDS && previsionPoidsViewModel != null) {
+                                PrevisionPoidsChienView(
+                                        viewModel = previsionPoidsViewModel,
+                                        animal = animal,
+                                        onEnregistrerConsultation = { viewModel.updateConsultation(it) }
+                                )
+                        }
                 }
                 }
                 }

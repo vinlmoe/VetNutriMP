@@ -176,7 +176,9 @@ data class ConsultationEntity(
         val typeConsultation: String = "STANDARD",
         val profilEvolutif: String? = null,
         // Troupeau (v41) : paramètres de chaque type d'animaux (effectif, poids, référentiel, K)
-        val herdParamsJson: String? = null
+        val herdParamsJson: String? = null,
+        // Prévision du poids (v43) : rations retenues pour le modèle chien-v2 (null = choix par défaut)
+        val weightForecastJson: String? = null
 )
 
 @Serializable
@@ -814,6 +816,22 @@ data class HtmlSectionLibraryEntity(
  * d'ingrédients, cibles, options), sérialisée en JSON. Les résultats ne sont pas stockés : ils se
  * recalculent à partir de la configuration.
  */
+/**
+ * Journal des calculs de prévision du poids (modèle chien-v2) : entrées et résultats de chaque
+ * calcul, pour recaler le modèle et valider l'estimation du besoin. Reste dans la base locale.
+ */
+@Entity(tableName = "WEIGHT_FORECAST_LOGS")
+data class WeightForecastLogEntity(
+        @PrimaryKey val uuid: String,
+        val animalUuid: String,
+        val createdAt: Long,
+        val modelVersion: String,
+        /** État du module au moment du calcul (SILENCIEUX ou ACTIF). */
+        val moduleState: String,
+        val inputsJson: String,
+        val resultsJson: String
+)
+
 @Entity(tableName = "MULTI_RATION_EXPLORATIONS")
 data class MultiRationExplorationEntity(
         @PrimaryKey val uuid: String,

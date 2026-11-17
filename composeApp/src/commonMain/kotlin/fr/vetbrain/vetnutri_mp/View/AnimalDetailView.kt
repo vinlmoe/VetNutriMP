@@ -87,7 +87,8 @@ fun AnimalDetailView(
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
-        isExamMode: Boolean = false
+        isExamMode: Boolean = false,
+        previsionPoidsViewModel: fr.vetbrain.vetnutri_mp.ViewModel.PrevisionPoidsViewModel? = null
 ) {
         val animal by viewModel.animal.collectAsState()
         val currentSection by viewModel.currentSection.collectAsState()
@@ -210,7 +211,8 @@ fun AnimalDetailView(
                                 equationRepository = equationRepository,
                                 recipeRepository = recipeRepository,
                                 conseilRepository = conseilRepository,
-                                isExamMode = isExamMode
+                                isExamMode = isExamMode,
+                                previsionPoidsViewModel = previsionPoidsViewModel
                         )
                         }
                         }
@@ -296,7 +298,8 @@ private fun AnimalDetailLayout(
         equationRepository: EquationRepository,
         recipeRepository: RecipeRepository,
         conseilRepository: fr.vetbrain.vetnutri_mp.Repository.ConseilRepository,
-        isExamMode: Boolean = false
+        isExamMode: Boolean = false,
+        previsionPoidsViewModel: fr.vetbrain.vetnutri_mp.ViewModel.PrevisionPoidsViewModel? = null
 ) {
         // Scope pour les coroutines
         val scope = rememberCoroutineScope()
@@ -714,7 +717,8 @@ private fun AnimalDetailLayout(
                                 AnalyseGraphiqueView(
                                         viewModel = viewModel,
                                         equationRepository = equationRepository,
-                                        modifier = Modifier.fillMaxSize()
+                                        modifier = Modifier.fillMaxSize(),
+                                        previsionPoidsViewModel = previsionPoidsViewModel
                                 )
                         }
                         AnimalDetailSection.GRAPHIQUE_ALIMENTS -> {

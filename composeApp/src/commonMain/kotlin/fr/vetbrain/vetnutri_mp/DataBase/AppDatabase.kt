@@ -17,7 +17,7 @@ import fr.vetbrain.vetnutri_mp.Utils.DatabaseChangeNotifier
 import kotlinx.coroutines.withContext
 
 /** Version du schéma Room ; à incrémenter avec chaque nouvelle migration. */
-const val DATABASE_SCHEMA_VERSION = 42
+const val DATABASE_SCHEMA_VERSION = 43
 
 /**
  * Base de données Room pour KMP. Cette classe définit la structure de la base de données et ses
@@ -53,7 +53,8 @@ const val DATABASE_SCHEMA_VERSION = 42
                         CustomNutrientEntity::class,
                         EnergyPerSpeciesEntity::class,
                         RationSupplementalVariableEntity::class,
-                        MultiRationExplorationEntity::class],
+                        MultiRationExplorationEntity::class,
+                        WeightForecastLogEntity::class],
         version = DATABASE_SCHEMA_VERSION,
         exportSchema = true
 )
@@ -74,6 +75,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun examGradingDao(): ExamGradingDao
     abstract fun energyPerSpeciesDao(): EnergyPerSpeciesDao
     abstract fun multiRationExplorationDao(): MultiRationExplorationDao
+    abstract fun weightForecastLogDao(): WeightForecastLogDao
 
     companion object {
         const val DATABASE_NAME = "vetnutri.db"
@@ -174,7 +176,9 @@ private suspend fun openRoomDatabase(builder: RoomDatabase.Builder<AppDatabase>,
                         // Migration 40→41 : troupeaux (types d'animaux, paramètres par consultation)
                         createMigration40to41(),
                         // Migration 41→42 : cellulose approchée par la fibre totale
-                        createMigration41to42()
+                        createMigration41to42(),
+                        // Migration 42→43 : prévision du poids (rations retenues, journal des calculs)
+                        createMigration42to43()
                 )
                 .setDriver(BundledSQLiteDriver())
                 .setQueryCoroutineContext(AppDispatchers.IO)
@@ -893,6 +897,30 @@ fun createMigration41to42(): Migration {
                     "UPDATE EQUATIONS SET equationScript = 'FIBRETOT' " +
                             "WHERE uuid = '$EQUATION_CELLULOSE_APPROCHEE' AND equationScript = 'CELLULOSE'"
             ).use { it.step() }
+        }
+    }
+}
+
+/**
+ * Migration 42→43 : prévision du poids du chien (modèle chien-v2) : rations retenues par
+ * consultation, et journal local des calculs (entrées et résultats).
+ */
+fun createMigration42to43(): Migration {
+    return object : Migration(42, 43) {
+        override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+            runStatementIgnoreIfExists(connection, "ALTER TABLE CONSULTATIONS ADD COLUMN weightForecastJson TEXT")
+            connection.prepare("""
+                CREATE TABLE IF NOT EXISTS `WEIGHT_FORECAST_LOGS` (
+                    `uuid` TEXT NOT NULL,
+                    `animalUuid` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `modelVersion` TEXT NOT NULL,
+                    `moduleState` TEXT NOT NULL,
+                    `inputsJson` TEXT NOT NULL,
+                    `resultsJson` TEXT NOT NULL,
+                    PRIMARY KEY(`uuid`)
+                )
+            """.trimIndent()).use { it.step() }
         }
     }
 }

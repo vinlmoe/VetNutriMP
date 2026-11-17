@@ -44,7 +44,8 @@ internal data class AppNavModels(
     val backupRestoreViewModel: BackupRestoreViewModel?,
     val legacyMigrationViewModel: LegacyMigrationViewModel,
     val bulkAddBiblioToFoodsViewModel: BulkAddBiblioToFoodsViewModel,
-    val multiRationViewModel: MultiRationViewModel
+    val multiRationViewModel: MultiRationViewModel,
+    val previsionPoidsViewModel: fr.vetbrain.vetnutri_mp.ViewModel.PrevisionPoidsViewModel
 )
 
 internal data class AppNavRepositories(

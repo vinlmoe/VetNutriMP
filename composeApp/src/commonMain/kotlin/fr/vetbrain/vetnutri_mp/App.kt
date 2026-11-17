@@ -217,6 +217,13 @@ fun App(appDatabase: AppDatabase) {
             platformDispatcher = platformDispatcher
         )
     }
+    val previsionPoidsViewModel = rememberViewModel {
+        fr.vetbrain.vetnutri_mp.ViewModel.PrevisionPoidsViewModel(
+            lireReference = { id -> databaseReferenceEvRepository.getReferenceEvById(id) },
+            equationRepository = equationRepository,
+            depot = appContainer.previsionPoidsRepository
+        )
+    }
     val multiRationViewModel = rememberViewModel {
         MultiRationViewModel(
             foodRepository = foodRepository,
@@ -297,7 +304,8 @@ fun App(appDatabase: AppDatabase) {
         backupRestoreViewModel = backupRestoreViewModel,
         legacyMigrationViewModel = legacyMigrationViewModel,
         bulkAddBiblioToFoodsViewModel = bulkAddBiblioToFoodsViewModel,
-        multiRationViewModel = multiRationViewModel
+        multiRationViewModel = multiRationViewModel,
+        previsionPoidsViewModel = previsionPoidsViewModel
     )
     val repos = AppNavRepositories(
         equationRepository = equationRepository,

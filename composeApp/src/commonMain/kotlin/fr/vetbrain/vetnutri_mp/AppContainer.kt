@@ -37,7 +37,8 @@ data class AppContainer(
     val fileService: FileService,
     val startupService: StartupService,
     val preferencesRepository: PreferencesRepository,
-    val multiRationExplorationRepository: MultiRationExplorationRepository
+    val multiRationExplorationRepository: MultiRationExplorationRepository,
+    val previsionPoidsRepository: fr.vetbrain.vetnutri_mp.Repository.PrevisionPoidsRepository
 )
 
 @Composable
@@ -93,6 +94,11 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
     val preferencesRepository = remember { PreferencesRepository(createPreferencesStorage()) }
     val multiRationExplorationRepository =
         remember { DatabaseMultiRationExplorationRepository(appDatabase.multiRationExplorationDao()) }
+    val previsionPoidsRepository = remember {
+        fr.vetbrain.vetnutri_mp.Repository.DatabasePrevisionPoidsRepository(
+            appDatabase.weightForecastLogDao(), createPreferencesStorage()
+        )
+    }
 
     return AppContainer(
         animalRepository = animalRepository,
@@ -108,6 +114,7 @@ fun rememberAppContainer(appDatabase: AppDatabase): AppContainer {
         fileService = fileService,
         startupService = startupService,
         preferencesRepository = preferencesRepository,
-        multiRationExplorationRepository = multiRationExplorationRepository
+        multiRationExplorationRepository = multiRationExplorationRepository,
+        previsionPoidsRepository = previsionPoidsRepository
     )
 }

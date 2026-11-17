@@ -142,7 +142,8 @@ internal fun AppNavHost(
                     equationRepository = repos.equationRepository,
                     recipeRepository = repos.recipeRepository,
                     conseilRepository = repos.conseilRepository,
-                    isExamMode = examSession != null
+                    isExamMode = examSession != null,
+                    previsionPoidsViewModel = models.previsionPoidsViewModel
                 )
             }
         }

@@ -100,7 +100,8 @@ data class ConsultationApi(
         val consultationType: String = "STANDARD",
         val evolutiveProfile: String? = null,
         // Troupeau : paramètres de chaque type d'animaux
-        val herdParameters: List<ParametresTypeTroupeau> = emptyList()
+        val herdParameters: List<ParametresTypeTroupeau> = emptyList(),
+        val weightForecastSelection: fr.vetbrain.vetnutri_mp.Data.PoidsChien.SelectionRationsPrevision? = null
 )
 
 @Serializable
@@ -441,7 +442,8 @@ fun ConsultationEv.toApi(): ConsultationApi {
                 rations = rations.map { it.toApi() },
                 consultationType = typeConsultation.name,
                 evolutiveProfile = profilEvolutif?.name,
-                herdParameters = parametresTroupeau
+                herdParameters = parametresTroupeau,
+                weightForecastSelection = selectionPrevisionPoids
         )
 }
 
@@ -888,7 +890,8 @@ fun ConsultationApi.toDomain(): ConsultationEv {
                         fr.vetbrain.vetnutri_mp.Enumer.TypeConsultation.fromName(consultationType),
                 profilEvolutif =
                         fr.vetbrain.vetnutri_mp.Enumer.ProfilEvolutif.fromName(evolutiveProfile),
-                parametresTroupeau = herdParameters.toMutableList()
+                parametresTroupeau = herdParameters.toMutableList(),
+                selectionPrevisionPoids = weightForecastSelection
         )
 }
 

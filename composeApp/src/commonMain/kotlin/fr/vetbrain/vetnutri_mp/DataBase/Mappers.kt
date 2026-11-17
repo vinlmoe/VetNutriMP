@@ -147,7 +147,10 @@ object Mappers {
                                         ),
                                 typeConsultation = this.typeConsultation.name,
                                 profilEvolutif = this.profilEvolutif?.name,
-                                herdParamsJson = TroupeauJson.parametresVersJson(this.parametresTroupeau)
+                                herdParamsJson = TroupeauJson.parametresVersJson(this.parametresTroupeau),
+                                weightForecastJson = this.selectionPrevisionPoids?.let {
+                                    consultationPrescriptionJson.encodeToString(it)
+                                }
                         )
                         .apply {
                                 if (includeRelations) {
@@ -285,7 +288,8 @@ object Mappers {
                         prescriptionSelectedRationIds = prescriptionSelectedRationIds,
                         typeConsultation = TypeConsultation.fromName(this.typeConsultation),
                         profilEvolutif = ProfilEvolutif.fromName(this.profilEvolutif),
-                        parametresTroupeau = TroupeauJson.parametresDepuisJson(this.herdParamsJson)
+                        parametresTroupeau = TroupeauJson.parametresDepuisJson(this.herdParamsJson),
+                        selectionPrevisionPoids = selectionPrevisionDepuisJson(this.weightForecastJson)
                 )
         }
 
@@ -859,4 +863,16 @@ alimentUuid: String
                         varue = this.value
                 )
         }
+}
+
+/** Sélection des rations de la prévision du poids ; null si absente ou illisible. */
+private fun selectionPrevisionDepuisJson(json: String?): fr.vetbrain.vetnutri_mp.Data.PoidsChien.SelectionRationsPrevision? {
+    if (json.isNullOrBlank()) return null
+    return try {
+        consultationPrescriptionJson.decodeFromString<fr.vetbrain.vetnutri_mp.Data.PoidsChien.SelectionRationsPrevision>(json)
+    } catch (e: Exception) {
+        e.rethrowIfCancellation()
+        fr.vetbrain.vetnutri_mp.Utils.AppLog.w("Mappers", "Sélection de prévision du poids illisible : ${e.message}")
+        null
+    }
 }

@@ -789,6 +789,19 @@ interface HtmlSectionDao {
         suspend fun getConseilsCount(): Int
 }
 
+/** DAO du journal des calculs de prévision du poids */
+@Dao
+interface WeightForecastLogDao {
+        @Insert(onConflict = OnConflictStrategy.REPLACE)
+        suspend fun insert(log: WeightForecastLogEntity)
+
+        @Query("SELECT * FROM WEIGHT_FORECAST_LOGS WHERE animalUuid = :animalUuid ORDER BY createdAt DESC LIMIT 1")
+        suspend fun getLastForAnimal(animalUuid: String): WeightForecastLogEntity?
+
+        @Query("SELECT * FROM WEIGHT_FORECAST_LOGS ORDER BY createdAt")
+        suspend fun getAll(): List<WeightForecastLogEntity>
+}
+
 /** DAO des configurations d'exploration multiration enregistrées */
 @Dao
 interface MultiRationExplorationDao {
