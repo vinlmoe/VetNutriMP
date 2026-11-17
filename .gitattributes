@@ -30,3 +30,10 @@
 
 # Le wrapper Gradle doit rester un vrai binaire (gradlew en a besoin sans LFS)
 gradle/wrapper/gradle-wrapper.jar -filter -diff -merge binary
+
+# Commités comme fichiers ordinaires avant la mise en place de LFS : on les
+# laisse hors LFS, sinon Git les voit modifiés en permanence (contenu réel
+# dans l'historique, pointeur LFS attendu par le filtre).
+assets/icon_example.svg -filter -diff -merge -text
+capture/Screenshot_20250829_180010.png -filter -diff -merge binary
+capture/Screenshot_20250829_180104.png -filter -diff -merge binary
