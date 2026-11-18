@@ -1,8 +1,8 @@
-name: Paquet macOS Intel
+name: Paquets macOS (Intel et Apple Silicon)
 
-# Construit le DMG macOS x86_64 sur un runner Intel de GitHub (jpackage ne
-# sait pas compiler pour une autre architecture que celle du JDK qui le lance),
-# puis le signe et le notarise avec compile_and_sign_macos.sh si les secrets
+# Construit un DMG macOS par architecture, chacun sur un runner GitHub de cette
+# architecture (jpackage ne sait pas compiler pour une autre architecture que
+# celle du JDK qui le lance), puis le signe et le notarise avec compile_and_sign_macos.sh si les secrets
 # du dépôt sont renseignés. Sans secrets, le DMG est produit non signé.
 #
 # Secrets attendus (Settings → Secrets and variables → Actions) :
@@ -31,9 +31,22 @@ env:
   GRADLE_OPTS: -Dorg.gradle.welcome=never
 
 jobs:
-  package-macos-intel:
-    name: DMG macOS Intel (x86_64)
-    runs-on: macos-15-intel
+  package-macos:
+    name: DMG macOS ${{ matrix.label }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Un échec sur une architecture n'empêche pas de récupérer l'autre DMG.
+      fail-fast: false
+      matrix:
+        include:
+          - label: Intel
+            arch: x86_64
+            suffix: intel
+            runner: macos-15-intel
+          - label: Apple Silicon
+            arch: arm64
+            suffix: arm64
+            runner: macos-15
     timeout-minutes: 90
     env:
       # `secrets` n'est pas lisible dans un `if:` d'étape : on passe par l'environnement.
@@ -48,11 +61,11 @@ jobs:
       - name: Préparer le build
         uses: ./.github/actions/setup-build
 
-      - name: Vérifier que le runner et le JDK sont x86_64
+      - name: Vérifier que le runner et le JDK sont ${{ matrix.arch }}
         run: |
           echo "Machine : $(uname -m)"
           java -XshowSettings:properties -version 2>&1 | grep 'os.arch'
-          test "$(uname -m)" = "x86_64"
+          test "$(uname -m)" = "${{ matrix.arch }}"
 
       - name: Importer le certificat de signature
         if: env.HAS_CERTIFICATE == 'true'
@@ -97,17 +110,26 @@ jobs:
         run: |
           app="composeApp/build/compose/binaries/main/app/VetNutriMP.app"
           file "$app/Contents/MacOS/VetNutriMP"
-          file "$app/Contents/MacOS/VetNutriMP" | grep -q x86_64
-          ls -lh composeApp/build/compose/binaries/main/dmg/
+          file "$app/Contents/MacOS/VetNutriMP" | grep -q "${{ matrix.arch }}"
 
       - name: Vérifier la notarisation
         if: env.HAS_CERTIFICATE == 'true' && env.HAS_NOTARIZATION == 'true'
         run: xcrun stapler validate composeApp/build/compose/binaries/main/dmg/*-signed.dmg
 
+      - name: Nommer les DMG selon l'architecture
+        # Après la validation du ticket : renommer ne touche pas au contenu
+        # signé, mais évite de confondre les deux DMG une fois téléchargés.
+        run: |
+          cd composeApp/build/compose/binaries/main/dmg
+          for dmg in *.dmg; do
+            mv "$dmg" "${dmg%.dmg}-${{ matrix.suffix }}.dmg"
+          done
+          ls -lh
+
       - name: Archiver le DMG
         uses: actions/upload-artifact@v4
         with:
-          name: VetNutriMP-macos-intel
+          name: VetNutriMP-macos-${{ matrix.suffix }}
           path: composeApp/build/compose/binaries/main/dmg/*.dmg
           retention-days: 30
           if-no-files-found: error
